@@ -1,0 +1,192 @@
+:root {
+    --primary-yellow: #f5b921;
+    --primary-dark-blue: #272f54;
+    --accent-orange: #e05834;
+    --text-gray: #777;
+}
+
+body, html {
+    height: 100%;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #fff;
+}
+
+/* --- LOADING PAGE STYLES --- */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--primary-yellow);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.5s ease-out;
+}
+
+.loading-logo {
+    width: 250px;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* --- MAIN CONTAINER --- */
+.login-container {
+    min-height: 100vh;
+}
+
+.left-panel {
+    background-image: url('/Sources/left\ image.png'); /* Ensure filename matches exactly */
+    background-size: cover;
+    background-position: center left;
+    background-repeat: no-repeat;
+    min-height: 100vh;
+    /* Keeps the wave background fixed while scrolling the form */
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 3rem 2rem; /* Added top/bottom padding for scrolling */
+    min-height: 100vh;
+}
+
+.logo-img {
+    width: 250px;
+    margin-bottom: 1rem;
+}
+
+.login-title {
+    color: var(--primary-dark-blue);
+    font-weight: 700;
+    font-size: 1.75rem;
+    margin-bottom: 0.2rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.login-subtitle {
+    color: var(--primary-dark-blue);
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* --- FORM STYLES --- */
+.form-wrapper {
+    width: 100%;
+    max-width: 500px; /* Slightly wider for the register form */
+}
+
+.form-control, .form-select {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+.form-control:focus, .form-select:focus {
+    box-shadow: none;
+    border-color: var(--primary-dark-blue);
+}
+
+/* Helper for placeholder colors in select dropdowns */
+select:invalid {
+    color: #777;
+}
+
+/* --- CUSTOM FILE UPLOAD --- */
+.file-upload-label {
+    background-color: #ccc; /* Matches the gray in your image */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #555;
+    width: 100%;
+    border: 1px solid #bbb;
+    font-size: 0.95rem;
+    transition: background-color 0.3s;
+}
+
+.file-upload-label:hover {
+    background-color: #bbb;
+}
+
+.file-upload-label i {
+    font-size: 1.1rem;
+    color: #444;
+}
+
+/* --- BUTTONS & LINKS --- */
+.btn-login {
+    width: 100%;
+    background-color: var(--primary-dark-blue);
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    border: none;
+    transition: background 0.3s;
+    cursor: pointer;
+}
+
+.btn-login:hover {
+    background-color: #1b223d;
+}
+
+.terms-text {
+    font-size: 0.75rem;
+    color: #333;
+    margin-top: 5px;
+    line-height: 1.4;
+}
+
+.terms-link {
+    color: var(--accent-orange);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.terms-link:hover {
+    text-decoration: underline;
+}
+
+.register-text {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.register-link {
+    color: var(--accent-orange);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.register-link:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .left-panel {
+        display: none;
+    }
+}
