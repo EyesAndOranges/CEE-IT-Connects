@@ -1,11 +1,18 @@
 <?php
 require 'db.php';
-session_start();
 
-//send code
+// PHPMailer
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require __DIR__ . '/../PHPMailer-master/src/PHPMailer.php';
+require __DIR__ . '/../PHPMailer-master/src/SMTP.php';
+require __DIR__ . '/../PHPMailer-master/src/Exception.php';
+
+
+// Code
 if(isset($_POST['send_code'])){
-    $email = $_POST['email'];
-    $method = $_POST['method'];
+    $email = trim($_POST['email']);
 
     $stmt = $pdo->prepare("SELECT * FROM students WHERE email = :email");
     $stmt->execute(['email' => $email]);
@@ -15,55 +22,88 @@ if(isset($_POST['send_code'])){
         $code = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
         $expiry = date("Y-m-d H:i:s", strtotime("+10 minutes"));
 
-        $stmt = $pdo->prepare("UPDATE students SET reset_code = :code, reset_expiry = :expiry WHERE id = :id");
+        $stmt = $pdo->prepare("
+            UPDATE students 
+            SET reset_code = :code, reset_expiry = :expiry 
+            WHERE email = :email
+        ");
+
         $stmt->execute([
             'code' => $code,
             'expiry' => $expiry,
-            'id' => $student['id']
+            'email' => $email
         ]);
 
-        $_SESSION['reset_student_id'] = $student['id'];
+        // email
+        $mail = new PHPMailer(true);
 
-        if($method == 'email'){
-            $message = "A verification code has been sent to your email: $email";
-        } else {
-            $message = "A verification code has been sent to your phone number: ".$student['contact_number'];
+        try {
+            $mail->isSMTP();
+            $mail->Host = 'smtp.gmail.com';
+            $mail->SMTPAuth = true;
+            $mail->Username = 'jamesherold25@gmail.com';
+            $mail->Password = 'vyfc kawx ctvz cwqf';
+            $mail->SMTPSecure = 'tls';
+            $mail->Port = 587;
+
+            $mail->setFrom('jamesherold25@gmail.com', 'CEE IT Connects');
+            $mail->addAddress($email);
+
+            $mail->isHTML(true);
+            $mail->Subject = 'Password Reset Code';
+            $mail->Body = "
+                <h3>Your verification code is:</h3>
+                <h1>$code</h1>
+                <p>This code expires in 10 minutes.</p>
+            ";
+
+            $mail->send();
+
+            header("Location: forgot-password.php?step=code&email=".urlencode($email)."&msg=Code sent!");
+            exit;
+
+        } catch (Exception $e) {
+            $error = "Email failed: {$mail->ErrorInfo}";
         }
 
-        header("Location: forgot-password.php?step=code&msg=".urlencode($message));
-        exit;
     } else {
         $error = "No student found with that email.";
     }
 }
 
-//verify
-if(isset($_POST['verify_code'])){
-    $entered_code = $_POST['code'];
 
-    $stmt = $pdo->prepare("SELECT * FROM students WHERE id = :id AND reset_code = :code AND reset_expiry >= NOW()");
+// ================= VERIFY CODE =================
+if(isset($_POST['verify_code'])){
+    $entered_code = trim($_POST['code']);
+    $email = $_POST['email'];
+
+    $stmt = $pdo->prepare("
+        SELECT * FROM students 
+        WHERE email = :email 
+        AND reset_code = :code 
+        AND reset_expiry >= :now
+    ");
+
     $stmt->execute([
-        'id' => $_SESSION['reset_student_id'],
-        'code' => $entered_code
+        'email' => $email,
+        'code' => $entered_code,
+        'now' => date("Y-m-d H:i:s")
     ]);
+
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if($student){
-        $_SESSION['code_verified'] = true;
-        header("Location: forgot-password.php?step=reset");
+        header("Location: forgot-password.php?step=reset&email=".urlencode($email));
         exit;
     } else {
         $error = "Invalid or expired verification code.";
     }
 }
 
-// Reset pass
-if(isset($_POST['reset_password'])){
-    if(!isset($_SESSION['code_verified']) || !$_SESSION['code_verified']){
-        header("Location: forgot-password.php");
-        exit;
-    }
 
+// ================= RESET PASSWORD =================
+if(isset($_POST['reset_password'])){
+    $email = $_POST['email'];
     $new_password = $_POST['new_password'];
     $confirm_password = $_POST['confirm_password'];
 
@@ -71,14 +111,19 @@ if(isset($_POST['reset_password'])){
         $error = "Passwords do not match.";
     } else {
         $hashed = password_hash($new_password, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("UPDATE students SET password_hash = :password, reset_code = NULL, reset_expiry = NULL WHERE id = :id");
+
+        $stmt = $pdo->prepare("
+            UPDATE students 
+            SET password_hash = :password, 
+                reset_code = NULL, 
+                reset_expiry = NULL 
+            WHERE email = :email
+        ");
+
         $stmt->execute([
             'password' => $hashed,
-            'id' => $_SESSION['reset_student_id']
+            'email' => $email
         ]);
-
-        session_unset();
-        session_destroy();
 
         header("Location: student-login.php?reset=success");
         exit;
@@ -90,105 +135,50 @@ if(isset($_POST['reset_password'])){
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Forgot Password - CEE IT Connects</title>
+<title>Forgot Password</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="../CSS/student-login.css">
-<style>
-/* Center the card inside the right panel */
-.card {
-    background: #fff;
-    padding: 30px;
-    border-radius: 12px;
-    max-width: 400px;
-    margin: auto;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-    text-align: center;
-}
-
-.btn-login { width: 100%; }
-.alert { font-size: 0.9rem; }
-</style>
 </head>
-<body>
+<body class="d-flex justify-content-center align-items-center vh-100">
 
-<div class="container-fluid login-container">
-    <div class="row h-100">
+<div class="card p-4" style="width: 400px;">
 
-        <!-- LEFT IMAGE PANEL -->
-        <div class="col-md-5 p-0 left-panel"></div>
+<?php if(isset($_GET['step']) && $_GET['step'] == 'code'): ?>
 
-        <!-- RIGHT FORM PANEL -->
-        <div class="col-md-7 right-panel">
-            <img src="../Sources/CEE IT Connects Logo.png" alt="CEE IT Logo" class="logo-img">
+    <h3>Enter Code</h3>
+    <p><?php echo htmlspecialchars($_GET['msg']); ?></p>
+    <?php if(isset($error)) echo "<div class='alert alert-danger'>$error</div>"; ?>
 
-            <div class="card">
-                <?php if(isset($_GET['step']) && $_GET['step'] == 'code'): ?>
-                    <h3>Enter Verification Code</h3>
-                    <p><?php echo htmlspecialchars($_GET['msg']); ?></p>
-                    <?php if(isset($error)) echo "<div class='alert alert-danger'>$error</div>"; ?>
-                    <form method="POST">
-                        <div class="mb-3">
-                            <input type="text" name="code" class="form-control" placeholder="Enter Code" required>
-                        </div>
-                        <button type="submit" name="verify_code" class="btn-login">Verify Code</button>
-                    </form>
+    <form method="POST">
+        <input type="hidden" name="email" value="<?php echo htmlspecialchars($_GET['email']); ?>">
+        <input type="text" name="code" class="form-control mb-3" placeholder="Enter Code" required>
+        <button name="verify_code" class="btn btn-primary w-100">Verify</button>
+    </form>
 
-                <?php elseif(isset($_GET['step']) && $_GET['step'] == 'reset'): ?>
-                    <h3>Reset Password</h3>
-                    <?php if(isset($error)) echo "<div class='alert alert-danger'>$error</div>"; ?>
-                    <form method="POST">
-                        <div class="mb-3">
-                            <input type="password" name="new_password" class="form-control" placeholder="New Password" required>
-                        </div>
-                        <div class="mb-3">
-                            <input type="password" name="confirm_password" class="form-control" placeholder="Confirm Password" required>
-                        </div>
-                        <button type="submit" name="reset_password" class="btn-login">Reset Password</button>
-                    </form>
+<?php elseif(isset($_GET['step']) && $_GET['step'] == 'reset'): ?>
 
-                <?php else: ?>
-                    <h3>Forgot Password</h3>
-                    <p>Choose how you want to receive your verification code</p>
-                    <?php if(isset($error)) echo "<div class='alert alert-danger'>$error</div>"; ?>
-                    <form method="POST">
-                        <div class="mb-3">
-                            <input type="email" name="email" id="emailInput" class="form-control" placeholder="Enter your registered email" required>
-                        </div>
-                        <div class="mb-3 text-start">
-                            <label class="form-label">Send code via:</label><br>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input method-radio" type="radio" name="method" value="email" checked>
-                                <label class="form-check-label">Email</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input method-radio" type="radio" name="method" value="phone">
-                                <label class="form-check-label">Phone</label>
-                            </div>
-                        </div>
-                        <button type="submit" name="send_code" class="btn-login">Send Verification Code</button>
-                    </form>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
+    <h3>Reset Password</h3>
+    <?php if(isset($error)) echo "<div class='alert alert-danger'>$error</div>"; ?>
+
+    <form method="POST">
+        <input type="hidden" name="email" value="<?php echo htmlspecialchars($_GET['email']); ?>">
+        <input type="password" name="new_password" class="form-control mb-3" placeholder="New Password" required>
+        <input type="password" name="confirm_password" class="form-control mb-3" placeholder="Confirm Password" required>
+        <button name="reset_password" class="btn btn-success w-100">Reset Password</button>
+    </form>
+
+<?php else: ?>
+
+    <h3>Forgot Password</h3>
+    <?php if(isset($error)) echo "<div class='alert alert-danger'>$error</div>"; ?>
+
+    <form method="POST">
+        <input type="email" name="email" class="form-control mb-3" placeholder="Enter Email" required>
+        <button name="send_code" class="btn btn-primary w-100">Send Code</button>
+    </form>
+
+<?php endif; ?>
+
 </div>
-
-<script>
-// Change placeholder dynamically
-const emailInput = document.getElementById('emailInput');
-document.querySelectorAll('.method-radio').forEach(radio => {
-    radio.addEventListener('change', () => {
-        if(radio.value === 'email'){
-            emailInput.type = 'email';
-            emailInput.placeholder = 'Enter your registered email';
-        } else {
-            emailInput.type = 'text';
-            emailInput.placeholder = 'Enter your registered phone number';
-        }
-    });
-});
-</script>
 
 </body>
 </html>
