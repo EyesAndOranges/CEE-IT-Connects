@@ -1,3 +1,45 @@
+<?php
+session_start();
+require 'db.php';
+
+// check user id
+if (!isset($_SESSION['user_id'])) {
+    header("Location: student-login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+// Fetch
+$stmt = $pdo->prepare("
+    SELECT * FROM notifications
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+");
+$stmt->execute([$user_id]);
+$notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// check unread Notifs
+$stmt = $pdo->prepare("
+    SELECT COUNT(*) FROM notifications
+    WHERE user_id = ? AND is_read = FALSE
+");
+$stmt->execute([$user_id]);
+$unread_count = $stmt->fetchColumn();
+
+// Time
+function timeAgo($datetime)
+{
+    $time = time() - strtotime($datetime);
+
+    if ($time < 60)
+        return "Just now";
+    if ($time < 3600)
+        return floor($time / 60) . " min ago";
+    if ($time < 86400)
+        return floor($time / 3600) . " hr ago";
+    return floor($time / 86400) . " day ago";
+}
+?>
 
 <head>
     <meta charset="UTF-8">
@@ -8,52 +50,101 @@
     <style>
         /* NAVBAR BACKGROUND */
 
-.navbar-custom{
-    background:#2c3e67;
-    padding:12px 0;
-}
+        .navbar-custom {
+            background: #2c3e67;
+            padding: 12px 0;
+        }
 
-/* LOGO */
-.nav-logo{
-    width:38px;
-}
+        /* LOGO */
+        .nav-logo {
+            width: 38px;
+        }
 
-/* BRAND TEXT */
-.brand-text{
-    color:#ff6b2c;
-    font-weight:700;
-    letter-spacing:1px;
-    font-size:18px;
-}
+        /* BRAND TEXT */
+        .brand-text {
+            color: #ff6b2c;
+            font-weight: 700;
+            letter-spacing: 1px;
+            font-size: 18px;
+        }
 
-/* MENU LINKS */
-.navbar-nav .nav-link{
-    color:white;
-    font-weight:500;
-    font-size:15px;
-    transition:0.2s;
-}
+        /* MENU LINKS */
+        .navbar-nav .nav-link {
+            color: white;
+            font-weight: 500;
+            font-size: 15px;
+            transition: 0.2s;
+        }
 
-/* HOVER */
-.navbar-nav .nav-link:hover{
-    color:#00cfff;
-}
+        /* HOVER */
+        .navbar-nav .nav-link:hover {
+            color: #00cfff;
+        }
 
-/* ACTIVE LINK */
-.navbar-nav .active{
-    color:white;
-    font-weight:600;
-}
+        /* ACTIVE LINK */
+        .navbar-nav .active {
+            color: white;
+            font-weight: 600;
+        }
 
-/* RIGHT ICONS */
-.navbar-icons i{
-    color:white;
-    font-size:20px;
-}
+        /* RIGHT ICONS */
+        .navbar-icons i {
+            color: white;
+            font-size: 20px;
+        }
 
-.navbar-icons i:hover{
-    color:#00cfff;
-}
+        .navbar-icons i:hover {
+            color: #00cfff;
+        }
+
+        /* BADGE */
+        .notif-badge {
+            position: absolute;
+            top: -5px;
+            right: -8px;
+            background: red;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 50%;
+        }
+
+        /* POPUP */
+        .notif-popup {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 35px;
+            width: 320px;
+            background: #d9d9d9;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            z-index: 999;
+        }
+
+        /* ITEM */
+        .notif-item {
+            display: flex;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid #bbb;
+        }
+
+        /* DOT */
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: #ff3c00;
+            border-radius: 50%;
+            margin-top: 6px;
+        }
+
+        /* SCROLL */
+        .notif-popup {
+            max-height: 400px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 
@@ -76,33 +167,24 @@
             <ul class="navbar-nav gap-4">
 
                 <li class="nav-item">
-                    <a class="nav-link <?= ($page=='home')?'active':'' ?>" href="index.php">Home</a>
-                </li>
-
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle <?= ($page == 'opportunity') ? 'active-link' : '' ?>"
-                       href="#" role="button" data-bs-toggle="dropdown">
-                        Opportunity
-                    </a>
-
-                    <ul class="dropdown-menu">
-                        <li>
-                            <a class="dropdown-item" href="applied-scholarship-programs.php">Scholarship</a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="applied-internship-programs.php">Internship</a>
-                        </li>
-                    </ul>
+                    <a class="nav-link <?= ($page == 'home') ? 'active' : '' ?>" href="index.php">Home</a>
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link <?= ($page=='announcements')?'active':'' ?>" href="announcement.php">
+                    <a class="nav-link <?= ($page == 'opportunity') ? 'active' : '' ?>"
+                        href="applied-internship-programs.php">
+                        Internships
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link <?= ($page == 'announcements') ? 'active' : '' ?>" href="announcement.php">
                         Announcements
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link <?= ($page=='about')?'active':'' ?>" href="about.php">
+                    <a class="nav-link <?= ($page == 'about') ? 'active' : '' ?>" href="about.php">
                         About
                     </a>
                 </li>
@@ -111,10 +193,124 @@
         </div>
 
         <!-- Right Icons -->
-        <div class="navbar-icons d-flex align-items-center gap-3">
-            <a href="#"><i class="fa-regular fa-bell"></i></a>
-            <a href="personal-information.php"><i class="fa-regular fa-user"></i></a>
+        <div class="navbar-icons d-flex align-items-center gap-3 position-relative">
+
+            <!-- BELL -->
+            <div class="position-relative">
+                <i class="fa-regular fa-bell" id="notifBell" style="cursor:pointer;"></i>
+
+                <?php if ($unread_count > 0): ?>
+                    <span class="notif-badge"><?= $unread_count ?></span>
+                <?php endif; ?>
+
+                <!-- POPUP -->
+                <div id="notifPopup" class="notif-popup">
+                    <h5><strong>Notifications</strong></h5>
+                    <p class="small text-muted">
+                        You have <?= $unread_count ?> new notifications
+                    </p>
+
+                    <hr>
+
+                    <!-- TODAY -->
+                    <h6><strong>Today</strong></h6>
+
+                    <?php
+                    $today = date('Y-m-d');
+                    $hasToday = false;
+
+                    foreach ($notifications as $notif):
+                        if (date('Y-m-d', strtotime($notif['created_at'])) == $today):
+                            $hasToday = true;
+                            ?>
+                            <div class="notif-item">
+                                <?php if (!$notif['is_read']): ?>
+                                    <div class="dot"></div>
+                                <?php endif; ?>
+                                <div>
+                                    <strong><?= htmlspecialchars($notif['title']) ?></strong>
+                                    <p class="mb-0 small text-muted">
+                                        <?= htmlspecialchars($notif['message']) ?>
+                                    </p>
+                                    <small><?= timeAgo($notif['created_at']) ?></small>
+                                </div>
+                            </div>
+                        <?php endif; endforeach; ?>
+
+                    <?php if (!$hasToday): ?>
+                        <p class="text-muted small">No notifications today</p>
+                    <?php endif; ?>
+
+                    <hr>
+
+                    <!-- THIS WEEK -->
+                    <h6><strong>This week</strong></h6>
+
+                    <?php
+                    $weekAgo = date('Y-m-d', strtotime('-7 days'));
+                    $hasWeek = false;
+
+                    foreach ($notifications as $notif):
+                        $date = date('Y-m-d', strtotime($notif['created_at']));
+                        if ($date < $today && $date >= $weekAgo):
+                            $hasWeek = true;
+                            ?>
+                            <div class="notif-item">
+                                <div class="dot"></div>
+                                <div>
+                                    <strong><?= htmlspecialchars($notif['title']) ?></strong>
+                                    <p class="mb-0 small text-muted">
+                                        <?= htmlspecialchars($notif['message']) ?>
+                                    </p>
+                                    <small><?= timeAgo($notif['created_at']) ?></small>
+                                </div>
+                            </div>
+                        <?php endif; endforeach; ?>
+
+                    <?php if (!$hasWeek): ?>
+                        <p class="text-muted small">No notifications this week</p>
+                    <?php endif; ?>
+
+                </div>
+            </div>
+
+            <!-- USER ICON -->
+            <a href="personal-information.php">
+                <i class="fa-regular fa-user"></i>
+            </a>
         </div>
 
     </div>
 </nav>
+<script>
+    const bell = document.getElementById("notifBell");
+    const popup = document.getElementById("notifPopup");
+
+    bell.addEventListener("click", function (e) {
+        e.stopPropagation();
+
+        let isOpen = popup.style.display === "block";
+        popup.style.display = isOpen ? "none" : "block";
+
+        // Mark as read
+        if (!isOpen) {
+            fetch("mark-as-read.php")
+                .then(res => res.text())
+                .then(data => {
+                    // remove badge
+                    let badge = document.querySelector(".notif-badge");
+                    if (badge) badge.remove();
+
+                    // remove all dots
+                    document.querySelectorAll(".dot").forEach(dot => dot.remove());
+                });
+        }
+    });
+
+    // close popup
+    document.addEventListener("click", function (e) {
+        if (!popup.contains(e.target) && !bell.contains(e.target)) {
+            popup.style.display = "none";
+        }
+    });
+</script>
