@@ -194,7 +194,11 @@ function timeAgo($datetime)
 
         <!-- Right Icons -->
         <div class="navbar-icons d-flex align-items-center gap-3 position-relative">
-
+            <div>
+                <a href="Message.php">
+                    <i class="fa-regular fa-comment"></i>
+                </a>
+            </div>
             <!-- BELL -->
             <div class="position-relative">
                 <i class="fa-regular fa-bell" id="notifBell" style="cursor:pointer;"></i>
@@ -274,7 +278,7 @@ function timeAgo($datetime)
                 </div>
             </div>
 
-            <!-- USER ICON -->
+            <!-- User Icon -->
             <a href="personal-information.php">
                 <i class="fa-regular fa-user"></i>
             </a>
