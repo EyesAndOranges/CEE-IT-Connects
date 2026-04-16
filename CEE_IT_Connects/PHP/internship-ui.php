@@ -23,7 +23,7 @@
 <body data-page="rooms">
 
     <?php include 'navbar.php'; ?>
-
+<hr>
     <div class="page-body">
         <!-- SIDEBAR -->
         <aside class="sidebar">
