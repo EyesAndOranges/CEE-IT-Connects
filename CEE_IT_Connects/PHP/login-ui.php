@@ -1,3 +1,6 @@
+<?php
+$role = $_GET['role'] ?? 'student';
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -27,19 +30,31 @@
                 <img src="../Sources/CEE IT Connects Logo.png" alt="CEE IT Logo" class="logo-img">
 
                 <h2 class="login-title">CEE IT CONNECTS</h2>
-                <h3 class="login-subtitle">Login</h3>
+                <h3 class="login-subtitle">
+                    <?= ucfirst($role) ?> Login
+                </h3>
 
                 <!-- ROLE TOGGLE -->
                 <div class="role-toggle">
-                    <a href="#" class="btn-role active">Student</a>
-                    <a href="admin-login.php" class="btn-role inactive">Admin</a>
+                    <a href="login-ui.php?role=student"
+                        class="btn-role <?= $role === 'student' ? 'active' : 'inactive' ?>">
+                        Student
+                    </a>
+                    <a href="login-ui.php?role=adviser"
+                        class="btn-role <?= $role === 'adviser' ? 'active' : 'inactive' ?>">
+                        Adviser
+                    </a>
+                    <a href="login-ui.php?role=admin" class="btn-role <?= $role === 'admin' ? 'active' : 'inactive' ?>">
+                        Admin
+                    </a>
                 </div>
 
                 <!-- LOGIN FORM -->
                 <form class="form-wrapper" method="POST" action="login.php">
 
                     <div class="mb-3">
-                        <input type="email" class="form-control" name="email" placeholder="Student Email" required>
+                        <input type="email" class="form-control" name="email" placeholder="<?= ucfirst($role) ?> Email"
+                            required>
                     </div>
 
                     <div class="mb-3 password-group">
@@ -50,9 +65,9 @@
                     </div>
 
                     <!-- ROLE IDENTIFIER -->
-                    <input type="hidden" name="role" value="student">
+                    <input type="hidden" name="role" value="<?= $role ?>">
 
-                    <a href="forgot-password.php    " class="forgot-link">Forgot password?</a>
+                    <a href="forgot-password.php" class="forgot-link">Forgot password?</a>
                     <button type="submit" class="btn-login">Login</button>
                 </form>
                 <div class="register-text mt-3" style="text-align: center; margin-top: 20px; 

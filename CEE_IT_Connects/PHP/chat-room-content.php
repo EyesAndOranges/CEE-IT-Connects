@@ -1,6 +1,5 @@
 <?php
 $room_id = $_GET['room_id'];
-
 // ROOM INFO
 $stmt = $pdo->prepare("
     SELECT r.*, a.full_name, a.role

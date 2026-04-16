@@ -1,0 +1,206 @@
+@font-face {
+    font-family: 'GeogrotSharp TRIAL';
+    src: url('../Sources/GeogrotesqueSharpTRIAL-CompBd.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Poppins';
+    src: url('../Sources/Poppins-SemiBold.ttf') format('truetype');
+}
+
+:root {
+    --navy:     #1e3163;
+    --accent:   #FF673A;
+    --selected: #fdf0ec;
+    --hover:    #ffd280;
+    --text:     #1a2b5c;
+    --muted:    #8a92a6;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    padding-top: 70px;
+    font-family: Poppins, sans-serif;
+    background: #f0f2f7;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--navy);
+    padding: 0 20px;
+    height: 58px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+}
+
+.brand img {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+}
+
+.brand span {
+    font-family: 'GeogrotSharp TRIAL', 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--accent);
+}
+
+/* SIDEBAR */
+.page-body {
+    display: flex;
+    flex: 1;
+}
+
+.sidebar {
+    width: 200px;
+    background: #fff;
+    border-right: 1px solid #e4e8f0;
+    padding: 14px 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* SIDEBAR ITEMS */
+.sidebar a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 10px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+/* STATES */
+.sidebar a:hover {
+    background: var(--hover);
+    color: var(--accent);
+}
+
+.sidebar a.active {
+    background: var(--selected);
+    color: var(--accent);
+}
+
+/* ICONS */
+.sidebar a i {
+    width: 18px;
+    text-align: center;
+    opacity: 0.6;
+}
+
+.sidebar a:hover i,
+.sidebar a.active i {
+    opacity: 1;
+    color: var(--accent);
+}
+
+.profile-wrapper { position: relative; }
+
+.icon-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.4rem;
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.icon-btn i {
+    display: block;
+}
+
+.profile-drop {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 220px;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 20px 16px 14px;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    z-index: 300;
+    animation: dropIn 0.16s ease;
+}
+
+.profile-drop.open { display: flex; }
+
+@keyframes dropIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.profile-drop .p-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.profile-drop .p-email {
+    font-size: 0.72rem;
+    color: var(--accent);
+    margin-bottom: 14px;
+    word-break: break-all;
+}
+
+.profile-drop .btn-edit {
+    width: 100%;
+    padding: 8px;
+    background: #f0a500;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    transition: background 0.18s;
+}
+
+.profile-drop .btn-edit:hover { background: var(--accent); }
+.profile-drop .btn-edit i { font-size: 0.85rem; }
+
+.profile-drop .logout {
+    font-size: 0.78rem;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.profile-drop .logout:hover { text-decoration: underline; }

@@ -1,16 +1,17 @@
-<?php 
+<?php
 require 'db.php';
-
+require 'auth.php';
 $stmt = $pdo->query("SELECT * FROM internships");
 $locations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$page = 'home'; 
+$page = 'home';
 date_default_timezone_set('Asia/Manila'); // set timezone
 $now = new DateTime(); // current time
 ?>
 <!DOCTYPE html>
 <html lang="en">
-    <head>
+
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home - CEE IT Connects</title>
@@ -20,23 +21,22 @@ $now = new DateTime(); // current time
     <link rel="stylesheet" href="../CSS/index-style.css">
 
     <style>
-    body{
-    margin:0;
-    background:
-    linear-gradient(
-    90deg,
-    rgba(255,182,47,0.85) 10%,
-    rgba(228,87,46,0.85) 70%
-    ),
-    url("../Sources/CEIT Building facade.png");
-    background-size:cover;
-    background-position:center;
-    background-repeat:no-repeat;
-    background-attachment:fixed;
-    }
+        body {
+            margin: 0;
+            background:
+                linear-gradient(90deg,
+                    rgba(255, 182, 47, 0.85) 10%,
+                    rgba(228, 87, 46, 0.85) 70%),
+                url("../Sources/CEIT Building facade.png");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
     </style>
-    </head>
-    <body>
+</head>
+
+<body>
 
     <?php include 'navbar.php'; ?>
 
@@ -105,155 +105,169 @@ $now = new DateTime(); // current time
 
     <!-- MAP SECTION -->
     <section class="map-section">
-    <div class="map-section-wrapper">
-    <div class="main">
-    <div class="panel">
+        <div class="map-section-wrapper">
+            <div class="main">
+                <div class="panel">
 
-    <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Search for an internship listing" onkeyup="filterListings()">
-    </div>
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Search for an internship listing"
+                            onkeyup="filterListings()">
+                    </div>
 
-    <?php foreach($locations as $loc): 
-        $openTime = new DateTime($loc['time_open']);
-        $closeTime = new DateTime($loc['time_close']);
-        $status = ($now >= $openTime && $now <= $closeTime) ? 'OPEN' : 'CLOSED';
-        $statusClass = strtolower($status);
-    ?>
-    <div class="listing" data-title="<?= strtolower(htmlspecialchars($loc['title'])) ?>" data-id="<?= $loc['id'] ?>">
-        <div class="listing-header">
-            <h3>
-                <?= htmlspecialchars($loc['title']) ?>
-                <span class="status <?= $statusClass ?>" 
-                    data-hours="<?= $openTime->format('H:i') ?>-<?= $closeTime->format('H:i') ?>">
-                    <?= $status ?>
-                </span>
-            </h3>
+                    <?php foreach ($locations as $loc):
+                        $openTime = new DateTime($loc['time_open']);
+                        $closeTime = new DateTime($loc['time_close']);
+                        $status = ($now >= $openTime && $now <= $closeTime) ? 'OPEN' : 'CLOSED';
+                        $statusClass = strtolower($status);
+                        ?>
+                        <div class="listing" data-title="<?= strtolower(htmlspecialchars($loc['title'])) ?>"
+                            data-id="<?= $loc['id'] ?>">
+                            <div class="listing-header">
+                                <h3>
+                                    <?= htmlspecialchars($loc['title']) ?>
+                                    <span class="status <?= $statusClass ?>"
+                                        data-hours="<?= $openTime->format('H:i') ?>-<?= $closeTime->format('H:i') ?>">
+                                        <?= $status ?>
+                                    </span>
+                                </h3>
+                            </div>
+                            <p>Opens daily: <?= $openTime->format('h:i A') ?> - <?= $closeTime->format('h:i A') ?></p>
+                            <p class="distance"><i class="fas fa-map-marker-alt"></i>
+                                <?= htmlspecialchars($loc['location']) ?></p>
+                            <p><?= htmlspecialchars($loc['address'] ?? $loc['location']) ?></p>
+                            <div class="icons">
+                                <i class="fas fa-phone"
+                                    onclick="toggleNumbers(this,'<?= htmlspecialchars($loc['phone_numbers']) ?>')"></i>
+                                <i class="fas fa-location-arrow"
+                                    onclick="getDirections(<?= $loc['latitude'] ?>,<?= $loc['longitude'] ?>)"></i>
+                            </div>
+                            <div class="phone-dropdown"></div>
+                        </div>
+                    <?php endforeach; ?>
+
+                </div>
+                <div id="map"></div>
+            </div>
         </div>
-        <p>Opens daily: <?= $openTime->format('h:i A') ?> - <?= $closeTime->format('h:i A') ?></p>
-        <p class="distance"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($loc['location']) ?></p>
-        <p><?= htmlspecialchars($loc['address'] ?? $loc['location']) ?></p>
-        <div class="icons">
-            <i class="fas fa-phone" onclick="toggleNumbers(this,'<?= htmlspecialchars($loc['phone_numbers']) ?>')"></i>
-            <i class="fas fa-location-arrow" onclick="getDirections(<?= $loc['latitude'] ?>,<?= $loc['longitude'] ?>)"></i>
-        </div>
-        <div class="phone-dropdown"></div>
-    </div>
-    <?php endforeach; ?>
-
-    </div>
-    <div id="map"></div>
-    </div>
-    </div>
     </section>
 
     <!-- ABOUT -->
     <section class="about-section">
-    <div class="container text-center">
-    <h2 class="about-title animate-on-scroll animate-left">About CEE IT Connects</h2>
-    <p class="about-text animate-on-scroll animate-right">
-    CEE IT Connects is an internship coordination platform developed
-    to support students from the College of Engineering and Information
-    Technology of Pamantasan ng Lungsod ng Valenzuela. The system
-    simplifies the internship process by connecting students,
-    advisers, and partner companies through a centralized digital platform.
-    </p>
-    </div>
-    <div class="about-info-bar">
-    <div class="container">
-    <div class="row text-center align-items-center">
-    <div class="col-md-4 info-item"><i class="fas fa-map-marker-alt"></i> Tongco St., Maysan, Valenzuela City</div>
-    <div class="col-md-4 brand-center"><strong>CEE IT CONNECTS</strong></div>
-    <div class="col-md-4 info-item"><i class="fas fa-envelope"></i> ceeitconnects@gmail.com</div>
-    <div class="col-md-4 info-item"><i class="fab fa-facebook"></i> CEE IT Connects</div>
-    <div class="col-md-4 copyright">©2026 CEE IT Connects. All rights reserved</div>
-    <div class="col-md-4 info-item"><i class="fas fa-phone"></i> 09123456789</div>
-    </div>
-    </div>
-    </div>
+        <div class="container text-center">
+            <h2 class="about-title animate-on-scroll animate-left">About CEE IT Connects</h2>
+            <p class="about-text animate-on-scroll animate-right">
+                CEE IT Connects is an internship coordination platform developed
+                to support students from the College of Engineering and Information
+                Technology of Pamantasan ng Lungsod ng Valenzuela. The system
+                simplifies the internship process by connecting students,
+                advisers, and partner companies through a centralized digital platform.
+            </p>
+        </div>
+        <div class="about-info-bar">
+            <div class="container">
+                <div class="row text-center align-items-center">
+                    <div class="col-md-4 info-item"><i class="fas fa-map-marker-alt"></i> Tongco St., Maysan, Valenzuela
+                        City</div>
+                    <div class="col-md-4 brand-center"><strong>CEE IT CONNECTS</strong></div>
+                    <div class="col-md-4 info-item"><i class="fas fa-envelope"></i> ceeitconnects@gmail.com</div>
+                    <div class="col-md-4 info-item"><i class="fab fa-facebook"></i> CEE IT Connects</div>
+                    <div class="col-md-4 copyright">©2026 CEE IT Connects. All rights reserved</div>
+                    <div class="col-md-4 info-item"><i class="fas fa-phone"></i> 09123456789</div>
+                </div>
+            </div>
+        </div>
     </section>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-    let map;
-    let markers = {};
+        let map;
+        let markers = {};
 
-    function initMap() {
-        map = new google.maps.Map(document.getElementById('map'), {
-            zoom: 10,
-            center: { lat: 14.70, lng: 120.98 }
-        });
-
-        const locations = <?php echo json_encode($locations); ?>;
-
-        locations.forEach(loc => {
-            let markerColor = loc.available ? 'green' : 'red';
-            const marker = new google.maps.Marker({
-                position: { lat: parseFloat(loc.latitude), lng: parseFloat(loc.longitude) },
-                map: map,
-                title: loc.title,
-                icon: `http://maps.google.com/mapfiles/ms/icons/${markerColor}-dot.png`
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 10,
+                center: { lat: 14.70, lng: 120.98 }
             });
-            markers[loc.id] = marker;
 
-            const info = new google.maps.InfoWindow({
-                content: `<b>${loc.title}</b><br>${loc.company}<br>${loc.location}`
+            const locations = <?php echo json_encode($locations); ?>;
+
+            locations.forEach(loc => {
+                let markerColor = loc.available ? 'green' : 'red';
+                const marker = new google.maps.Marker({
+                    position: { lat: parseFloat(loc.latitude), lng: parseFloat(loc.longitude) },
+                    map: map,
+                    title: loc.title,
+                    icon: `http://maps.google.com/mapfiles/ms/icons/${markerColor}-dot.png`
+                });
+                markers[loc.id] = marker;
+
+                const info = new google.maps.InfoWindow({
+                    content: `<b>${loc.title}</b><br>${loc.company}<br>${loc.location}`
+                });
+                marker.addListener('click', () => info.open(map, marker));
             });
-            marker.addListener('click', () => info.open(map, marker));
-        });
-    }
-
-    function filterListings(){
-        const input=document.getElementById('searchInput').value.toLowerCase();
-        document.querySelectorAll('.listing').forEach(listing=>{
-            const title=listing.dataset.title;
-            listing.style.display=title.includes(input) ? 'block' : 'none';
-        });
-    }
-
-    function toggleNumbers(iconEl,numbers){
-        const dropdown=iconEl.closest('.listing').querySelector('.phone-dropdown');
-        if(dropdown.style.display==='block'){
-            dropdown.style.display='none';
-            dropdown.innerHTML='';
-        } else {
-            const nums=numbers.split(',');
-            dropdown.innerHTML=nums.map(num=>`<div style="padding:4px 0;cursor:pointer;" onclick="copyNumber('${num.trim()}')">${num.trim()}</div>`).join('');
-            dropdown.style.display='block';
         }
-    }
 
-    function copyNumber(number){
-        navigator.clipboard.writeText(number).then(()=>{ alert("Number copied: "+number); });
-    }
-
-    function getDirections(lat, lng) {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(pos => {
-                const userLat = pos.coords.latitude;
-                const userLng = pos.coords.longitude;
-                window.open(`https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${lat},${lng}`, '_blank');
-            }, () => alert("Cannot get your location for directions."));
-        } else {
-            alert("Geolocation not supported by your browser");
-        }
-    }
-
-    // animations
-    document.addEventListener('DOMContentLoaded', () => {
-        const observerOptions = { threshold: 0.2 };
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if(entry.isIntersecting){ entry.target.classList.add('visible'); } 
-                else { entry.target.classList.remove('visible'); }
+        function filterListings() {
+            const input = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('.listing').forEach(listing => {
+                const title = listing.dataset.title;
+                listing.style.display = title.includes(input) ? 'block' : 'none';
             });
-        }, observerOptions);
+        }
 
-        const elementsToAnimate = document.querySelectorAll('.animate-on-scroll');
-        elementsToAnimate.forEach(el => observer.observe(el));
-    });
+        function toggleNumbers(iconEl, numbers) {
+            const dropdown = iconEl.closest('.listing').querySelector('.phone-dropdown');
+            if (dropdown.style.display === 'block') {
+                dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
+            } else {
+                const nums = numbers.split(',');
+                dropdown.innerHTML = nums.map(num => `<div style="padding:4px 0;cursor:pointer;" 
+                onclick="copyNumber('${num.trim()}'); closeDropdown();">${num.trim()}</div>`).join('');
+                dropdown.style.display = 'block';
+            }
+        }
+        function closeDropdown() {
+            document.querySelectorAll('.phone-dropdown').forEach(dropdown => {
+                dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
+            });
+        }
+        function copyNumber(number) {
+            navigator.clipboard.writeText(number)//.then(() => { alert("Number copied: " + number); });
+        }
+
+        function getDirections(lat, lng) {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const userLat = pos.coords.latitude;
+                    const userLng = pos.coords.longitude;
+                    window.open(`https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${lat},${lng}`, '_blank');
+                }, () => alert("Cannot get your location for directions."));
+            } else {
+                alert("Geolocation not supported by your browser");
+            }
+        }
+
+        // animations
+        document.addEventListener('DOMContentLoaded', () => {
+            const observerOptions = { threshold: 0.2 };
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) { entry.target.classList.add('visible'); }
+                    else { entry.target.classList.remove('visible'); }
+                });
+            }, observerOptions);
+
+            const elementsToAnimate = document.querySelectorAll('.animate-on-scroll');
+            elementsToAnimate.forEach(el => observer.observe(el));
+        });
     </script>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDITrnTUmS0AwxqZCE8cfYI3d5kjtzg7RY&callback=initMap" async defer></script>
-    </body>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDITrnTUmS0AwxqZCE8cfYI3d5kjtzg7RY&callback=initMap"
+        async defer></script>
+</body>
+
 </html>

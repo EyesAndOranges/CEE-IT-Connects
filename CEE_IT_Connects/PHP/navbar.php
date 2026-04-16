@@ -1,13 +1,7 @@
 <?php
-session_start();
 require 'db.php';
-
-// check user id
-if (!isset($_SESSION['user_id'])) {
-    header("Location: student-login.php");
-    exit();
-}
-
+require_once 'auth.php';
+$page = "";
 $user_id = $_SESSION['user_id'];
 // Fetch
 $stmt = $pdo->prepare("
@@ -15,9 +9,17 @@ $stmt = $pdo->prepare("
     WHERE user_id = ?
     ORDER BY created_at DESC
 ");
+
 $stmt->execute([$user_id]);
 $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+//Insert Notif
+/* $stmt = $pdo->prepare("
+    INSERT INTO notifications (user_id, title, message, is_read, created_at)
+    VALUES (?, ?, ?, FALSE, NOW())
+");
+$stmt->execute([$user_id, "Welcome back to CEE IT Connects!", "Check out the latest opportunities and updates."]);
+*/
 // check unread Notifs
 $stmt = $pdo->prepare("
     SELECT COUNT(*) FROM notifications
@@ -47,12 +49,23 @@ function timeAgo($datetime)
     <title>CEE IT CONNECTS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/CSS/index-style.css">
     <style>
         /* NAVBAR BACKGROUND */
 
         .navbar-custom {
             background: #2c3e67;
             padding: 12px 0;
+
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+
+            height: 70px;
+            /* IMPORTANT */
+            z-index: 1000;
+            /* IMPORTANT */
         }
 
         /* LOGO */
@@ -182,13 +195,6 @@ function timeAgo($datetime)
                         Announcements
                     </a>
                 </li>
-
-                <li class="nav-item">
-                    <a class="nav-link <?= ($page == 'about') ? 'active' : '' ?>" href="about.php">
-                        About
-                    </a>
-                </li>
-
             </ul>
         </div>
 
@@ -196,7 +202,7 @@ function timeAgo($datetime)
         <div class="navbar-icons d-flex align-items-center gap-3 position-relative">
             <div>
                 <a href="Message.php">
-                    <i class="fa-regular fa-comment"></i>
+                    <i class="fa-<?= ($page == 'messages') ? 'solid' : 'regular' ?> fa-comment"></i>
                 </a>
             </div>
             <!-- BELL -->
@@ -280,7 +286,7 @@ function timeAgo($datetime)
 
             <!-- User Icon -->
             <a href="personal-information.php">
-                <i class="fa-regular fa-user"></i>
+                <i class="fa-<?= ($page == 'profile') ? 'solid' : 'regular' ?> fa-user"></i>
             </a>
         </div>
 

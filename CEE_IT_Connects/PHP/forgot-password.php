@@ -1,6 +1,5 @@
 <?php
 require 'db.php';
-
 // PHPMailer
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -11,14 +10,14 @@ require __DIR__ . '/../PHPMailer-master/src/Exception.php';
 
 
 // Code
-if(isset($_POST['send_code'])){
+if (isset($_POST['send_code'])) {
     $email = trim($_POST['email']);
 
     $stmt = $pdo->prepare("SELECT * FROM students WHERE email = :email");
     $stmt->execute(['email' => $email]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if($student){
+    if ($student) {
         $code = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
         $expiry = date("Y-m-d H:i:s", strtotime("+10 minutes"));
 
@@ -59,7 +58,7 @@ if(isset($_POST['send_code'])){
 
             $mail->send();
 
-            header("Location: forgot-password.php?step=code&email=".urlencode($email)."&msg=Code sent!");
+            header("Location: forgot-password.php?step=code&email=" . urlencode($email) . "&msg=Code sent!");
             exit;
 
         } catch (Exception $e) {
@@ -73,7 +72,7 @@ if(isset($_POST['send_code'])){
 
 
 // ================= VERIFY CODE =================
-if(isset($_POST['verify_code'])){
+if (isset($_POST['verify_code'])) {
     $entered_code = trim($_POST['code']);
     $email = $_POST['email'];
 
@@ -92,8 +91,8 @@ if(isset($_POST['verify_code'])){
 
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if($student){
-        header("Location: forgot-password.php?step=reset&email=".urlencode($email));
+    if ($student) {
+        header("Location: forgot-password.php?step=reset&email=" . urlencode($email));
         exit;
     } else {
         $error = "Invalid or expired verification code.";
@@ -102,12 +101,12 @@ if(isset($_POST['verify_code'])){
 
 
 // ================= RESET PASSWORD =================
-if(isset($_POST['reset_password'])){
+if (isset($_POST['reset_password'])) {
     $email = $_POST['email'];
     $new_password = $_POST['new_password'];
     $confirm_password = $_POST['confirm_password'];
 
-    if($new_password !== $confirm_password){
+    if ($new_password !== $confirm_password) {
         $error = "Passwords do not match.";
     } else {
         $hashed = password_hash($new_password, PASSWORD_DEFAULT);
@@ -133,52 +132,59 @@ if(isset($_POST['reset_password'])){
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<title>Forgot Password</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <title>Forgot Password</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+
 <body class="d-flex justify-content-center align-items-center vh-100">
 
-<div class="card p-4" style="width: 400px;">
+    <div class="card p-4" style="width: 400px;">
 
-<?php if(isset($_GET['step']) && $_GET['step'] == 'code'): ?>
+        <?php if (isset($_GET['step']) && $_GET['step'] == 'code'): ?>
 
-    <h3>Enter Code</h3>
-    <p><?php echo htmlspecialchars($_GET['msg']); ?></p>
-    <?php if(isset($error)) echo "<div class='alert alert-danger'>$error</div>"; ?>
+            <h3>Enter Code</h3>
+            <p><?php echo htmlspecialchars($_GET['msg']); ?></p>
+            <?php if (isset($error))
+                echo "<div class='alert alert-danger'>$error</div>"; ?>
 
-    <form method="POST">
-        <input type="hidden" name="email" value="<?php echo htmlspecialchars($_GET['email']); ?>">
-        <input type="text" name="code" class="form-control mb-3" placeholder="Enter Code" required>
-        <button name="verify_code" class="btn btn-primary w-100">Verify</button>
-    </form>
+            <form method="POST">
+                <input type="hidden" name="email" value="<?php echo htmlspecialchars($_GET['email']); ?>">
+                <input type="text" name="code" class="form-control mb-3" placeholder="Enter Code" required>
+                <button name="verify_code" class="btn btn-primary w-100">Verify</button>
+            </form>
 
-<?php elseif(isset($_GET['step']) && $_GET['step'] == 'reset'): ?>
+        <?php elseif (isset($_GET['step']) && $_GET['step'] == 'reset'): ?>
 
-    <h3>Reset Password</h3>
-    <?php if(isset($error)) echo "<div class='alert alert-danger'>$error</div>"; ?>
+            <h3>Reset Password</h3>
+            <?php if (isset($error))
+                echo "<div class='alert alert-danger'>$error</div>"; ?>
 
-    <form method="POST">
-        <input type="hidden" name="email" value="<?php echo htmlspecialchars($_GET['email']); ?>">
-        <input type="password" name="new_password" class="form-control mb-3" placeholder="New Password" required>
-        <input type="password" name="confirm_password" class="form-control mb-3" placeholder="Confirm Password" required>
-        <button name="reset_password" class="btn btn-success w-100">Reset Password</button>
-    </form>
+            <form method="POST">
+                <input type="hidden" name="email" value="<?php echo htmlspecialchars($_GET['email']); ?>">
+                <input type="password" name="new_password" class="form-control mb-3" placeholder="New Password" required>
+                <input type="password" name="confirm_password" class="form-control mb-3" placeholder="Confirm Password"
+                    required>
+                <button name="reset_password" class="btn btn-success w-100">Reset Password</button>
+            </form>
 
-<?php else: ?>
+        <?php else: ?>
 
-    <h3>Forgot Password</h3>
-    <?php if(isset($error)) echo "<div class='alert alert-danger'>$error</div>"; ?>
+            <h3>Forgot Password</h3>
+            <?php if (isset($error))
+                echo "<div class='alert alert-danger'>$error</div>"; ?>
 
-    <form method="POST">
-        <input type="email" name="email" class="form-control mb-3" placeholder="Enter Email" required>
-        <button name="send_code" class="btn btn-primary w-100">Send Code</button>
-    </form>
+            <form method="POST">
+                <input type="email" name="email" class="form-control mb-3" placeholder="Enter Email" required>
+                <button name="send_code" class="btn btn-primary w-100">Send Code</button>
+            </form>
 
-<?php endif; ?>
+        <?php endif; ?>
 
-</div>
+    </div>
 
 </body>
+
 </html>
