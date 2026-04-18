@@ -124,7 +124,7 @@ if (isset($_POST['reset_password'])) {
             'email' => $email
         ]);
 
-        header("Location: student-login.php?reset=success");
+        header("Location: login-ui.php?reset=success");
         exit;
     }
 }

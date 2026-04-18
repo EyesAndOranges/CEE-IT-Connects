@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 if (!isset($_SESSION['user_id'])) {
-    header("Location: student-login.php");
+    header("Location: login-ui.php");
     exit();
 }
 
