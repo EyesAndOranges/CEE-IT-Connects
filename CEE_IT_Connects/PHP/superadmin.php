@@ -1,10 +1,10 @@
 <?php
-require 'db.php';
-require 'auth.php';
+//require 'db.php';
+//require 'auth.php';
 ?>
 
 <?php
-$stmt = $pdo->query("SELECT id, name, email, role FROM admins");
+/**$stmt = $pdo->query("SELECT id, name, email, role FROM admins");
 $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
@@ -18,6 +18,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
     header("Location: superadmin.php?updated=1");
     exit;
 }
+**/
+
+//dagdag ni susu (temporary lang to test)
+$admins = [
+    ['id' => 1, 'name' => 'Sample Admin', 'email' => 'admin@test.com', 'role' => 'superadmin'],
+    ['id' => 2, 'name' => 'John Doe', 'email' => 'john@test.com', 'role' => 'cma']
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -87,6 +94,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
 
         .admin-form input,
         .admin-form select {
+            width: 50%;
+            align-self: center;
             padding: 12px 14px;
             border-radius: 10px;
             border: 1px solid #ddd;
@@ -102,18 +111,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
         }
 
         .btn-find {
+            width: 50%;
             background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
             color: white;
-            border: none;
+            border: 2px solid transparent;
             padding: 14px;
             border-radius: 12px;
             font-weight: 700;
             cursor: pointer;
         }
 
-        .btn-find:hover {
+        .btn-update {
+            transition: all 0.4s ease;
+        }
 
-            box-shadow: 0 8px 20px rgba(228, 87, 46, 0.3);
+        .btn-update:hover {
+            /* HOVER STATE: Line/Outline Button */
+            background: transparent; /* Inaalis ang solid color */
+            border: 2px solid var(--gradient-end); /* Nilalabas ang outline */
+            color: var(--gradient-end); /* Binabago ang kulay ng text para mabasa */
+        }
+
+        .btn-create {
+            margin-top: 30px;
+            align-self: center;
+            opacity: 80%;
+            transition: transform 0.3s ease-in-out, background 0.3s ease-in-out;
+        }
+
+        .btn-create:hover {
+            opacity: 100%;
+            box-shadow: 0 5px 5px rgba(228, 87, 46, 0.3);
         }
 
         .top-bar {
@@ -138,7 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
 
         /* SIDEBAR */
         .sidebar {
-            width: 220px;
+            width: 300px;
             background: #272f54;
             color: white;
             padding: 20px;
@@ -173,18 +201,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
             flex: 1;
             padding: 40px;
             background: #f5f7ff;
-            width: 50vw;
+            width: 100%;
         }
 
         /* SECTIONS */
         .section {
             display: none;
-            width: 50vw;
-
+            width: 95%;
+            
         }
 
         .section.active {
             display: block;
+        }
+
+        .section thead th {
+            padding: 10px;
+        }
+
+        .section tbody td {
+            padding: 10px;
         }
 
         @keyframes fadeIn {
@@ -197,6 +233,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
                 opacity: 1;
                 transform: translateY(0);
             }
+        }
+
+        /*MONITORING TABLE*/
+        .monitoring-table {
+            width: 100%;
+            background: white;
+            border-collapse: collapse;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .monitoring-table thead th {
+            font-size: 15px;
+            font-weight: 800;
+            color: #2c3e67;
+            border-bottom: 1px solid #f1f1f1;
+            padding: 20px;
+        }
+
+        .monitoring-table tbody tr:hover {
+            background-color: #fcfcfc;
+            transition: 0.3s;
+        }
+
+        .monitoring-table td {
+            padding: 10px;
+            font-size: 14px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        /*ICONS*/
+        .btn-action {
+            background: transparent;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            outline: none;
+            padding: 15px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-action:hover {
+            background-color: #f3f5f6;
+        }
+
+        .table-icon {
+            width: 23px;
+            height: 23px;
+            object-fit: contain;
         }
     </style>
 </head>
@@ -240,7 +328,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
 
             <!-- ADD ACCOUNT SECTION -->
             <div id="add" class="section active">
-                <h2>Create New Admin Account</h2>
+                <h2 style="margin-bottom: 70px;">Create New Admin Account</h2>
 
                 <form method="POST" action="superadmin-db.php" class="admin-form">
                     <input type="text" name="name" placeholder="Full Name" required>
@@ -253,7 +341,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
                         <option value="cma">Content Management Admin</option>
                     </select>
 
-                    <button type="submit" class="btn-find">Create Admin</button>
+                    <button type="submit" class="btn-find btn-create">Create Admin</button>
                 </form>
             </div>
 
@@ -267,7 +355,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
 
                 <table style="width:100%; border-collapse: collapse; margin-top:20px; background:white;">
                     <thead>
-                        <tr style="background:#272f54; color:white;">
+                        <tr style="background:#272f54; color:white; text-align:center;">
                             <!-- <th style="padding:10px;">ID</th> -->
                             <th>Name</th>
                             <th>Email</th>
@@ -304,7 +392,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
                                     </td>
 
                                     <td>
-                                        <button type="submit" name="update_role" class="btn-find" style="padding:8px;">
+                                        <button type="submit" name="update_role" class="btn-find btn-update" style="padding:5px;">
                                             Update
                                         </button>
                                     </td>
@@ -318,12 +406,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
 
             <!-- MONITOR SECTION -->
             <div id="monitor" class="section">
-                <h2>System Monitoring</h2>
-                <p>For the student, adviser and admn activity logs</p>
+                <div class="monitor-header">
+                    <h2>System Monitoring</h2>
+                    <p>For the student, adviser and admin activity logs</p>
+                </div>
+
+                <div class="log-container">
+                    <table class="monitoring-table">
+                        <thead>
+                            <tr style="text-align: center;">
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Activity</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="text-align: center;">
+                                <td>Maria Carmela Alfonso</td>
+                                <td>macarmelaalfonso@gmail.com</td>
+                                <td>Reserved a slot</td>
+                                <td>
+                                    <button class="btn-action">
+                                        <img src="../Sources/history.png" alt="History" class="table-icon">
+                                    </button>
+                                    <button class="btn-action">
+                                        <img src="../Sources/delete.png" alt="Delete" class="table-icon">
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr style="text-align: center;">
+                                <td>Juan Leonardo Seleno</td>
+                                <td>leoseleno@gmail.com</td>
+                                <td>Updated listing detail</td>
+                                <td>
+                                    <button class="btn-action">
+                                        <img src="../Sources/history.png" alt="History" class="table-icon">
+                                    </button>
+                                    <button class="btn-action">
+                                        <img src="../Sources/delete.png" alt="Delete" class="table-icon">
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
             </div>
-
         </div>
-
     </div>
     <script>
         setTimeout(() => {

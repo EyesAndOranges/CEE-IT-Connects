@@ -1,8 +1,8 @@
 <?php
-require 'db.php';
-require_once 'auth.php';
+//require 'db.php';
+//require_once 'auth.php';
 $page = "";
-$user_id = $_SESSION['user_id'];
+/*$user_id = $_SESSION['user_id'];
 // Fetch
 $stmt = $pdo->prepare("
     SELECT * FROM notifications
@@ -19,7 +19,7 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     VALUES (?, ?, ?, FALSE, NOW())
 ");
 $stmt->execute([$user_id, "Welcome back to CEE IT Connects!", "Check out the latest opportunities and updates."]);
-*/
+
 // check unread Notifs
 $stmt = $pdo->prepare("
     SELECT COUNT(*) FROM notifications
@@ -27,6 +27,18 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$user_id]);
 $unread_count = $stmt->fetchColumn();
+*/
+
+//dagdag ni susu (temporary lang to test)
+$unread_count = 2; // Para lumabas ang red badge
+$notifications = [
+    [
+        'title' => 'Welcome to CEE IT Connects!',
+        'message' => 'This is a sample notification.',
+        'created_at' => date('Y-m-d H:i:s'),
+        'is_read' => false
+    ]
+];
 
 // Time
 function timeAgo($datetime)
@@ -70,7 +82,7 @@ function timeAgo($datetime)
 
         /* LOGO */
         .nav-logo {
-            width: 38px;
+            width: 75px;
         }
 
         /* BRAND TEXT */
