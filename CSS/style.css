@@ -1,0 +1,229 @@
+@font-face {
+    font-family: 'GeogrotSharp TRIAL';
+    src: url('../Resources/GeogrotesqueSharpTRIAL-CompBd.otf') format('opentype'),
+         url('../Resources/Poppins-SemiBold.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'Poppins';
+    src: url('../Resources/Poppins-SemiBold.ttf') format('truetype');
+    font-weight: 400 700;
+}
+
+:root {
+    --navy:     #1e3163;
+    --accent:   #FF673A;
+    --selected: #fdf0ec;  /* active state bg in sidebar */
+    --hover:    #ffd280;  /* hover state bg in sidebar + notif items */
+    --text:     #1a2b5c;
+    --muted:    #8a92a6;
+    --shadow:   0 8px 28px rgba(62, 68, 84, 0.249);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #f0f2f7;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--navy);
+    padding: 0 20px;
+    height: 58px;
+    flex-shrink: 0;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+}
+
+.brand img {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.brand span {
+    font-family: 'GeogrotSharp TRIAL', 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    position: relative;
+    transition: background 0.2s;
+}
+
+.icon-btn:hover { background: rgba(255,255,255,0.12); }
+.icon-btn i { font-size: 1.2rem; line-height: 1; }
+
+.page-body {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    align-items: stretch;
+    overflow: hidden;
+}
+
+.sidebar {
+    width: 200px;
+    min-width: 200px;
+    background: #fff;
+    border-right: 1px solid #e4e8f0;
+    padding: 14px 0;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+}
+
+.sidebar a {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 1px 8px;
+    border-radius: 8px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background 0.18s, color 0.18s;
+    height: 48px;
+    padding: 16px 20px;
+}
+
+.sidebar a:hover  { background: var(--hover);    color: var(--accent); }
+.sidebar a.active { background: var(--selected); color: var(--accent); }
+
+.sidebar a i {
+    font-size: 1rem;
+    width: 17px;
+    text-align: center;
+    flex-shrink: 0;
+    opacity: 0.55;
+}
+
+.sidebar a:hover i,
+.sidebar a.active i { opacity: 1; color: var(--accent); }
+
+.sidebar hr {
+    border: none;
+    border-top: 1px solid #e4e8f0;
+    margin: 10px 16px;
+}
+
+.sidebar-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 4px 16px 6px;
+}
+
+.main-content {
+    flex: 1;
+    padding: 28px;
+    overflow-y: auto;
+}
+
+.profile-wrapper { position: relative; }
+
+.profile-drop {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 220px;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 20px 16px 14px;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    z-index: 300;
+    animation: dropIn 0.16s ease;
+}
+
+.profile-drop.open { display: flex; }
+
+@keyframes dropIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.profile-drop .p-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.profile-drop .p-email {
+    font-size: 0.72rem;
+    color: var(--accent);
+    margin-bottom: 14px;
+    word-break: break-all;
+}
+
+.profile-drop .btn-edit {
+    width: 100%;
+    padding: 8px;
+    background: #f0a500;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    transition: background 0.18s;
+}
+
+.profile-drop .btn-edit:hover { background: var(--accent); }
+.profile-drop .btn-edit i { font-size: 0.85rem; }
+
+.profile-drop .logout {
+    font-size: 0.78rem;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.profile-drop .logout:hover { text-decoration: underline; }
