@@ -1,8 +1,8 @@
 <?php
 $host = "localhost";
 $dbname = "CEE_IT_CONNECTS";
-$user = "postgres"; 
-$pass = "12345"; 
+$user = "postgres";
+$pass = "12345";
 
 try {
     $pdo = new PDO("pgsql:host=$host;dbname=$dbname", $user, $pass);

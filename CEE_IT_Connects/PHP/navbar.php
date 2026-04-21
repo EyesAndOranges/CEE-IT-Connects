@@ -3,14 +3,15 @@ require 'db.php';
 require_once 'auth.php';
 $page = "";
 $user_id = $_SESSION['user_id'];
+$role = $_SESSION['role'];
 // Fetch
 $stmt = $pdo->prepare("
     SELECT * FROM notifications
-    WHERE user_id = ?
+    WHERE user_id = ? and user_type = ?
     ORDER BY created_at DESC
 ");
 
-$stmt->execute([$user_id]);
+$stmt->execute([$user_id, $role]);
 $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 //Insert Notif
