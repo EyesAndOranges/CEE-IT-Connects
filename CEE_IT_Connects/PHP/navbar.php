@@ -37,10 +37,10 @@ function timeAgo($datetime)
     if ($time < 60)
         return "Just now";
     if ($time < 3600)
-        return floor($time / 60) . " min ago";
+        return floor($time / 60) . " min(s) ago";
     if ($time < 86400)
-        return floor($time / 3600) . " hr ago";
-    return floor($time / 86400) . " day ago";
+        return floor($time / 3600) . " hr(s) ago";
+    return floor($time / 86400) . " day(s) ago";
 }
 ?>
 
@@ -130,19 +130,44 @@ function timeAgo($datetime)
             right: 0;
             top: 35px;
             width: 320px;
-            background: #d9d9d9;
+            background: #faf7f7;
             border-radius: 12px;
             padding: 15px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
             z-index: 999;
         }
 
+        .notif-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #FF673A;
+            margin-bottom: 2px;
+        }
+
+        /* SUBTITLE */
+        .notif-subtitle {
+            color: #8a92a6;
+            margin-bottom: 10px;
+        }
+
         /* ITEM */
         .notif-item {
             display: flex;
             gap: 10px;
-            padding: 10px 0;
-            border-bottom: 1px solid #bbb;
+            padding: 10px 8px;
+            /* border-top: 1px solid #bbb; */
+        }
+
+        .notif-item :hover {
+            background: #ffd280;
+            cursor: pointer;
+            border-radius: 8px;
+            gap: 10px;
+            margin-left: -15px;
+            margin-right: -15px;
+            padding-left: 15px;
+            padding-right: 15px;
+            border-radius: 8px;
         }
 
         /* DOT */
@@ -181,18 +206,21 @@ function timeAgo($datetime)
             <ul class="navbar-nav gap-4">
 
                 <li class="nav-item">
-                    <a class="nav-link <?= ($page == 'home') ? 'active' : '' ?>" href="index.php">Home</a>
+                    <a class="nav-link <?= ($page == 'home') ? 'active' : '' ?>" href="index.php"
+                    style="display: <?= ($role == 'admin' || $role == 'adviser') ? 'none' : 'block' ?>;">Home</a>
                 </li>
 
                 <li class="nav-item">
                     <a class="nav-link <?= ($page == 'opportunity') ? 'active' : '' ?>"
-                        href="applied-internship-programs.php">
+                        href="applied-internship-programs.php"
+                        style="display: <?= ($role == 'admin' || $role == 'adviser') ? 'none' : 'block' ?>;">
                         Internships
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link <?= ($page == 'announcements') ? 'active' : '' ?>" href="announcement.php">
+                    <a class="nav-link <?= ($page == 'announcements') ? 'active' : '' ?>" href="announcement.php"
+                    style="display: <?= ($role == 'admin' || $role == 'adviser') ? 'none' : 'block' ?>;">
                         Announcements
                     </a>
                 </li>
@@ -216,15 +244,11 @@ function timeAgo($datetime)
 
                 <!-- POPUP -->
                 <div id="notifPopup" class="notif-popup">
-                    <h5><strong>Notifications</strong></h5>
-                    <p class="small text-muted">
+                    <span class="notif-title">Notifications</span>
+                    <p class="notif-subtitle">
                         You have <?= $unread_count ?> new notifications
                     </p>
 
-                    <hr>
-
-                    <!-- TODAY -->
-                    <h6><strong>Today</strong></h6>
 
                     <?php
                     $today = date('Y-m-d');
@@ -234,7 +258,7 @@ function timeAgo($datetime)
                         if (date('Y-m-d', strtotime($notif['created_at'])) == $today):
                             $hasToday = true;
                             ?>
-                            <div class="notif-item">
+                            <div class="notif-item" onclick="window.location.href='notification-detail.php?id=<?= $notif['id'] ?>'">
                                 <?php if (!$notif['is_read']): ?>
                                     <div class="dot"></div>
                                 <?php endif; ?>
@@ -249,9 +273,9 @@ function timeAgo($datetime)
                         <?php endif; endforeach; ?>
 
                     <?php if (!$hasToday): ?>
-                        <p class="text-muted small">No notifications today</p>
+                        No notifications today
                     <?php endif; ?>
-
+                         
                     <hr>
 
                     <!-- THIS WEEK -->
@@ -266,7 +290,7 @@ function timeAgo($datetime)
                         if ($date < $today && $date >= $weekAgo):
                             $hasWeek = true;
                             ?>
-                            <div class="notif-item">
+                            <div class="notif-item" onclick="window.location.href='applied-internship-programs.php?id=<?= $notif['id'] ?>'">
                                 <div class="dot"></div>
                                 <div>
                                     <strong><?= htmlspecialchars($notif['title']) ?></strong>
