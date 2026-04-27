@@ -114,6 +114,103 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
             color: #fff;
             font-weight: 600;
         }
+
+        /* ── Download Files Dropdown ── */
+        .download-files-panel {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .download-files-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            cursor: pointer;
+            user-select: none;
+            background: #fff;
+        }
+
+        .download-files-header span {
+            font-weight: 700;
+            font-size: 15px;
+            color: #1a1a2e;
+        }
+
+        .download-files-header .toggle-icon {
+            font-size: 13px;
+            color: #555;
+            transition: transform 0.25s ease;
+        }
+
+        .download-files-header.collapsed .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .download-files-body {
+            padding: 0 18px 14px 18px;
+            border-top: 1px solid #eee;
+        }
+
+        .download-file-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .download-file-row:last-child {
+            border-bottom: none;
+        }
+
+        .download-file-row .file-label {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1a1a2e;
+        }
+
+        .download-file-row .file-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-show-preview {
+            background: #fff;
+            color: #272f54;
+            border: 1px solid #272f54;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .btn-show-preview:hover {
+            background: #272f54;
+            color: #fff;
+        }
+
+        .btn-download-pdf {
+            background: #272f54;
+            color: #fff;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .btn-download-pdf:hover {
+            background: #1a2040;
+            color: #fff;
+        }
     </style>
 </head>
 
@@ -125,21 +222,13 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="container-fluid px-5">
 
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="fw-bold">Intership</h4>
-
-
-                <!-- Put a textfield here dumbass -->
-                <!-- <button class="btn btn-dark">Search</button> -->
+                <h4 class="fw-bold">Internship</h4>
             </div>
 
             <div class="row">
 
                 <div class="col-lg-3">
                     <form method="GET">
-                        <!-- <div class="search-box">
-                            <input type="text" id="searchInput" placeholder="Search for an internship listing"
-                                onkeyup="filterListings()">
-                        </div> -->
                         <div class="filter-box">
 
                             <h6>Filters</h6>
@@ -254,6 +343,42 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 <div class="col-lg-9">
 
+                    <!-- ── Download Files for Application Panel ── -->
+                    <div class="download-files-panel">
+                        <div class="download-files-header" id="downloadFilesToggle">
+                            <span>Download files for application</span>
+                            <i class="fa fa-chevron-up toggle-icon"></i>
+                        </div>
+                        <div class="download-files-body" id="downloadFilesBody">
+
+                            <div class="download-file-row">
+                                <span class="file-label">Memorandum of Understanding (MOU)</span>
+                                <div class="file-actions">
+                                    <a href="mou-preview.php" class="btn-show-preview">Show Preview</a>
+                                    <a href="downloads/mou.pdf" class="btn-download-pdf" download>Download PDF</a>
+                                </div>
+                            </div>
+
+                            <div class="download-file-row">
+                                <span class="file-label">Recommendation Letter</span>
+                                <div class="file-actions">
+                                    <a href="recommendation-letter-preview.php" class="btn-show-preview">Show Preview</a>
+                                    <a href="downloads/recommendation-letter.pdf" class="btn-download-pdf" download>Download PDF</a>
+                                </div>
+                            </div>
+
+                            <div class="download-file-row">
+                                <span class="file-label">Waiver</span>
+                                <div class="file-actions">
+                                    <a href="waiver-preview.php" class="btn-show-preview">Show Preview</a>
+                                    <a href="downloads/waiver.pdf" class="btn-download-pdf" download>Download PDF</a>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    <!-- ── End Download Files Panel ── -->
+
                     <small class="text-muted">
                         Showing <?php echo count($internships); ?> internship listings
                     </small>
@@ -309,7 +434,23 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </section>
+
     <script>
+        // Toggle Download Files panel
+        const toggleBtn = document.getElementById('downloadFilesToggle');
+        const toggleBody = document.getElementById('downloadFilesBody');
+
+        toggleBtn.addEventListener('click', function () {
+            const isOpen = !toggleBody.classList.contains('d-none');
+            if (isOpen) {
+                toggleBody.classList.add('d-none');
+                toggleBtn.classList.add('collapsed');
+            } else {
+                toggleBody.classList.remove('d-none');
+                toggleBtn.classList.remove('collapsed');
+            }
+        });
+
         function filterListings() {
             const input = document.getElementById('searchInput').value.toLowerCase();
             document.querySelectorAll('.listing').forEach(listing => {
