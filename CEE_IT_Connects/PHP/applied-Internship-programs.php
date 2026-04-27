@@ -36,6 +36,15 @@ if (!empty($_GET['deadline'])) {
 
 }
 
+if (!empty($_GET['internship_type'])) {
+    $conditions[] = "internship_type = :internship_type";
+    $params['internship_type'] = $_GET['internship_type'];
+}
+
+if (!empty($_GET['company_classification'])) {
+    $conditions[] = 'company_classification = :company_classification';
+    $params['company_classification'] = $_GET['company_classification'];
+}
 $sql = "SELECT * FROM internships";
 
 if (!empty($conditions)) {
@@ -197,65 +206,75 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
 
                             <div class="mb-3">
-                                <strong>Minimum GPA</strong>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="gpa" value="2.00" <?php if (isset($_GET['gpa']) && $_GET['gpa'] == "2.00")
-                                        echo "checked"; ?>>
-                                    2.0 and above
+                                <strong>Internship Type</strong>
+                                <div>
+                                    <input class="form-check-input" type="radio" name="internship_type" value="All"
+                                        <?php if (isset($_GET['internship_type']) && $_GET['internship_type'] == "All")
+                                            echo "checked"; ?>>
+                                    All internship types
                                 </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="gpa" value="1.50" <?php if (isset($_GET['gpa']) && $_GET['gpa'] == "1.50")
-                                        echo "checked"; ?>>
-                                    1.5 and above
+                                <div>
+                                    <input class="form-check-input" type="radio" name="internship_type" value="paid"
+                                        <?php if (isset($_GET['internship_type']) && $_GET['internship_type'] == "paid")
+                                            echo "checked"; ?>>
+                                    With stipend
                                 </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="gpa" value="0" <?php if (isset($_GET['gpa']) && $_GET['gpa'] == "0")
-                                        echo "checked"; ?>>
-                                    No GPA requirement
+                                <div>
+                                    <input class="form-check-input" type="radio" name="internship_type" value="unpaid"
+                                        <?php if (isset($_GET['internship_type']) && $_GET['internship_type'] == "unpaid")
+                                            echo "checked"; ?>>
+                                    Without stipend
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <strong>Year Level</strong>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="year" value="1" <?php if (isset($_GET['year']) && $_GET['year'] == "1")
-                                        echo "checked"; ?>>
-                                    First Year
+                                <strong>Company Classification</strong>
+                                <div>
+                                    <input class="form-check-input" type="radio" name="company_classification"
+                                        value="All" <?php if (
+                                            isset($_GET['company_classification']) &&
+                                            $_GET['company_classification'] == "All"
+                                        )
+                                            echo "checked" ?>>
+                                        All organization
+                                    </div>
+                                    <div>
+                                        <input class="form-check-input" type="radio" name="company_classification"
+                                            value="Engineering" <?php if (
+                                            isset($_GET['company_classification']) &&
+                                            $_GET['company_classification'] == "Engineering"
+                                        )
+                                            echo "checked" ?>>
+                                        Engineering Firm
+                                    </div>
+                                    <div>
+                                        <input class="form-check-input" type="radio" name="company_classification"
+                                            value="IT" <?php if (
+                                            isset($_GET['company_classification']) &&
+                                            $_GET['company_classification'] == "IT"
+                                        )
+                                            echo "checked" ?>>
+                                        IT Company
+                                    </div>
+                                    <div>
+                                        <input class="form-check-input" type="radio" name="company_classification"
+                                            value="Industrial company" <?php if (
+                                            isset($_GET['company_classification']) &&
+                                            $_GET['company_classification'] == "industrial"
+                                        )
+                                            echo "checked" ?>>
+                                        Industrial company
+                                    </div>
                                 </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="year" value="2" <?php if (isset($_GET['year']) && $_GET['year'] == "2")
-                                        echo "checked"; ?>>
-                                    Second Year
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="year" value="3" <?php if (isset($_GET['year']) && $_GET['year'] == "3")
-                                        echo "checked"; ?>>
-                                    Third Year
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="year" value="4" <?php if (isset($_GET['year']) && $_GET['year'] == "4")
-                                        echo "checked"; ?>>
-                                    Fourth Year
-                                </div>
-
                             </div>
 
-                        </div>
+                        </form>
+                    </div>
 
-                    </form>
-                </div>
+                    <div class="col-lg-9">
 
-                <div class="col-lg-9">
-
-                    <small class="text-muted">
-                        Showing <?php echo count($internships); ?> internship listings
+                        <small class="text-muted">
+                            Showing <?php echo count($internships); ?> internship listings
                     </small>
 
                     <?php foreach ($internships as $internship): ?>
@@ -277,12 +296,15 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <p><strong>Program:</strong> <?php echo htmlspecialchars($internship['program']); ?></p>
                             <?php endif; ?>
 
-                            <?php if (!empty($internship['year_level'])): ?>
-                                <p><strong>Year Level:</strong> <?php echo htmlspecialchars($internship['year_level']); ?></p>
+                            <?php if (!empty($internship['internship_type'])): ?>
+                                <p><strong>Internship type:</strong>
+                                    <?php echo htmlspecialchars($internship['internship_type']); ?>
+                                </p>
                             <?php endif; ?>
 
-                            <?php if (!empty($internship['min_gpa'])): ?>
-                                <p><strong>Minimum GPA:</strong> <?php echo htmlspecialchars($internship['min_gpa']); ?></p>
+                            <?php if (!empty($internship['company_classification'])): ?>
+                                <p><strong>Company classification:</strong>
+                                    <?php echo htmlspecialchars($internship['company_classification']); ?></p>
                             <?php endif; ?>
 
                             <?php if (!empty($internship['deadline'])): ?>
@@ -297,7 +319,11 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <a href="internship-detail.php?id=<?php echo $internship['id']; ?>" class="btn btn-read">
                                     Read More
                                 </a>
-                                <button class="btn btn-apply">Interested</button>
+                                <form method="POST" action="applied-internship-programs-db.php">
+                                    <input type="hidden" name="internship_id" value="<?= $internship['id'] ?>">
+                                    <button type="submit" class="btn btn-apply">Interested</button>
+                                </form>
+
                             </div>
 
                         </div>

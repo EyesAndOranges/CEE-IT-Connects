@@ -137,9 +137,11 @@ $now = new DateTime(); // current time
                             <p><?= htmlspecialchars($loc['address'] ?? $loc['location']) ?></p>
                             <div class="icons">
                                 <i class="fas fa-phone"
-                                    onclick="toggleNumbers(this,'<?= htmlspecialchars($loc['phone_numbers']) ?>')"></i>
+                                    data-numbers="<?= htmlspecialchars($loc['phone_numbers'], ENT_QUOTES) ?>"
+                                    onclick="toggleNumbers(this)">
+                                </i>
                                 <i class="fas fa-location-arrow"
-                                    onclick="getDirections(<?= $loc['latitude'] ?>,<?= $loc['longitude'] ?>)"></i>
+                                    onclick="getDirections(<?= $loc['latitude'] ?>,<?= $loc['longtitude'] ?>)"></i>
                             </div>
                             <div class="phone-dropdown"></div>
                         </div>
@@ -217,15 +219,23 @@ $now = new DateTime(); // current time
             });
         }
 
-        function toggleNumbers(iconEl, numbers) {
+        function toggleNumbers(iconEl) {
+            const numbers = iconEl.dataset.numbers;
             const dropdown = iconEl.closest('.listing').querySelector('.phone-dropdown');
+
             if (dropdown.style.display === 'block') {
                 dropdown.style.display = 'none';
                 dropdown.innerHTML = '';
             } else {
                 const nums = numbers.split(',');
-                dropdown.innerHTML = nums.map(num => `<div style="padding:4px 0;cursor:pointer;" 
-                onclick="copyNumber('${num.trim()}'); closeDropdown();">${num.trim()}</div>`).join('');
+
+                dropdown.innerHTML = nums.map(num =>
+                    `<div style="padding:4px 0;cursor:pointer;"
+            onclick="copyNumber('${num.trim()}'); closeDropdown();">
+            ${num.trim()}
+            </div>`
+                ).join('');
+
                 dropdown.style.display = 'block';
             }
         }

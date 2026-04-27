@@ -1,5 +1,22 @@
 <?php $page = 'announcements';
-require 'auth.php'; ?>
+require 'db.php';
+require 'auth.php';
+
+$stmt = $pdo->query("SELECT * FROM announcements ORDER BY created_at DESC");
+
+$announcements = [
+    'news' => [],
+    'updates' => [],
+    'FAQs' => []
+];
+
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    if (!isset($announcements[$row['category']])) {
+        $announcements[$row['category']] = [];
+    }
+    $announcements[$row['category']][] = $row;
+}
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -16,6 +33,11 @@ require 'auth.php'; ?>
     <style>
         body {
             background: #f4f4f4;
+        }
+
+        .border-primary:hover {
+            --bs-btn-hover-bg: #c5d9f8;
+            transform: scale(1.09);
         }
 
         /* Page height control */
@@ -112,44 +134,47 @@ require 'auth.php'; ?>
 
             <div class="announcement-scroll">
 
-                <!-- NEWS & UPDATES -->
+                <!-- NEWS -->
                 <div class="announcement-section">
-                    <h5 class="section-title">News & Updates</h5>
+                    <h5 class="section-title">News</h5>
+                    <?php foreach ($announcements['news'] as $news): ?>
+                        <div class="news-card">
+                            <h6><?php echo htmlspecialchars($news['title']); ?></h6>
+                            <p class="short-message" id="shortMessage<?php echo $news['id']; ?>"><?php
+                               $message = htmlspecialchars($news['message']);
+                               echo strlen($message) > 10 ? substr($message, 0, 10) . '...' : $message;
+                               ?></p>
 
-                    <div class="news-card">
-                        <h6>CHED Internship Application Open</h6>
-                        <p class="mb-1">Students may now apply for CHED partner internships.</p>
-                        <small class="text-muted">Posted October 6, 2025</small>
-                    </div>
-
-                    <div class="news-card">
-                        <h6>Scholarship Submission Reminder</h6>
-                        <p class="mb-1">Deadline for scholarship documents is approaching.</p>
-                        <small class="text-muted">Posted October 2, 2025</small>
-                    </div>
+                            <div class="collapse" id="fullMessage<?php echo $news['id']; ?>">
+                                <p><?php echo $message ?></p>
+                            </div>
+                            <!-- <p class="mb-1"><?php //echo htmlspecialchars($news['message']) ?></p> -->
+                            <small class="text-muted">Posted <?php echo date(
+                                'F j, y',
+                                strtotime($news['created_at'])
+                            ) ?></small>
+                            <div class="d-flex justify-content-end mt-2">
+                                <button class="btn border-primary" id="toggleButton<?php echo $news['id'] ?>"
+                                    onclick="toggleMessage(<?php echo $news['id'] ?>)">
+                                    <?php echo strlen($message) > 10 ? 'Read More' : 'Read Less'; ?>
+                                </button>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
 
                 <!-- UPDATES -->
-                <div class="announcement-section">
+                <div class=" announcement-section">
                     <h5 class="section-title">Updates</h5>
-
-                    <div class="update-card">
-                        <img src="../Sources/suhay husay.png">
-                        <div>
-                            <h6 class="fw-bold">On-the-Job Training Orientation</h6>
-                            <p class="mb-1">Mandatory orientation for incoming interns.</p>
-                            <small class="text-muted">CEE IT Office</small>
+                    <?php foreach ($announcements['updates'] as $update): ?>
+                        <div class="update-card">
+                            <img src="../Sources/suhay husay.png">
+                            <div>
+                                <h6 class="fw-bold"><?php echo htmlspecialchars($update['title']) ?></h6>
+                                <p class="mb-1"><?php echo htmlspecialchars($update['message']) ?></p>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="update-card">
-                        <img src="../Sources/suhay husay.png">
-                        <div>
-                            <h6 class="fw-bold">Partner Companies Expanded</h6>
-                            <p class="mb-1">New industry partners added this semester.</p>
-                            <small class="text-muted">CEE IT Connects</small>
-                        </div>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
 
                 <!-- INTERNSHIP TIPS -->
@@ -189,67 +214,21 @@ require 'auth.php'; ?>
                     <h5 class="section-title">FAQs</h5>
 
                     <div class="accordion" id="faqAccordion">
-
-                        <div class="accordion-item mb-2">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed fw-semibold" type="button"
-                                    data-bs-toggle="collapse" data-bs-target="#faq1">
-                                    Who can apply for internships?
-                                </button>
-                            </h2>
-                            <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                                <div class="accordion-body">
-                                    All enrolled CEE IT students who have met the required academic
-                                    and departmental requirements may apply for internship opportunities.
+                        <?php foreach ($announcements['FAQs'] as $faq): ?>
+                            <div class="accordion-item mb-2">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed fw-semibold" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#faq">
+                                        <?php echo htmlspecialchars($faq['title']) ?>
+                                    </button>
+                                </h2>
+                                <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        <?php echo htmlspecialchars($faq['message']) ?>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="accordion-item mb-2">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed fw-semibold" type="button"
-                                    data-bs-toggle="collapse" data-bs-target="#faq2">
-                                    What documents are required?
-                                </button>
-                            </h2>
-                            <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                                <div class="accordion-body">
-                                    Students are required to submit a resume, application form,
-                                    endorsement letter, and other documents specified by the partner institution.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="accordion-item mb-2">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed fw-semibold" type="button"
-                                    data-bs-toggle="collapse" data-bs-target="#faq3">
-                                    How long is the internship period?
-                                </button>
-                            </h2>
-                            <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                                <div class="accordion-body">
-                                    Internship duration depends on the program requirements
-                                    and typically ranges from 300 to 600 hours.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="accordion-item mb-2">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed fw-semibold" type="button"
-                                    data-bs-toggle="collapse" data-bs-target="#faq4">
-                                    Can I apply to multiple companies?
-                                </button>
-                            </h2>
-                            <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                                <div class="accordion-body">
-                                    Yes. Students may apply to multiple internship listings,
-                                    but acceptance is subject to approval and availability.
-                                </div>
-                            </div>
-                        </div>
-
+                        <?php endforeach; ?>
                     </div>
                 </div>
 
@@ -259,6 +238,24 @@ require 'auth.php'; ?>
     </section>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../JS/index-script.js"></script>
+
+    <script>
+        function toggleMessage(id) {
+            const shortMsg = document.getElementById(`shortMessage${id}`);
+            const fullMsg = document.getElementById(`fullMessage${id}`);
+            const button = document.getElementById(`toggleButton${id}`);
+
+            if (fullMsg.classList.contains('show')) {
+                shortMsg.style.display = 'block';
+                button.innerHTML = 'Read More'
+            } else {
+                shortMsg.style.display = 'none';
+                button.innerHTML = 'Read Less'
+            }
+
+            fullMsg.classList.toggle('show');
+        }
+    </script>
 </body>
 
 </html>

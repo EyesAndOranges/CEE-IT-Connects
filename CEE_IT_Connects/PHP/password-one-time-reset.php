@@ -1,12 +1,12 @@
 <?php
 require 'db.php';
 
-$stmt = $pdo->query("SELECT id, password FROM admins");
+$stmt = $pdo->query("SELECT id, password_hash FROM advisers");
 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 foreach ($users as $user) {
 
-    $plainPassword = $user['password'];
+    $plainPassword = $user['password_hash'];
 
     // Skip only if already hashed
     if (strpos($plainPassword, '$2y$') === 0) {
@@ -15,7 +15,7 @@ foreach ($users as $user) {
 
     $hashed = password_hash($plainPassword, PASSWORD_DEFAULT);
 
-    $update = $pdo->prepare("UPDATE admins SET password = ? WHERE id = ?");
+    $update = $pdo->prepare("UPDATE advisers SET password_hash = ? WHERE id = ?");
     $update->execute([$hashed, $user['id']]);
 }
 

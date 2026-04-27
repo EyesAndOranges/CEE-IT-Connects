@@ -73,10 +73,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $title = $_POST['title'] ?? '';
         $message = $_POST['message'] ?? '';
         try {
-            $stmt = $pdo->prepare("INSERT INTO announcements (title, message) VALUES (:title, :message)");
+            $stmt = $pdo->prepare("INSERT INTO announcements (title, message, created_at, category) VALUES (:title, :message, NOW(), :category)");
             $stmt->execute([
                 'title' => $title,
-                'message' => $message
+                'message' => $message,
+                'category' => $_POST['category'] ?? ''
             ]);
         } catch (PDOException $e) {
             die("Database error: " . $e->getMessage());
@@ -84,10 +85,39 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         header("Location: internship-ui.php?success=1");
         exit();
-    } else {
-        die("Invalid form submission.");
+    }
+
+    //for bookmark reject
+    if (isset($_POST['reject'])) {
+
+        $bookmark_id = $_POST['bookmark_id'];
+
+        $stmt = $pdo->prepare("
+        DELETE FROM internship_bookmarks
+        WHERE id = ?
+    ");
+
+        $stmt->execute([$bookmark_id]);
+
+        header("Location: internship-ui.php?removed=1");
+        exit;
+    }
+
+    if (isset($_POST['delete_announcement'])) {
+        $announcement_id = $_POST['announcement_id'];
+
+        $stmt = $pdo->prepare("
+        DELETE FROM announcements
+        WHERE id = ?
+        ");
+        $stmt->execute([$announcement_id]);
+
+        header("location: internship-ui.php?removed=1");
+        exit;
     }
 }
+
+
 
 
 

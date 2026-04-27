@@ -1,4 +1,30 @@
-<?php session_start(); ?>
+<?php session_start();
+require 'db.php';
+
+$stmtbookmark = $pdo->prepare("
+    SELECT 
+        ib.id AS bookmark_id,
+        ib.created_at,
+        s.full_name,
+        s.email,
+        i.company,
+        i.title
+    FROM internship_bookmarks ib
+    JOIN students s ON s.id = ib.student_id
+    JOIN internships i ON i.id = ib.internship_id
+    ORDER BY ib.created_at DESC
+");
+
+$stmtbookmark->execute();
+$bookmarks = $stmtbookmark->fetchAll(PDO::FETCH_ASSOC);
+
+$stmtannouncement = $pdo->prepare("
+SELECT id, title, message, created_at, category 
+FROM announcements
+ORDER BY created_at DESC");
+$stmtannouncement->execute();
+$announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -6,6 +32,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CEE IT Connects</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="../CSS/intern-admin.css" />
 
@@ -132,7 +159,9 @@
         }
     </style>
 </head>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+
     function showSection(sectionID) {
         //for hiding every sections
         document.querySelectorAll('.section').forEach(section => {
@@ -182,13 +211,16 @@
                 <i class="bi bi-bell-fill"></i>
                 Announcements
             </a>
+            <a href="#" onclick="showSection('manage_announcement')">
+                <i class="bi bi-bookmark"></i>
+                Manage Announcement
             </a>
         </aside>
         <div class="main-content">
             <div id="dashboard" class="section active">
 
             </div>
-            <div id="postings" class="section">
+            <di id="postings" class="section">
                 <h2>Intership Posting</h2>
                 <form method="POST" action="internship-db.php" class="internship-form">
                     <input type="hidden" name="form_type" value="internship_posting">
@@ -237,26 +269,201 @@
 
                     <button type="submit" class="submit-btn">Create Internship Postings</button>
                 </form>
-            </div>
+            </di v>
 
             <div id="applicants" class="section">
-                <h2>Applicants</h2>
+                <h2 style="margin-bottom: 30px;">Applicants</h2>
+                <div class="table-controls">
+                    <div class="filters">
+                        <select class="filter-select">
+                            <option>Status</option>
+                            <option>New Application</option>
+                            <option>Placement Confirmed</option>
+                            <option>Interviewing</option>
+                            <option>Waitlisted</option>
+                        </select>
+                        <select class="filter-select">
+                            <option>Requirements</option>
+                            <option>Complete</option>
+                            <option>Incomplete</option>
+                        </select>
+                        <select class="filter-select">
+                            <option>Programs</option>
+                            <option>Information Technology</option>
+                            <option>Civil Engineering</option>
+                            <option>Electrical Engineering</option>
+                        </select>
+                    </div>
+                    <div class="search-box">
+                        <input type="text" placeholder="Search">
+                        <i class="bi bi-search"></i>
+                    </div>
+                </div>
 
+                <div class="table-container">
+                    <table class="custom-table" id="applicants-table">
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Status</th>
+                                <th>Program</th>
+                                <th>Requirements</th>
+                                <th>Number Applied</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="clickable-text">John Doe</span></td>
+                                <td><span class="clickable-text">Placements Confirmed</span></td>
+                                <td>Information Technology</td>
+                                <td><span class="clickable-text">Complete</span></td>
+                                <td>-</td>
+                            </tr>
+                            <tr>
+                                <td><span class="clickable-text">John Doe</span></td>
+                                <td><span class="clickable-text">Interviewing</span></td>
+                                <td>Information Technology</td>
+                                <td><span class="clickable-text">Complete</span></td>
+                                <td><span class="clickable-text">10</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="clickable-text">John Doe</span></td>
+                                <td><span class="clickable-text">New Application</span></td>
+                                <td>Information Technology</td>
+                                <td><span class="clickable-text">Incomplete</span></td>
+                                <td>0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div id="documents" class="section">
-                <h2>Documents</h2>
+                <h2 style="margin-bottom: 30px;">Documents</h2>
+                <div class="table-controls">
+                    <div class="filters">
+                        <select class="filter-select">
+                            <option>Document Type</option>
+                            <option>Resume</option>
+                            <option>Portfolio</option>
+                            <option>Recommendation Letter</option>
+                        </select>
+                        <select class="filter-select">
+                            <option>Programs</option>
+                            <option>Information Technology</option>
+                            <option>Civil Engineering</option>
+                            <option>Electrical Engineering</option>
+                        </select>
+                    </div>
+                    <div class="search-box">
+                        <input type="text" placeholder="Search by student name or company...">
+                        <i class="bi bi-search"></i>
+                    </div>
+                </div>
 
+                <div class="table-container">
+                    <table class="custom-table" id="documents-table">
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Program</th>
+                                <th>Company</th>
+                                <th>Document Type</th>
+                                <th>Submission Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>John Doe</td>
+                                <td>Information Technology</td>
+                                <td>Company XYZ</td>
+                                <td>Resume</td>
+                                <td>01/25/2026</td>
+                                <td style="text-align: center;">
+                                    <button class="view-btn">View</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>John Doe</td>
+                                <td>Information Technology</td>
+                                <td>Company XYZ</td>
+                                <td>Resume</td>
+                                <td>01/25/2026</td>
+                                <td style="text-align: center;">
+                                    <button class="view-btn">View</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>John Doe</td>
+                                <td>Information Technology</td>
+                                <td>Company XYZ</td>
+                                <td>Resume</td>
+                                <td>01/25/2026</td>
+                                <td style="text-align: center;">
+                                    <button class="view-btn">View</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div id="bookmarks" class="section">
                 <h2>Bookmarks</h2>
 
+                <div class="form-card">
+
+                    <table style="width:100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="text-align:left; border-bottom:1px solid #ddd;">
+                                <th>Student</th>
+                                <th>Email</th>
+                                <th>Company</th>
+                                <th>Internship</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <?php foreach ($bookmarks as $b): ?>
+                                <tr style="border-bottom:1px solid #eee;">
+
+                                    <td>
+                                        <?= htmlspecialchars($b['full_name']) ?>
+                                    </td>
+                                    <td>
+                                        <?= htmlspecialchars($b['email']) ?>
+                                    </td>
+                                    <td>
+                                        <?= htmlspecialchars($b['company']) ?>
+                                    </td>
+                                    <td>
+                                        <?= htmlspecialchars($b['title']) ?>
+                                    </td>
+
+                                    <td>
+                                        <form method="POST" action="internship-db.php">
+                                            <input type="hidden" name="bookmark_id" value="<?= $b['bookmark_id'] ?>">
+                                            <button type="submit" name="reject"
+                                                style="background:red;color:white;border:none;padding:6px 10px;border-radius:6px;">
+                                                Reject
+                                            </button>
+                                        </form>
+                                    </td>
+
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+
+                    </table>
+
+                </div>
             </div>
             <div id="announcements" class="section">
                 <h2>Post Announcements</h2>
 
-                <form action="internship-db.php" method="POST" class="internship-form">
+                <for m action="internship-db.php" method="POST" class="internship-form">
                     <input type="hidden" name="form_type" value="announcement_posting">
                     <div class="form-card">
                         <h3>Announcement Details</h3>
@@ -266,11 +473,97 @@
                         <div class="form-grid mt-3">
                             <textarea name="message" placeholder="Message" required></textarea>
                         </div>
+                        <div class="form-grid mt-3">
+                            <select name="category" id="category">
+                                <option value="" disabled selected>Select Category</option>
+                                <option value="news">News</option>
+                                <option value="updates">Updates</option>
+                                <option value="FAQs">FAQs</option>
+                            </select>
+                        </div>
                     </div>
 
                     <button type="submit" class="submit-btn">Post Announcement</button>
 
-                </form>
+                </for>
+            </div>
+            <div id="manage_announcement" class="section">
+                <h2 class="mb-4">Manage Announcements</h2>
+
+                <div class="card shadow-sm">
+                    <div class="card-body">
+
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Message</th>
+                                        <th>Category</th>
+                                        <th>Date</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    <?php if (empty($announcements)): ?>
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4">
+                                                No announcements yet.
+                                            </td>
+                                        </tr>
+                                    <?php endif; ?>
+
+                                    <?php foreach ($announcements as $a): ?>
+                                        <tr>
+
+                                            <td class="fw-bold">
+                                                <?= htmlspecialchars($a['title']) ?>
+                                            </td>
+
+                                            <td>
+                                                <?= htmlspecialchars(substr($a['message'], 0, 60)) ?>...
+                                            </td>
+
+                                            <td>
+                                                <span class="badge bg-warning text-dark p-2">
+                                                    <?= htmlspecialchars($a['category']) ?>
+                                                </span>
+                                            </td>
+
+                                            <td>
+                                                <?= date("M d, Y", strtotime($a['created_at'])) ?>
+                                            </td>
+
+                                            <td class="text-center">
+
+                                                <!-- DELETE -->
+                                                <form method="POST" action="internship-db.php" class="d-inline">
+                                                    <input type="hidden" name="announcement_id" value="<?= $a['id'] ?>">
+                                                    <button type="submit" name="delete_announcement"
+                                                        class="btn btn-sm btn-danger">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+
+                                                <!-- EDIT -->
+                                                <button class="btn btn-sm btn-primary"
+                                                    onclick="editAnnouncement(<?= $a['id'] ?>)">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+
+                                            </td>
+
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+
+                            </table>
+                        </div>
+
+                    </div>
+                </div>
             </div>
         </div>
     </div>

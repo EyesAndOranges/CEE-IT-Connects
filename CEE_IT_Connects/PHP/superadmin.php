@@ -4,20 +4,41 @@ require 'auth.php';
 ?>
 
 <?php
-$stmt = $pdo->query("SELECT id, name, email, role FROM admins");
+$stmt = $pdo->query("SELECT id, name, email, role FROM admins ORDER BY id ASC");
 $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
 
-    $admin_id = $_POST['admin_id'];
-    $new_role = $_POST['role'];
+    $admin_ids = $_POST['admin_id'];
+    $roles = $_POST['role'];
+
+    if (!is_array($roles)) {
+        $roles = [$roles];
+    }
+
+    if (!is_array($admin_ids)) {
+        $admin_ids = [$admin_ids];
+    }
+    $superadmincount = 0;
+    foreach ($roles as $role) {
+        if ($role === 'superadmin') {
+            $superadmincount++;
+        }
+    }
+
+    if ($superadmincount > 3) {
+        die("Only three superadmins are allowed buckooo.");
+    }
 
     $stmt = $pdo->prepare("UPDATE admins SET role = ? WHERE id = ?");
-    $stmt->execute([$new_role, $admin_id]);
 
+    for ($i = 0; $i < count($admin_ids); $i++) {
+        $stmt->execute([$roles[$i], $admin_ids[$i]]);
+    }
     header("Location: superadmin.php?updated=1");
     exit;
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -201,7 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
     </style>
 </head>
 <script>
-    function showSection(sectionId) {
+    function showSection(event, sectionId) {
 
         // hide all sections
         document.querySelectorAll('.section').forEach(sec => {
@@ -218,6 +239,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
 
         event.target.classList.add('active');
     }
+    function confirmSuperadminGlobal() {
+        const roles = document.querySelectorAll("select[name='role[]']");
+
+        let superadminCount = 0;
+        let hasChangeToSuperadmin = false;
+        let hasRemovalFromSuperadmin = false;
+
+        roles.forEach(select => {
+            const original = select.dataset.original;
+            const current = select.value;
+
+            if (current === 'superadmin') {
+                superadminCount++;
+            }
+
+            // ANY upgrade to superadmin
+            if (current === 'superadmin' && original !== 'superadmin') {
+                hasChangeToSuperadmin = true;
+            }
+
+            // ANY downgrade from superadmin
+            if (original === 'superadmin' && current !== 'superadmin') {
+                hasRemovalFromSuperadmin = true;
+            }
+        });
+
+        if (superadminCount > 3) {
+            alert("Only 3 superadmins are allowed.");
+            return false;
+        }
+
+        if (hasRemovalFromSuperadmin) {
+            return confirm("You are removing a Superadmin. Continue?");
+        }
+
+        if (hasChangeToSuperadmin) {
+            return confirm("You are assigning a Superadmin. Are you sure?");
+        }
+
+        return true;
+    }
 </script>
 
 <body>
@@ -230,9 +292,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
         <div class="sidebar">
             <h3>Superadmin</h3>
 
-            <a href="#" onclick="showSection('add')" class="active">Add Accounts</a>
-            <a href="#" onclick="showSection('roles')">Change Roles</a>
-            <a href="#" onclick="showSection('monitor')">Monitor</a>
+            <a href="#" onclick="showSection(event, 'add')" class="active">Add Accounts</a>
+            <a href="#" onclick="showSection(event, 'roles')">Change Roles</a>
+            <a href="#" onclick="showSection(event, 'monitor')">Monitor</a>
         </div>
 
         <!-- MAIN CONTENT -->
@@ -250,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
                     <select name="role" required>
                         <option value="" disabled selected>Select Role</option>
                         <option value="internship_admin">Internship Admin</option>
-                        <option value="cma">Content Management Admin</option>
+                        <!-- <option value="cma">Content Management Admin</option> -->
                     </select>
 
                     <button type="submit" class="btn-find">Create Admin</button>
@@ -264,31 +326,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
                 <?php if (isset($_GET['updated'])): ?>
                     <p class="success-box" id="successMsg">Role updated successfully!</p>
                 <?php endif; ?>
+                <form method="POST" onsubmit="return confirmSuperadminGlobal()">
+                    <table style="width:100%; border-collapse: collapse; margin-top:20px; background:white;">
+                        <thead>
+                            <tr style="background:#272f54; color:white;">
+                                <!-- <th style="padding:10px;">ID</th> -->
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($admins as $admin): ?>
+                                <tr style="text-align:center; border-bottom:1px solid #ddd;">
 
-                <table style="width:100%; border-collapse: collapse; margin-top:20px; background:white;">
-                    <thead>
-                        <tr style="background:#272f54; color:white;">
-                            <!-- <th style="padding:10px;">ID</th> -->
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        <?php foreach ($admins as $admin): ?>
-                            <tr style="text-align:center; border-bottom:1px solid #ddd;">
-
-                                <!-- <td><?//= $admin['id'] ?></td> -->
-                                <td><?= htmlspecialchars($admin['name']) ?></td>
-                                <td><?= htmlspecialchars($admin['email']) ?></td>
-
-                                <form method="POST">
+                                    <!-- <td><?//= $admin['id'] ?></td> -->
+                                    <td><?= htmlspecialchars($admin['name']) ?></td>
+                                    <td><?= htmlspecialchars($admin['email']) ?></td>
                                     <td style="padding: 0px, 40px;">
-                                        <input type="hidden" name="admin_id" value="<?= $admin['id'] ?>">
+                                        <input type="hidden" name="admin_id[]" value="<?= $admin['id'] ?>">
 
-                                        <select name="role" required>
+                                        <select name="role[]" data-original="<?= $admin['role'] ?>" required>
+                                            <option value="null" disabled <?= $admin['role'] !== 'superadmin' && $admin['role'] !== 'internship_admin' ? 'selected' : '' ?>>None</option>
                                             <option value="superadmin" <?= $admin['role'] == 'superadmin' ? 'selected' : '' ?>>
                                                 Superadmin
                                             </option>
@@ -296,24 +356,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
                                             <option value="internship_admin" <?= $admin['role'] == 'internship_admin' ? 'selected' : '' ?>>
                                                 Internship Admin
                                             </option>
-
-                                            <option value="cma" <?= $admin['role'] == 'cma' ? 'selected' : '' ?>>
-                                                CMA
-                                            </option>
                                         </select>
                                     </td>
-
-                                    <td>
-                                        <button type="submit" name="update_role" class="btn-find" style="padding:8px;">
-                                            Update
-                                        </button>
-                                    </td>
-                                </form>
-
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <br>
+                    <button type="submit" name="update_role" class="btn-find p-10">
+                        Update
+                    </button>
+                </form>
             </div>
 
             <!-- MONITOR SECTION -->

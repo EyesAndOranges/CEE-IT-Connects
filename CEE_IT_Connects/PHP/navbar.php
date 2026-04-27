@@ -3,7 +3,26 @@ require 'db.php';
 require_once 'auth.php';
 $page = "";
 $user_id = $_SESSION['user_id'];
-$role = $_SESSION['role'];
+$role = strtolower(trim($_SESSION['role']));
+$hideStudentNav = in_array($role, [
+    'admin',
+    'superadmin',
+    'internship_admin',
+    'adviser',
+    'hte adviser',
+    'internship_adviser'
+]);
+$roleMap = [
+    'student' => 'student',
+    'internship_adviser' => 'adviser',
+    'HTE_adviser' => 'adviser',
+    'adviser' => 'adviser',
+    'internship_admin' => 'admin',
+    'superadmin' => 'admin'
+];
+
+$userType = $roleMap[$role] ?? 'student';
+
 // Fetch
 $stmt = $pdo->prepare("
     SELECT * FROM notifications
@@ -11,7 +30,7 @@ $stmt = $pdo->prepare("
     ORDER BY created_at DESC
 ");
 
-$stmt->execute([$user_id, $role]);
+$stmt->execute([$user_id, $userType]);
 $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 //Insert Notif
@@ -24,9 +43,10 @@ $stmt->execute([$user_id, "Welcome back to CEE IT Connects!", "Check out the lat
 // check unread Notifs
 $stmt = $pdo->prepare("
     SELECT COUNT(*) FROM notifications
-    WHERE user_id = ? AND is_read = FALSE
+    WHERE user_id = ? AND user_type = ?
+    AND is_read = FALSE
 ");
-$stmt->execute([$user_id]);
+$stmt->execute([$user_id, $userType]);
 $unread_count = $stmt->fetchColumn();
 
 // Time
@@ -130,19 +150,44 @@ function timeAgo($datetime)
             right: 0;
             top: 35px;
             width: 320px;
-            background: #d9d9d9;
+            background: #faf7f7;
             border-radius: 12px;
             padding: 15px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
             z-index: 999;
         }
 
+        .notif-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #FF673A;
+            margin-bottom: 2px;
+        }
+
+        /* SUBTITLE */
+        .notif-subtitle {
+            color: #8a92a6;
+            margin-bottom: 10px;
+        }
+
         /* ITEM */
         .notif-item {
             display: flex;
             gap: 10px;
-            padding: 10px 0;
-            border-bottom: 1px solid #bbb;
+            padding: 10px 8px;
+            /* border-top: 1px solid #bbb; */
+        }
+
+        .notif-item:hover {
+            background: #ffd280;
+            cursor: pointer;
+            border-radius: 8px;
+            gap: 10px;
+            margin-left: -15px;
+            margin-right: -15px;
+            padding-left: 15px;
+            padding-right: 15px;
+            border-radius: 8px;
         }
 
         /* DOT */
@@ -177,27 +222,31 @@ function timeAgo($datetime)
         </button>
 
         <!-- Center Menu -->
-        <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
-            <ul class="navbar-nav gap-4">
+        <?php if (!$hideStudentNav): ?>
+            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+                <ul class="navbar-nav gap-4">
 
-                <li class="nav-item">
-                    <a class="nav-link <?= ($page == 'home') ? 'active' : '' ?>" href="index.php">Home</a>
-                </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= ($page == 'home') ? 'active' : '' ?>" href="index.php">
+                            Home
+                        </a>
+                    </li>
 
-                <li class="nav-item">
-                    <a class="nav-link <?= ($page == 'opportunity') ? 'active' : '' ?>"
-                        href="applied-internship-programs.php">
-                        Internships
-                    </a>
-                </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= ($page == 'opportunity') ? 'active' : '' ?>"
+                            href="applied-internship-programs.php">
+                            Internships
+                        </a>
+                    </li>
 
-                <li class="nav-item">
-                    <a class="nav-link <?= ($page == 'announcements') ? 'active' : '' ?>" href="announcement.php">
-                        Announcements
-                    </a>
-                </li>
-            </ul>
-        </div>
+                    <li class=" nav-item">
+                        <a class="nav-link <?= ($page == 'announcements') ? 'active' : '' ?>" href="announcement.php">
+                            Announcements
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        <?php endif; ?>
 
         <!-- Right Icons -->
         <div class="navbar-icons d-flex align-items-center gap-3 position-relative">
@@ -208,7 +257,7 @@ function timeAgo($datetime)
             </div>
             <!-- BELL -->
             <div class="position-relative">
-                <i class="fa-regular fa-bell" id="notifBell" style="cursor:pointer;"></i>
+                <i class="fa-regular fa-bell" id="notifBell" style="cursor:pointer; "></i>
 
                 <?php if ($unread_count > 0): ?>
                     <span class="notif-badge"><?= $unread_count ?></span>
@@ -217,7 +266,7 @@ function timeAgo($datetime)
                 <!-- POPUP -->
                 <div id="notifPopup" class="notif-popup">
                     <h5><strong>Notifications</strong></h5>
-                    <p class="small text-muted">
+                    <p class="notif-subtitle">
                         You have <?= $unread_count ?> new notifications
                     </p>
 
@@ -234,7 +283,8 @@ function timeAgo($datetime)
                         if (date('Y-m-d', strtotime($notif['created_at'])) == $today):
                             $hasToday = true;
                             ?>
-                            <div class="notif-item">
+                            <div class="notif-item"
+                                onclick="window.location.href='notification-detail.php?id=<?= $notif['id'] ?>'">
                                 <?php if (!$notif['is_read']): ?>
                                     <div class="dot"></div>
                                 <?php endif; ?>
@@ -266,7 +316,8 @@ function timeAgo($datetime)
                         if ($date < $today && $date >= $weekAgo):
                             $hasWeek = true;
                             ?>
-                            <div class="notif-item">
+                            <div class="notif-item"
+                                onclick="window.location.href='applied-internship-programs.php?id=<?= $notif['id'] ?>'">
                                 <div class="dot"></div>
                                 <div>
                                     <strong><?= htmlspecialchars($notif['title']) ?></strong>
@@ -282,6 +333,43 @@ function timeAgo($datetime)
                         <p class="text-muted small">No notifications this week</p>
                     <?php endif; ?>
 
+                    <hr>
+                    <!-- Anything Older-->
+                    <h6><strong>Older</strong></h6>
+
+                    <?php
+                    $hasOlder = false;
+
+                    foreach ($notifications as $notif):
+                        $date = date('Y-m-d', strtotime($notif['created_at']));
+
+                        if ($date < $weekAgo):
+                            $hasOlder = true;
+                            ?>
+                            <div class="notif-item"
+                                onclick="window.location.href='applied-internship-programs.php?id=<?= $notif['id'] ?>'">
+
+                                <?php if (!$notif['is_read']): ?>
+                                    <div class="dot"></div>
+                                <?php endif; ?>
+
+                                <div>
+                                    <strong>
+                                        <?= htmlspecialchars($notif['title']) ?>
+                                    </strong>
+                                    <p class="mb-0 small text-muted">
+                                        <?= htmlspecialchars($notif['message']) ?>
+                                    </p>
+                                    <small>
+                                        <?= timeAgo($notif['created_at']) ?>
+                                    </small>
+                                </div>
+                            </div>
+                        <?php endif; endforeach; ?>
+
+                    <?php if (!$hasOlder): ?>
+                        <p class="text-muted small">No older notifications</p>
+                    <?php endif; ?>
                 </div>
             </div>
 
