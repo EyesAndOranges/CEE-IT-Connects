@@ -1,4 +1,41 @@
-<?php session_start(); ?>
+<?php session_start();
+/*require 'db.php';
+
+$stmtbookmark = $pdo->prepare("
+    SELECT 
+        ib.id AS bookmark_id,
+        ib.created_at,
+        s.full_name,
+        s.email,
+        i.company,
+        i.title
+    FROM internship_bookmarks ib
+    JOIN students s ON s.id = ib.student_id
+    JOIN internships i ON i.id = ib.internship_id
+    ORDER BY ib.created_at DESC
+");
+
+$stmtbookmark->execute();
+$bookmarks = $stmtbookmark->fetchAll(PDO::FETCH_ASSOC);
+
+$stmtannouncement = $pdo->prepare("
+SELECT id, title, message, created_at, category 
+FROM announcements
+ORDER BY created_at DESC");
+$stmtannouncement->execute();
+$announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
+*/
+// new (dummy data)
+$bookmarks = [
+    ['bookmark_id' => 1, 'full_name' => 'John Doe', 'email' => 'john@email.com', 'company' => 'Company XYZ', 'title' => 'IT Intern'],
+    ['bookmark_id' => 2, 'full_name' => 'Jane Smith', 'email' => 'jane@email.com', 'company' => 'Company ABC', 'title' => 'Web Developer Intern'],
+];
+
+$announcements = [
+    ['id' => 1, 'title' => 'Sample Announcement', 'message' => 'This is a sample announcement message for display purposes.', 'category' => 'news', 'created_at' => '2026-01-25'],
+    ['id' => 2, 'title' => 'Another Announcement', 'message' => 'This is another sample announcement message for display purposes.', 'category' => 'updates', 'created_at' => '2026-01-26'],
+];
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -6,6 +43,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CEE IT Connects</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="../CSS/intern-admin.css" />
 
@@ -130,9 +168,16 @@
         .submit-btn:hover {
             opacity: 0.9;
         }
+        /*new*/
+        #bookmarks table td,
+        #bookmarks table th {
+            padding: 5px;
+        }
     </style>
 </head>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+
     function showSection(sectionID) {
         //for hiding every sections
         document.querySelectorAll('.section').forEach(section => {
@@ -182,9 +227,15 @@
                 <i class="bi bi-bell-fill"></i>
                 Announcements
             </a>
+            <a href="#" onclick="showSection('manage_announcement')">
+                <i class="bi bi-bookmark"></i>
+                Manage Announcement
             </a>
         </aside>
         <div class="main-content">
+            <div id="dashboard" class="section active">
+
+            </div>
             <div id="postings" class="section">
                 <h2>Intership Posting</h2>
                 <form method="POST" action="internship-db.php" class="internship-form">
@@ -236,7 +287,6 @@
                 </form>
             </div>
 
-            <!-- APPLICANTS -->
             <div id="applicants" class="section">
                 <h2 style="margin-bottom: 30px;">Applicants</h2>
                 <div class="table-controls">
@@ -304,7 +354,6 @@
                 </div>
             </div>
 
-            <!-- DOCUMENTS -->
             <div id="documents" class="section">
                 <h2 style="margin-bottom: 30px;">Documents</h2>
                 <div class="table-controls">
@@ -376,78 +425,53 @@
                 </div>
             </div>
 
-            <!-- BOOKMARKS -->
             <div id="bookmarks" class="section">
-                <h2 style="margin-bottom: 30px;">Bookmarks</h2>
-                <div class="table-controls">
-                    <div class="filters">
-                    <select class="filter-select">
-                            <option>Status</option>
-                            <option>Awaiting Approval</option>
-                            <option>Student Notified</option>
-                            <option>Request Declined</option>
-                        </select>
-                        <select class="filter-select">
-                            <option>Programs</option>
-                            <option>Information Technology</option>
-                            <option>Civil Engineering</option>
-                            <option>Electrical Engineering</option>
-                        </select>
-                    </div>
-                    <div class="search-box">
-                        <input type="text" placeholder="Search by student name or company...">
-                        <i class="bi bi-search"></i>
-                    </div>
-                </div>
+                <h2>Bookmarks</h2>
 
-                <div class="table-container">
-                    <table class="custom-table" id="bookmarks-table">
+                <div class="form-card">
+
+                    <table style="width:100%; border-collapse: collapse;">
                         <thead>
-                            <tr>
-                                <th>Student Name</th>
-                                <th>Program</th>
+                            <tr style="text-align:left; border-bottom:1px solid #ddd;">
+                                <th>Student</th>
+                                <th>Email</th>
                                 <th>Company</th>
-                                <th>Date Bookmarked</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                                <th>Internship</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
+
                         <tbody>
-                            <tr>
-                                <td>John Doe</td>
-                                <td>Information Technology</td>
-                                <td>Company XYZ</td>
-                                <td>01/25/2026</td>
-                                <td class="status-text">Awaiting Approval</td>
-                                <td class="action-icons">
-                                    <i class="bi bi-check-lg notify-btn" title="Approve"></i>
-                                    <i class="bi bi-x decline decline-btn" title="Decline"></i>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>John Doe</td>
-                                <td>Civil Engineering</td>
-                                <td>Company XYZ</td>
-                                <td>01/25/2026</td>
-                                <td class="status-text">Awaiting Approval</td>
-                                <td class="action-icons">
-                                    <i class="bi bi-check-lg notify-btn" title="Approve"></i>
-                                    <i class="bi bi-x decline decline-btn" title="Decline"></i>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>John Doe</td>
-                                <td>Electrical Engineering</td>
-                                <td>Company XYZ</td>
-                                <td>01/25/2026</td>
-                                <td class="status-text">Awaiting Approval</td>
-                                <td class="action-icons">
-                                    <i class="bi bi-check-lg notify-btn" onclick="notifyStudent(this)" title="Notify"></i>
-                                    <i class="bi bi-x decline decline-btn" onclick="declineStudent(this)" title="Decline"></i>
-                                </td>
-                            </tr>
+                            <?php foreach ($bookmarks as $b): ?>
+                                <tr style="border-bottom:1px solid #eee; padding:10px;">
+
+                                    <td>
+                                        <?= htmlspecialchars($b['full_name']) ?>
+                                    </td>
+                                    <td>
+                                        <?= htmlspecialchars($b['email']) ?>
+                                    </td>
+                                    <td>
+                                        <?= htmlspecialchars($b['company']) ?>
+                                    </td>
+                                    <td>
+                                        <?= htmlspecialchars($b['title']) ?>
+                                    </td>
+
+                                    <td>
+                                        <button type="button" 
+                                            onclick="openFeedbackModal(<?= $b['bookmark_id'] ?>, '<?= htmlspecialchars($b['full_name']) ?>')"
+                                            style="background:#FF5C5C;color:white;border:none;padding:6px 10px;border-radius:6px;font-weight:600; font-size:13px;cursor:pointer;">
+                                            Reject with Feedback
+                                        </button>
+                                    </td>
+
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
+
                     </table>
+
                 </div>
             </div>
 
@@ -464,108 +488,178 @@
                         <div class="form-grid mt-3">
                             <textarea name="message" placeholder="Message" required></textarea>
                         </div>
+                        <div class="form-grid mt-3">
+                            <select name="category" id="category">
+                                <option value="" disabled selected>Select Category</option>
+                                <option value="news">News</option>
+                                <option value="updates">Updates</option>
+                                <option value="FAQs">FAQs</option>
+                            </select>
+                        </div>
                     </div>
 
                     <button type="submit" class="submit-btn">Post Announcement</button>
 
                 </form>
             </div>
+            <div id="manage_announcement" class="section">
+                <h2 class="mb-4">Manage Announcements</h2>
 
-            <!-- DASHBOARD -->
-            <div id="dashboard" class="section active">
-                <h2 class="dashboard-title">Dashboard</h2>
-                <p class="sub-text">CEE Summary</p>
+                <div class="card shadow-sm">
+                    <div class="card-body">
 
-                <div class="summary-container">
-                    <div class="summary-card">
-                        <div class="card-content">
-                            <span class="count">25</span>
-                            <span class="label">Interested</span>
-                        </div>
-                        <i class="bi bi-bookmark-star gold-icon"></i>
-                    </div>
-                    <div class="summary-card">
-                        <div class="card-content">
-                            <span class="count">18</span>
-                            <span class="label">Pending Review</span>
-                        </div>
-                        <i class="bi bi-people gold-icon"></i>
-                    </div>
-                    <div class="summary-card">
-                        <div class="card-content">
-                            <span class="count">2</span>
-                            <span class="label">Expiring Postings</span>
-                        </div>
-                        <i class="bi bi-pencil gold-icon"></i>
-                    </div>
-                    <div class="summary-card">
-                        <div class="card-content">
-                            <span class="count">15</span>
-                            <span class="label">Incomplete Documents</span>
-                        </div>
-                        <i class="bi bi-file-earmark-text gold-icon"></i>
-                    </div>
-                    <div class="summary-card">
-                        <div class="card-content">
-                            <span class="count">20</span>
-                            <span class="label">Total Placements</span>
-                        </div>
-                        <i class="bi bi-briefcase gold-icon"></i>
-                    </div>
-                </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
 
-                <h3 class="table-title">Recent Postings</h3>
-                <div class="table-container">
-                    <table class="postings-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Title</th>
-                                <th>Company</th>
-                                <th>Program</th>
-                                <th>Location</th>
-                                <th>Slots</th>
-                                <th>Closing Time</th>
-                                <th>Date Posted</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>1</td>
-                                <td>XYZ Internahip Program</td>
-                                <td>Company XYZ</td>
-                                <td>IT</td>
-                                <td>Maysan</td>
-                                <td>6</td>
-                                <td>5:00 pm</td>
-                                <td>2024-07-15</td>
-                            </tr>
-                            <tr>
-                                <td>2</td>
-                                <td>XYZ Internahip Program</td>
-                                <td>Company XYZ</td>
-                                <td>IT</td>
-                                <td>Maysan</td>
-                                <td>6</td>
-                                <td>5:00 pm</td>
-                                <td>2024-07-15</td>
-                            </tr>
-                            <tr>
-                                <td>3</td>
-                                <td>XYZ Internahip Program</td>
-                                <td>Company XYZ</td>
-                                <td>IT</td>
-                                <td>Maysan</td>
-                                <td>6</td>
-                                <td>5:00 pm</td>
-                                <td>2024-07-15</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Message</th>
+                                        <th>Category</th>
+                                        <th>Date</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    <?php if (empty($announcements)): ?>
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4">
+                                                No announcements yet.
+                                            </td>
+                                        </tr>
+                                    <?php endif; ?>
+
+                                    <?php foreach ($announcements as $a): ?>
+                                        <tr>
+
+                                            <td class="fw-bold">
+                                                <?= htmlspecialchars($a['title']) ?>
+                                            </td>
+
+                                            <td>
+                                                <?= htmlspecialchars(substr($a['message'], 0, 60)) ?>...
+                                            </td>
+
+                                            <td>
+                                                <span class="badge bg-warning text-dark p-2">
+                                                    <?= htmlspecialchars($a['category']) ?>
+                                                </span>
+                                            </td>
+
+                                            <td>
+                                                <?= date("M d, Y", strtotime($a['created_at'])) ?>
+                                            </td>
+
+                                            <td class="text-center">
+
+                                                <!-- DELETE -->
+                                                <form method="POST" action="internship-db.php" class="d-inline">
+                                                    <input type="hidden" name="announcement_id" value="<?= $a['id'] ?>">
+                                                    <button type="submit" name="delete_announcement"
+                                                        class="btn btn-sm btn-danger">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+
+                                                <!-- EDIT -->
+                                                <button class="btn btn-sm btn-primary"
+                                                    onclick="editAnnouncement(<?= $a['id'] ?>)">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+
+                                            </td>
+
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+
+                            </table>
+                        </div>
+
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!--new-->
+    <!-- FEEDBACK MODAL -->
+    <div id="feedbackModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+        <div style="background:#29335C; border-radius:5px; padding:30px; width:500px; max-width:90%;">
+            
+            <h5 style="color:white; text-align:center; margin-bottom:25px; font-weight:400;">
+                Reject with Feedback
+            </h5>
+
+            <textarea id="feedbackText" 
+                placeholder="Enter feedback here.."
+                style="width:100%; height:130px; border-radius:5px; border:none; padding:14px; font-size:14px; resize:none; outline:none;">
+            </textarea>
+
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+                <button onclick="closeFeedbackModal()"
+                    style="background:transparent; color:white; border:1px solid white; padding:8px 20px; border-radius:20px; cursor:pointer; font-size:14px;">
+                    Cancel
+                </button>
+                <button onclick="sendFeedback()"
+                    style="background:white; color:#29335C; border:none; padding:8px 20px; border-radius:20px; cursor:pointer; font-size:14px; font-weight:600;">
+                    Send Feedback
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let currentBookmarkId = null;
+
+        function openFeedbackModal(bookmarkId, studentName) {
+            currentBookmarkId = bookmarkId;
+            document.getElementById('feedbackText').value = '';
+            const modal = document.getElementById('feedbackModal');
+            modal.style.display = 'flex';
+        }
+
+        function closeFeedbackModal() {
+            document.getElementById('feedbackModal').style.display = 'none';
+            currentBookmarkId = null;
+        }
+
+        function sendFeedback() {
+            const feedback = document.getElementById('feedbackText').value.trim();
+
+            if (!feedback) {
+                alert('Please enter feedback before sending.');
+                return;
+            }
+
+            // Submit via fetch to your PHP handler
+            const formData = new FormData();
+            formData.append('bookmark_id', currentBookmarkId);
+            formData.append('feedback', feedback);
+            formData.append('send_feedback', 1);
+
+            fetch('internship-db.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.text())
+            .then(() => {
+                closeFeedbackModal();
+                alert('Feedback sent successfully.');
+                location.reload(); // reload to update table
+            })
+            .catch(() => {
+                alert('Something went wrong. Please try again.');
+            });
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('feedbackModal').addEventListener('click', function(e) {
+            if (e.target === this) closeFeedbackModal();
+        });
+    </script> <!--new-->
 
     <script src="../JS/script.js"></script>
 </body>
