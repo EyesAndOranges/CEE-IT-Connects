@@ -1,9 +1,9 @@
 <?php session_start();
 require 'db.php';
 
-$stmtbookmark = $pdo->prepare("
+$stmtinterest = $pdo->prepare("
     SELECT 
-        ib.id AS bookmark_id,
+        ib.id AS interest_id,
         ib.created_at,
         s.full_name,
         s.email,
@@ -15,8 +15,8 @@ $stmtbookmark = $pdo->prepare("
     ORDER BY ib.created_at DESC
 ");
 
-$stmtbookmark->execute();
-$bookmarks = $stmtbookmark->fetchAll(PDO::FETCH_ASSOC);
+$stmtinterest->execute();
+$interests = $stmtinterest->fetchAll(PDO::FETCH_ASSOC);
 
 $stmtannouncement = $pdo->prepare("
 SELECT id, title, message, created_at, category 
@@ -203,9 +203,9 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                 <i class="bi bi-file-earmark-text-fill"></i>
                 Documents
             </a>
-            <a href="#" onclick="showSection('bookmarks')">
+            <a href="#" onclick="showSection('interested')">
                 <i class="bi bi-bookmarks-fill"></i>
-                Bookmarks
+                Interested
             </a>
             <a href="#" onclick="showSection('announcements')">
                 <i class="bi bi-bell-fill"></i>
@@ -222,7 +222,8 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
             </div>
             <di id="postings" class="section">
                 <h2>Intership Posting</h2>
-                <form method="POST" action="internship-db.php" class="internship-form">
+                <form method="POST" action="internship-db.php" class="internship-form"
+                    onsubmit="return confirm('You are creating a new internship posting. Are you sure?');">
                     <input type="hidden" name="form_type" value="internship_posting">
                     <div class="form-card">
                         <h3>Basic Information</h3>
@@ -235,6 +236,14 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                                 <option value="Information Technology">Information Technology</option>
                                 <option value="Civil Engineering">Civil Engineering</option>
                                 <option value="Electrical Engineering">Electrical Engineering</option>
+                            </select>
+                            <select name="year" id="year" required>
+                                <option value="" disabled selected>Select Contract Duration</option>
+                                <option value="1">1 year</option>
+                                <option value="2">2 years</option>
+                                <option value="3">3 years</option>
+                                <option value="4">4 years</option>
+                                <option value="5">5 years</option>
                             </select>
                         </div>
                     </div>
@@ -409,8 +418,8 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
-            <div id="bookmarks" class="section">
-                <h2>Bookmarks</h2>
+            <div id="interested" class="section">
+                <h2>Interested</h2>
 
                 <div class="form-card">
 
@@ -426,25 +435,25 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                         </thead>
 
                         <tbody>
-                            <?php foreach ($bookmarks as $b): ?>
+                            <?php foreach ($interests as $i): ?>
                                 <tr style="border-bottom:1px solid #eee;">
 
                                     <td>
-                                        <?= htmlspecialchars($b['full_name']) ?>
+                                        <?= htmlspecialchars($i['full_name']) ?>
                                     </td>
                                     <td>
-                                        <?= htmlspecialchars($b['email']) ?>
+                                        <?= htmlspecialchars($i['email']) ?>
                                     </td>
                                     <td>
-                                        <?= htmlspecialchars($b['company']) ?>
+                                        <?= htmlspecialchars($i['company']) ?>
                                     </td>
                                     <td>
-                                        <?= htmlspecialchars($b['title']) ?>
+                                        <?= htmlspecialchars($i['title']) ?>
                                     </td>
 
                                     <td>
                                         <form method="POST" action="internship-db.php">
-                                            <input type="hidden" name="bookmark_id" value="<?= $b['bookmark_id'] ?>">
+                                            <input type="hidden" name="interested_id" value="<?= $b['interest_id'] ?>">
                                             <button type="submit" name="reject"
                                                 style="background:red;color:white;border:none;padding:6px 10px;border-radius:6px;">
                                                 Reject
@@ -463,7 +472,7 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
             <div id="announcements" class="section">
                 <h2>Post Announcements</h2>
 
-                <for m action="internship-db.php" method="POST" class="internship-form">
+                <for action="internship-db.php" method="POST" class="internship-form">
                     <input type="hidden" name="form_type" value="announcement_posting">
                     <div class="form-card">
                         <h3>Announcement Details</h3>
@@ -517,42 +526,49 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
 
                                     <?php foreach ($announcements as $a): ?>
                                         <tr>
+                                            <form method="POST" action="internship-db.php">
+                                                <td class="fw-bold">
+                                                    <input type="text" name="title" value="<?= $a['title'] ?>">
+                                                </td>
 
-                                            <td class="fw-bold">
-                                                <?= htmlspecialchars($a['title']) ?>
-                                            </td>
+                                                <td>
+                                                    <input type="text" name="message" value="<?= $a['message'] ?>">
+                                                </td>
 
-                                            <td>
-                                                <?= htmlspecialchars(substr($a['message'], 0, 60)) ?>...
-                                            </td>
+                                                <td>
+                                                    <select name="category" id="category">
+                                                        <option value="news" <?= $a['category'] === 'news' ? 'selected' : '' ?>>
+                                                            News
+                                                        </option>
+                                                        <option value="updates" <?= $a['category'] === 'updates' ? 'selected' : '' ?>>
+                                                            Updates
+                                                        </option>
+                                                        <option value="FAQs" <?= $a['category'] === 'FAQs' ? 'selected' : '' ?>>
+                                                            FAQs
+                                                        </option>
+                                                    </select>
+                                                </td>
 
-                                            <td>
-                                                <span class="badge bg-warning text-dark p-2">
-                                                    <?= htmlspecialchars($a['category']) ?>
-                                                </span>
-                                            </td>
+                                                <td>
+                                                    <?= date("M d, Y", strtotime($a['created_at'])) ?>
+                                                </td>
 
-                                            <td>
-                                                <?= date("M d, Y", strtotime($a['created_at'])) ?>
-                                            </td>
+                                                <td class="text-center">
 
-                                            <td class="text-center">
-
-                                                <!-- DELETE -->
-                                                <form method="POST" action="internship-db.php" class="d-inline">
+                                                    <!-- DELETE -->
                                                     <input type="hidden" name="announcement_id" value="<?= $a['id'] ?>">
                                                     <button type="submit" name="delete_announcement"
                                                         class="btn btn-sm btn-danger">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
-                                                </form>
 
-                                                <!-- EDIT -->
-                                                <button class="btn btn-sm btn-primary"
-                                                    onclick="editAnnouncement(<?= $a['id'] ?>)">
-                                                    <i class="bi bi-pencil"></i>
-                                                </button>
-
+                                                    <!-- EDIT -->
+                                                    <input type="hidden" name="announcement_id" value="<?= $a['id'] ?>">
+                                                    <button type="submit" name="edit_announcement"
+                                                        class="btn btn-sm btn-primary">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                            </form>
                                             </td>
 
                                         </tr>

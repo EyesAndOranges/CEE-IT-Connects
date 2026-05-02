@@ -249,12 +249,15 @@ function timeAgo($datetime)
         <?php endif; ?>
 
         <!-- Right Icons -->
-        <div class="navbar-icons d-flex align-items-center gap-3 position-relative">
-            <div>
-                <a href="Message.php">
-                    <i class="fa-<?= ($page == 'messages') ? 'solid' : 'regular' ?> fa-comment"></i>
-                </a>
-            </div>
+        
+            <div class="navbar-icons d-flex align-items-center gap-3 position-relative">
+                <?php if (!$hideStudentNav): ?>
+                <div>
+                    <a href="Message.php">
+                        <i class="fa-<?= ($page == 'messages') ? 'solid' : 'regular' ?> fa-comment"></i>
+                    </a>
+                </div>
+            <?php endif; ?>
             <!-- BELL -->
             <div class="position-relative">
                 <i class="fa-regular fa-bell" id="notifBell" style="cursor:pointer; "></i>
@@ -284,7 +287,7 @@ function timeAgo($datetime)
                             $hasToday = true;
                             ?>
                             <div class="notif-item"
-                                onclick="window.location.href='notification-detail.php?id=<?= $notif['id'] ?>'">
+                                onclick="window.location.href='applied-internship-programs.php?id=<?= $notif['id'] ?>'">
                                 <?php if (!$notif['is_read']): ?>
                                     <div class="dot"></div>
                                 <?php endif; ?>

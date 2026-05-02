@@ -123,6 +123,104 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
             color: #fff;
             font-weight: 600;
         }
+
+
+        /* for the download thingy */
+        .download-files-panel {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .download-files-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            cursor: pointer;
+            user-select: none;
+            background: #fff;
+        }
+
+        .download-files-header span {
+            font-weight: 700;
+            font-size: 15px;
+            color: #1a1a2e;
+        }
+
+        .download-files-header .toggle-icon {
+            font-size: 13px;
+            color: #555;
+            transition: transform 0.25s ease;
+        }
+
+        .download-files-header.collapsed .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .download-files-body {
+            padding: 0 18px 14px 18px;
+            border-top: 1px solid #eee;
+        }
+
+        .download-file-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .download-file-row:last-child {
+            border-bottom: none;
+        }
+
+        .download-file-row .file-label {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1a1a2e;
+        }
+
+        .download-file-row .file-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-show-preview {
+            background: #fff;
+            color: #272f54;
+            border: 1px solid #272f54;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .btn-show-preview:hover {
+            background: #272f54;
+            color: #fff;
+        }
+
+        .btn-download-pdf {
+            background: #272f54;
+            color: #fff;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .btn-download-pdf:hover {
+            background: #1a2040;
+            color: #fff;
+        }
     </style>
 </head>
 
@@ -272,7 +370,6 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
 
                     <div class="col-lg-9">
-
                         <small class="text-muted">
                             Showing <?php echo count($internships); ?> internship listings
                     </small>
@@ -316,16 +413,69 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php endif; ?>
 
                             <div class="d-flex gap-2">
-                                <a href="internship-detail.php?id=<?php echo $internship['id']; ?>" class="btn btn-read">
+                                <button class="btn btn-read" onclick="toggleFiles(<?= $internship['id'] ?>)">
                                     Read More
-                                </a>
+                                </button>
                                 <form method="POST" action="applied-internship-programs-db.php">
                                     <input type="hidden" name="internship_id" value="<?= $internship['id'] ?>">
                                     <button type="submit" class="btn btn-apply">Interested</button>
                                 </form>
 
                             </div>
+                            <!-- ── Download Files for Application Panel ── -->
+                            <div class="download-files-panel  mt-2" style="display:none;"
+                                id="files-<?= $internship['id'] ?>">
+                                <div class=" download-files-header" id="downloadFilesToggle">
+                                    <span>Download files for application</span>
+                                    <i class="fa fa-chevron-up toggle-icon"></i>
+                                </div>
+                                <div class="download-files-body" id="downloadFilesBody">
 
+                                    <div class="download-file-row">
+                                        <span class="file-label">Memorandum of Understanding (MOU)</span>
+                                        <div class="file-actions">
+                                            <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=
+                                            <?= $_SESSION['user_id'] ?>&action=mou" class="btn-show-preview"
+                                                target="_blank">
+                                                Show Preview
+                                            </a>
+                                            <a href="download-mou.php?id=<?= $internship['id'] ?>&action=mou"
+                                                class="btn-download-pdf">
+                                                Download PDF
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <div class="download-file-row">
+                                        <span class="file-label">Recommendation Letter</span>
+                                        <div class="file-actions">
+                                            <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=
+                                            <?= $_SESSION['user_id'] ?>&action=rl" class="btn-show-preview"
+                                                target="_blank">
+                                                Show Preview
+                                            </a>
+                                            <a href="download-mou.php?id=<?= $internship['id'] ?>&action=rl"
+                                                class="btn-download-pdf">Download
+                                                PDF</a>
+                                        </div>
+                                    </div>
+
+                                    <div class="download-file-row">
+                                        <span class="file-label">Waiver</span>
+                                        <div class="file-actions">
+                                            <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=
+                                            <?= $_SESSION['user_id'] ?>&action=waiver" class="btn-show-preview"
+                                                target="_blank">
+                                                Show Preview
+                                            </a>
+                                            <a href="download-mou.php?id=<?= $internship['id'] ?>&action=waiver"
+                                                class="btn-download-pdf">Download
+                                                PDF</a>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
                         </div>
 
                     <?php endforeach; ?>
@@ -342,6 +492,15 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 const title = listing.dataset.title;
                 listing.style.display = title.includes(input) ? 'block' : 'none';
             });
+        }
+        function toggleFiles(id) {
+            const panel = document.getElementById("files-" + id);
+
+            if (panel.style.display === "none") {
+                panel.style.display = "block";
+            } else {
+                panel.style.display = "none";
+            }
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

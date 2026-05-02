@@ -1,6 +1,9 @@
 <?php
 require 'db.php';
 require 'auth.php';
+
+/* var_dump($_SESSION);
+exit(); */
 ?>
 
 <?php
@@ -39,6 +42,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
     exit;
 }
 
+$stmt = $pdo->query("
+    SELECT id, full_name AS name, email, 'student' AS role, 'students' AS source FROM students
+
+    UNION ALL
+
+    SELECT id, name, email, role, 'admins' AS source FROM admins WHERE role != 'superadmin'
+
+    UNION ALL
+
+    SELECT id, full_name AS name, email, 'adviser' AS role, 'advisers' AS source FROM advisers
+
+    ORDER BY name ASC
+");
+
+$users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -292,7 +310,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
         <div class="sidebar">
             <h3>Superadmin</h3>
 
-            <a href="#" onclick="showSection(event, 'add')" class="active">Add Accounts</a>
+            <a href="#" onclick="showSection(event, 'add-admin')" class="active">Add Admin Accounts</a>
+            <a href="#" onclick="showSection(event, 'add-adviser')">Add Adviser Accounts</a>
+            <a href="#" onclick="showSection(event, 'delete')">Delete Account</a>
             <a href="#" onclick="showSection(event, 'roles')">Change Roles</a>
             <a href="#" onclick="showSection(event, 'monitor')">Monitor</a>
         </div>
@@ -300,8 +320,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
         <!-- MAIN CONTENT -->
         <div class="main-content">
 
-            <!-- ADD ACCOUNT SECTION -->
-            <div id="add" class="section active">
+            <!-- ADD ADMIN ACCOUNT SECTION -->
+            <div id="add-admin" class="section active">
                 <h2>Create New Admin Account</h2>
 
                 <form method="POST" action="superadmin-db.php" class="admin-form">
@@ -315,10 +335,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
                         <!-- <option value="cma">Content Management Admin</option> -->
                     </select>
 
-                    <button type="submit" class="btn-find">Create Admin</button>
+                    <button type="submit" name="create-admin" class="btn-find">Create Admin</button>
                 </form>
             </div>
+            <!-- Create Adviser Account Section-->
+            <div id="add-adviser" class="section">
+                <h2>Create New Adviser Account</h2>
 
+                <form method="POST" action="superadmin-db.php" class="admin-form">
+                    <input type="text" name="name" placeholder="Full Name" required>
+                    <input type="email" name="email" placeholder="Email Address" required>
+                    <input type="password" name="password" placeholder="Password" required>
+
+                    <select name="title" required>
+                        <option value="" disabled selected>Select Title</option>
+                        <option value="Adviser">Adviser</option>
+                        <option value="Professor">Professor</option>
+                        <option value="Engineer">Engineer</option>
+                        <option value="Doctor">Doctor</option>
+                        <option value="Instructor">Instructor</option>
+                        <!-- <option value="cma">Content Management Admin</option> -->
+                    </select>
+
+                    <select name="role" required>
+                        <option value="" disabled selected>Select Role</option>
+                        <option value="HTE_adviser">HTE Adviser</option>
+                        <option value="internship_adviser">Internship Adviser</option>
+                        <!-- <option value="cma">Content Management Admin</option> -->
+                    </select>
+
+                    <button type="submit" name="create-adviser" class="btn-find">Create Adviser</button>
+                </form>
+            </div>
+            <!-- DELETE USER SECTION -->
+            <div id="delete" class="section">
+                <h2>Delete User</h2>
+
+                <div class="form-card">
+
+                    <table style="width:100%; border-collapse: collapse;">
+                        <thead>
+                            <!-- Table Header -->
+                            <tr style="text-align:left; border-bottom:1px solid #ddd;">
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <?php foreach ($users as $u): ?>
+                                <tr style="border-bottom:1px solid #eee;">
+                                    <!-- Out puts the data per row -->
+                                    <td>
+                                        <?= htmlspecialchars($u['name']) ?>
+                                    </td>
+                                    <td>
+                                        <?= htmlspecialchars($u['email']) ?>
+                                    </td>
+                                    <td>
+                                        <?= htmlspecialchars($u['role']) ?>
+                                    </td>
+                                    <!-- This is the Action-->
+                                    <td>
+                                        <form method="POST" action="superadmin-db.php"
+                                            onsubmit="return confirm('Are you sure?')">
+                                            <input type="hidden" name="id" value="<?= $u['id'] ?>">
+                                            <input type="hidden" name="source" value="<?= $u['source'] ?>">
+                                            <button type="submit" name="delete"
+                                                style="background:red;color:white;border:none;padding:6px 10px;border-radius:6px;">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </td>
+
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+
+                    </table>
+
+                </div>
+            </div>
             <!-- CHANGE ROLES SECTION -->
             <div id="roles" class="section">
                 <h2>Admin Management</h2>
