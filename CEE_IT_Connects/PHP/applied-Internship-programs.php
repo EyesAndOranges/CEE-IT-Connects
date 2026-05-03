@@ -402,13 +402,13 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </option>
 
                                     <option value="Family-owned businesses"
-                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "hybrid / public-private partnerships") echo "checked"; ?>>
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "hybrid / public-private p") echo "checked"; ?>>
                                         Hybrid / Public-Private Partnerships
                                     </option>
                                 </select>
                                 </div>
                             </div>
-
+                            </div>
                         </form>
                     </div>
 
