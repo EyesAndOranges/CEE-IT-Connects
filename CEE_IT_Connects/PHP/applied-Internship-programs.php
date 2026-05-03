@@ -36,6 +36,15 @@ if (!empty($_GET['deadline'])) {
 
 }
 
+if (!empty($_GET['internship_type'])) {
+    $conditions[] = "internship_type = :internship_type";
+    $params['internship_type'] = $_GET['internship_type'];
+}
+
+if (!empty($_GET['company_classification'])) {
+    $conditions[] = 'company_classification = :company_classification';
+    $params['company_classification'] = $_GET['company_classification'];
+}
 $sql = "SELECT * FROM internships";
 
 if (!empty($conditions)) {
@@ -115,7 +124,8 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
             font-weight: 600;
         }
 
-        /* ── Download Files Dropdown ── */
+
+        /* for the download thingy */
         .download-files-panel {
             background: #fff;
             border: 1px solid #ddd;
@@ -223,12 +233,20 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h4 class="fw-bold">Internship</h4>
+
+
+                <!-- Put a textfield here dumbass -->
+                <!-- <button class="btn btn-dark">Search</button> -->
             </div>
 
             <div class="row">
 
                 <div class="col-lg-3">
                     <form method="GET">
+                        <!-- <div class="search-box">
+                            <input type="text" id="searchInput" placeholder="Search for an internship listing"
+                                onkeyup="filterListings()">
+                        </div> -->
                         <div class="filter-box">
 
                             <h6>Filters</h6>
@@ -286,102 +304,118 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
 
                             <div class="mb-3">
-                                <strong>Minimum GPA</strong>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="gpa" value="2.00" <?php if (isset($_GET['gpa']) && $_GET['gpa'] == "2.00")
-                                        echo "checked"; ?>>
-                                    2.0 and above
+                                <strong>Internship Type</strong>
+                                <div>
+                                    <input class="form-check-input" type="radio" name="internship_type" value="All"
+                                        <?php if (isset($_GET['internship_type']) && $_GET['internship_type'] == "All")
+                                            echo "checked"; ?>>
+                                    All internship types
                                 </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="gpa" value="1.50" <?php if (isset($_GET['gpa']) && $_GET['gpa'] == "1.50")
-                                        echo "checked"; ?>>
-                                    1.5 and above
+                                <div>
+                                    <input class="form-check-input" type="radio" name="internship_type" value="paid"
+                                        <?php if (isset($_GET['internship_type']) && $_GET['internship_type'] == "paid")
+                                            echo "checked"; ?>>
+                                    With stipend
                                 </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="gpa" value="0" <?php if (isset($_GET['gpa']) && $_GET['gpa'] == "0")
-                                        echo "checked"; ?>>
-                                    No GPA requirement
+                                <div>
+                                    <input class="form-check-input" type="radio" name="internship_type" value="unpaid"
+                                        <?php if (isset($_GET['internship_type']) && $_GET['internship_type'] == "unpaid")
+                                            echo "checked"; ?>>
+                                    Without stipend
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <strong>Year Level</strong>
+                                <strong>Company Classification</strong>
+                                <div>
+                                    <select class="form-select" name="company classification">
+                                    <option value="">Select an option</option>
 
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="year" value="1" <?php if (isset($_GET['year']) && $_GET['year'] == "1")
-                                        echo "checked"; ?>>
-                                    First Year
+                                    <option value="private sector"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "private sector") echo "checked"; ?>>
+                                        Private Sector
+                                    </option>
+
+                                    <option value="SMEs"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "public sector") echo "checked"; ?>>
+                                        Public Sector (Government)
+                                    </option>
+
+                                    <option value="Startups"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "academic & research institutions") echo "checked"; ?>>
+                                        Academic & Research Institutions
+                                    </option>
+
+                                    <option value="Family-owned businesses"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "nonprofit & civil society") echo "checked"; ?>>
+                                        Nonprofit & Civil Society
+                                    </option>
+
+                                    <option value="Family-owned businesses"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "international & multilateral organizations") echo "checked"; ?>>
+                                        International & Multilateral Organizations
+                                    </option>
+
+                                    <option value="Family-owned businesses"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "creative & media sector") echo "checked"; ?>>
+                                        Creative & Media Sector
+                                    </option>
+                                    
+                                    <option value="Family-owned businesses"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "technology & innovation sector") echo "checked"; ?>>
+                                        Technology & Innovation Sector
+                                    </option>
+
+                                    <option value="Family-owned businesses"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "healthcare & social services") echo "checked"; ?>>
+                                        Healthcare & Social Services
+                                    </option>
+
+                                    <option value="Family-owned businesses"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "industrial & manufacturing") echo "checked"; ?>>
+                                        Industrial & Manufacturing
+                                    </option>
+
+                                    <option value="Family-owned businesses"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "financial & business services") echo "checked"; ?>>
+                                        Financial & Business Services
+                                    </option>
+
+                                    <option value="Family-owned businesses"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "hospitality & tourism") echo "checked"; ?>>
+                                        Hospitality & Tourism
+                                    </option>
+
+                                    <option value="Family-owned businesses"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "international & multilateral organizations") echo "checked"; ?>>
+                                        International & Multilateral Organizations
+                                    </option>
+
+                                    <option value="Family-owned businesses"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "freelance / independent & gig-based") echo "checked"; ?>>
+                                        Freelance / Independent & Gig-Based
+                                    </option>
+
+                                    <option value="Family-owned businesses"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "religious & faith-based organizations") echo "checked"; ?>>
+                                        Religious & Faith-Based Organizations
+                                    </option>
+
+                                    <option value="Family-owned businesses"
+                                        <?php if (isset($_GET['company classification']) && $_GET['company classification'] == "hybrid / public-private partnerships") echo "checked"; ?>>
+                                        Hybrid / Public-Private Partnerships
+                                    </option>
+                                </select>
                                 </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="year" value="2" <?php if (isset($_GET['year']) && $_GET['year'] == "2")
-                                        echo "checked"; ?>>
-                                    Second Year
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="year" value="3" <?php if (isset($_GET['year']) && $_GET['year'] == "3")
-                                        echo "checked"; ?>>
-                                    Third Year
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="year" value="4" <?php if (isset($_GET['year']) && $_GET['year'] == "4")
-                                        echo "checked"; ?>>
-                                    Fourth Year
-                                </div>
-
                             </div>
 
-                        </div>
-
-                    </form>
-                </div>
-
-                <div class="col-lg-9">
-
-                    <!-- ── Download Files for Application Panel ── -->
-                    <div class="download-files-panel">
-                        <div class="download-files-header" id="downloadFilesToggle">
-                            <span>Download files for application</span>
-                            <i class="fa fa-chevron-up toggle-icon"></i>
-                        </div>
-                        <div class="download-files-body" id="downloadFilesBody">
-
-                            <div class="download-file-row">
-                                <span class="file-label">Memorandum of Understanding (MOU)</span>
-                                <div class="file-actions">
-                                    <a href="mou-preview.php" class="btn-show-preview">Show Preview</a>
-                                    <a href="downloads/mou.pdf" class="btn-download-pdf" download>Download PDF</a>
-                                </div>
-                            </div>
-
-                            <div class="download-file-row">
-                                <span class="file-label">Recommendation Letter</span>
-                                <div class="file-actions">
-                                    <a href="recommendation-letter-preview.php" class="btn-show-preview">Show Preview</a>
-                                    <a href="downloads/recommendation-letter.pdf" class="btn-download-pdf" download>Download PDF</a>
-                                </div>
-                            </div>
-
-                            <div class="download-file-row">
-                                <span class="file-label">Waiver</span>
-                                <div class="file-actions">
-                                    <a href="waiver-preview.php" class="btn-show-preview">Show Preview</a>
-                                    <a href="downloads/waiver.pdf" class="btn-download-pdf" download>Download PDF</a>
-                                </div>
-                            </div>
-
-                        </div>
+                        </form>
                     </div>
-                    <!-- ── End Download Files Panel ── -->
 
-                    <small class="text-muted">
-                        Showing <?php echo count($internships); ?> internship listings
-                    </small>
+                    <div class="col-lg-9">
+                        <small class="text-muted">
+                            Showing <?php echo count($internships); ?> internship listings
+                        </small>
 
                     <?php foreach ($internships as $internship): ?>
 
@@ -402,12 +436,15 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <p><strong>Program:</strong> <?php echo htmlspecialchars($internship['program']); ?></p>
                             <?php endif; ?>
 
-                            <?php if (!empty($internship['year_level'])): ?>
-                                <p><strong>Year Level:</strong> <?php echo htmlspecialchars($internship['year_level']); ?></p>
+                            <?php if (!empty($internship['internship_type'])): ?>
+                                <p><strong>Internship type:</strong>
+                                    <?php echo htmlspecialchars($internship['internship_type']); ?>
+                                </p>
                             <?php endif; ?>
 
-                            <?php if (!empty($internship['min_gpa'])): ?>
-                                <p><strong>Minimum GPA:</strong> <?php echo htmlspecialchars($internship['min_gpa']); ?></p>
+                            <?php if (!empty($internship['company_classification'])): ?>
+                                <p><strong>Company classification:</strong>
+                                    <?php echo htmlspecialchars($internship['company_classification']); ?></p>
                             <?php endif; ?>
 
                             <?php if (!empty($internship['deadline'])): ?>
@@ -419,12 +456,69 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php endif; ?>
 
                             <div class="d-flex gap-2">
-                                <a href="internship-detail.php?id=<?php echo $internship['id']; ?>" class="btn btn-read">
+                                <button class="btn btn-read" onclick="toggleFiles(<?= $internship['id'] ?>)">
                                     Read More
-                                </a>
-                                <button class="btn btn-apply">Interested</button>
-                            </div>
+                                </button>
+                                <form method="POST" action="applied-internship-programs-db.php">
+                                    <input type="hidden" name="internship_id" value="<?= $internship['id'] ?>">
+                                    <button type="submit" class="btn btn-apply">Interested</button>
+                                </form>
 
+                            </div>
+                            <!-- ── Download Files for Application Panel ── -->
+                            <div class="download-files-panel  mt-2" style="display:none;"
+                                id="files-<?= $internship['id'] ?>">
+                                <div class=" download-files-header" id="downloadFilesToggle">
+                                    <span>Download files for application</span>
+                                    <i class="fa fa-chevron-up toggle-icon"></i>
+                                </div>
+                                <div class="download-files-body" id="downloadFilesBody">
+
+                                    <div class="download-file-row">
+                                        <span class="file-label">Memorandum of Understanding (MOU)</span>
+                                        <div class="file-actions">
+                                            <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=
+                                            <?= $_SESSION['user_id'] ?>&action=mou" class="btn-show-preview"
+                                                target="_blank">
+                                                Show Preview
+                                            </a>
+                                            <a href="download-mou.php?id=<?= $internship['id'] ?>&action=mou"
+                                                class="btn-download-pdf">
+                                                Download PDF
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <div class="download-file-row">
+                                        <span class="file-label">Recommendation Letter</span>
+                                        <div class="file-actions">
+                                            <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=
+                                            <?= $_SESSION['user_id'] ?>&action=rl" class="btn-show-preview"
+                                                target="_blank">
+                                                Show Preview
+                                            </a>
+                                            <a href="download-mou.php?id=<?= $internship['id'] ?>&action=rl"
+                                                class="btn-download-pdf">Download
+                                                PDF</a>
+                                        </div>
+                                    </div>
+
+                                    <div class="download-file-row">
+                                        <span class="file-label">Waiver</span>
+                                        <div class="file-actions">
+                                            <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=
+                                            <?= $_SESSION['user_id'] ?>&action=waiver" class="btn-show-preview"
+                                                target="_blank">
+                                                Show Preview
+                                            </a>
+                                            <a href="download-mou.php?id=<?= $internship['id'] ?>&action=waiver"
+                                                class="btn-download-pdf">Download
+                                                PDF</a>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
                         </div>
 
                     <?php endforeach; ?>
@@ -434,29 +528,22 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </section>
-
     <script>
-        // Toggle Download Files panel
-        const toggleBtn = document.getElementById('downloadFilesToggle');
-        const toggleBody = document.getElementById('downloadFilesBody');
-
-        toggleBtn.addEventListener('click', function () {
-            const isOpen = !toggleBody.classList.contains('d-none');
-            if (isOpen) {
-                toggleBody.classList.add('d-none');
-                toggleBtn.classList.add('collapsed');
-            } else {
-                toggleBody.classList.remove('d-none');
-                toggleBtn.classList.remove('collapsed');
-            }
-        });
-
         function filterListings() {
             const input = document.getElementById('searchInput').value.toLowerCase();
             document.querySelectorAll('.listing').forEach(listing => {
                 const title = listing.dataset.title;
                 listing.style.display = title.includes(input) ? 'block' : 'none';
             });
+        }
+        function toggleFiles(id) {
+            const panel = document.getElementById("files-" + id);
+
+            if (panel.style.display === "none") {
+                panel.style.display = "block";
+            } else {
+                panel.style.display = "none";
+            }
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
