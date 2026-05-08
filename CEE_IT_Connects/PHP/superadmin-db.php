@@ -4,7 +4,7 @@ require 'db.php';
 
 // only superadmin
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {
-    header("Location: login.php");
+    header("Location: login-ui.php");
     exit();
 }
 
@@ -36,6 +36,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'role' => $role
         ]);
 
+
+        $stmtActivity = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
+        $stmtActivity->execute([
+            ':user_id' => $_SESSION['user_id'],
+            ':roles' => 'internship_admin',
+            ':activity' => 'Created new admin: ' . $name
+        ]);
         header("Location: superadmin.php?success=1");
         exit();
     }
@@ -44,12 +51,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['create-adviser'])) {
         $id = $_POST['id'];
         $source = $_POST['source'];
+        $internship_id = null;
 
-        if ($source === 'advisers') {
-            $stmt = $pdo->prepare("DELETE FROM advisers WHERE id = ?");
-            $stmt->execute([$id]);
+        if ($role === 'HTE_adviser') {
+            $internship_id = $_POST['internship_id'] ?? null;
+
+            if (!$internship_id) {
+                die("Please select an internship.");
+            }
         }
-
         $name = $_POST['name'];
         $email = $_POST['email'];
         $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
@@ -73,6 +83,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'password' => $password,
             'role' => $role,
             'title' => $title
+        ]);
+
+        $stmtActivity = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
+        $stmtActivity->execute([
+            ':user_id' => $_SESSION['user_id'],
+            ':roles' => 'internship_admin',
+            ':activity' => 'Created new adviser: ' . $name
         ]);
 
         header("Location: superadmin.php?success=1");

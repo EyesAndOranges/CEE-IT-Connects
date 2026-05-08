@@ -52,9 +52,9 @@
                     <div class="mb-3">
                         <select class="form-select" name="program" required>
                             <option value="" disabled selected>Program</option>
-                            <option value="IT">Information Technology</option>
-                            <option value="EE">Electrical Engineering</option>
-                            <option value="CE">Civil Engineering</option>
+                            <option value="Information Technology">Information Technology</option>
+                            <option value="Electrical Engineering">Electrical Engineering</option>
+                            <option value="Civil Engineering">Civil Engineering</option>
                         </select>
                     </div>
 

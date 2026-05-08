@@ -249,9 +249,9 @@ function timeAgo($datetime)
         <?php endif; ?>
 
         <!-- Right Icons -->
-        
-            <div class="navbar-icons d-flex align-items-center gap-3 position-relative">
-                <?php if (!$hideStudentNav): ?>
+
+        <div class="navbar-icons d-flex align-items-center gap-3 position-relative">
+            <?php if (!$hideStudentNav): ?>
                 <div>
                     <a href="Message.php">
                         <i class="fa-<?= ($page == 'messages') ? 'solid' : 'regular' ?> fa-comment"></i>

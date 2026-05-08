@@ -54,6 +54,34 @@ $alreadyExistingMap = [];
 foreach ($alreadyexisting as $e) {
     $alreadyExistingMap[$e['user_type'] . '_' . $e['user_id']] = true;
 }
+
+$stmt = $pdo->prepare("
+    SELECT 
+        s.id,
+        s.full_name,
+        r.room_name,
+        i.company,
+        COALESCE(SUM(l.hours_worked), 0) AS total_hours,
+        MAX(m.remarks) AS latest_remarks
+    FROM students s
+    JOIN room_members rm ON s.id = rm.user_id
+    JOIN rooms r ON rm.room_id = r.id
+    LEFT JOIN student_internships si ON s.id = si.student_id
+    LEFT JOIN internships i ON si.internship_id = i.id
+    LEFT JOIN ojt_logs l ON s.id = l.student_id
+    LEFT JOIN (
+        SELECT DISTINCT ON (student_id)
+        student_id, remarks
+        FROM ojt_remarks
+        ORDER BY student_id, updated_at DESC
+    ) m ON s.id = m.student_id
+    WHERE r.id = ?
+    GROUP BY s.id, s.full_name, r.room_name, i.company
+");
+$stmt->execute([$room_id]);
+$statuses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$backLink = getDashboardByRole($_SESSION['role']);
 ?>
 
 <head>
@@ -163,6 +191,21 @@ foreach ($alreadyexisting as $e) {
 
         .search-input-wrap input:focus {
             border-color: #d63ba5;
+        }
+
+        .progress-bar-bg {
+            width: 250px;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            transition: width .3s ease;
+            border-radius: 4px;
+            background: #ff6b2c;
         }
 
         .participant-list {
@@ -535,17 +578,48 @@ foreach ($alreadyexisting as $e) {
         }
     </style>
 </head>
-
+<?php print_r($_SESSION); ?>
 <div class="d-flex justify-content-end mb-2">
-    <a href="message.php" class="text-danger fw-semibold" style="text-decoration:none;">
+    <a href="<?= $backLink ?>" class="text-danger fw-semibold" style="text-decoration:none;">
         <i class="fa-solid fa-arrow-left"></i> Back to rooms
     </a>
 </div>
 
 <!-- HEADER -->
-<div class="p-3 text-white rounded" style="background:#d63ba5;">
-    <h5 class="mb-0"><?= htmlspecialchars($room['room_name']) ?></h5>
-    <small><?= htmlspecialchars($room['full_name']) ?> | <?= htmlspecialchars($room['role']) ?></small>
+<div class="p-3 text-white rounded d-flex justify-content-between align-items-center" style="background:#d63ba5;">
+
+    <!-- LEFT SIDE -->
+    <div>
+        <h5 class="mb-0"><?= htmlspecialchars($room['room_name']) ?></h5>
+        <small>
+            <?= htmlspecialchars($room['full_name']) ?>
+            |
+            <?= htmlspecialchars($room['role']) ?>
+        </small>
+    </div>
+
+    <!-- RIGHT SIDE -->
+    <?php
+    $status = $statuses[0] ?? null;
+
+    if ($status):
+        $progressWidth = min(
+            round(($status['total_hours'] / 486) * 100, 2),
+            100
+        );
+        ?>
+        <div class="text-end">
+            <div class="progress-bar-bg mb-1">
+                <div class="progress-bar-fill" style="width: <?= $progressWidth ?>%;">
+                </div>
+            </div>
+
+            <small>
+                <?= $status['total_hours'] ?> / 486 hours
+            </small>
+        </div>
+    <?php endif; ?>
+
 </div>
 
 <!-- TABS -->

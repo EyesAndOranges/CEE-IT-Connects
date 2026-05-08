@@ -495,8 +495,16 @@ $page = 'messages';
                             <div class="card shadow-sm">
 
                                 <div class="room-card" style="background: <?= $color ?>">
-                                    <h5 style="text-color <? $color ?>"><?= $room['room_name'] ?></h5>
-                                    <small><?= $room['full_name'] ?> (<?= $room['role'] ?>)</small>
+                                    <div>
+                                        <h5 style="text-color <? $color ?>">
+                                            <?= $room['room_name'] ?>
+                                        </h5>
+                                        <small>
+                                            <?= $room['full_name'] ?> (
+                                            <?= $room['role'] ?>)
+                                        </small>
+                                    </div>
+
                                 </div>
 
                                 <div class="room-footer">
@@ -703,7 +711,7 @@ $page = 'messages';
             sec.classList.remove('active');
         });
 
-        document.getElementById(sectionId)?.classList.add('active');
+        document.getElementById(sectionId)?.classList.  ('active');
 
         document.querySelectorAll('.sidebar a').forEach(link => {
             link.classList.remove('active');

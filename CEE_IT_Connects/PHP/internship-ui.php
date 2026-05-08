@@ -1,9 +1,10 @@
-<?php session_start();
+<?php error_log(print_r($_POST, true));
+session_start();
 require 'db.php';
-
 $stmtinterest = $pdo->prepare("
     SELECT 
         ib.id AS interest_id,
+        ib.student_id,
         ib.created_at,
         s.full_name,
         s.email,
@@ -24,6 +25,8 @@ FROM announcements
 ORDER BY created_at DESC");
 $stmtannouncement->execute();
 $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
+
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -78,6 +81,11 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
             padding: 20px;
             display: flex;
             flex-direction: column;
+
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
         }
 
         .sidebar h3 {
@@ -215,12 +223,16 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                 <i class="bi bi-bookmark"></i>
                 Manage Announcement
             </a>
+            <a href="#" onclick="showSection('student_register')">
+                <i class="bi bi-file-earmark-person"></i>
+                Student Register
+            </a>
         </aside>
         <div class="main-content">
             <div id="dashboard" class="section active">
 
             </div>
-            <di id="postings" class="section">
+            <div id="postings" class="section">
                 <h2>Intership Posting</h2>
                 <form method="POST" action="internship-db.php" class="internship-form"
                     onsubmit="return confirm('You are creating a new internship posting. Are you sure?');">
@@ -278,7 +290,7 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
 
                     <button type="submit" class="submit-btn">Create Internship Postings</button>
                 </form>
-            </di v>
+            </div>
 
             <div id="applicants" class="section">
                 <h2 style="margin-bottom: 30px;">Applicants</h2>
@@ -453,10 +465,11 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
 
                                     <td>
                                         <form method="POST" action="internship-db.php">
-                                            <input type="hidden" name="interested_id" value="<?= $b['interest_id'] ?>">
-                                            <button type="submit" name="reject"
-                                                style="background:red;color:white;border:none;padding:6px 10px;border-radius:6px;">
-                                                Reject
+                                            <button type="button" class="btn btn-sm btn-danger"
+                                                onclick="openFeedbackModal(<?= $i['interest_id'] ?>)"
+                                                style="background:#FF5C5C;color:white;border:none;padding:6px 10px;border-radius:6px;font-weight:600; font-size:13px;cursor:pointer;">
+                                                <i class="bi bi-x-circle me-1"></i>
+                                                Reject with Feedback
                                             </button>
                                         </form>
                                     </td>
@@ -472,7 +485,7 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
             <div id="announcements" class="section">
                 <h2>Post Announcements</h2>
 
-                <for action="internship-db.php" method="POST" class="internship-form">
+                <form action="internship-db.php" method="POST" class="internship-form">
                     <input type="hidden" name="form_type" value="announcement_posting">
                     <div class="form-card">
                         <h3>Announcement Details</h3>
@@ -494,7 +507,7 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
 
                     <button type="submit" class="submit-btn">Post Announcement</button>
 
-                </for>
+                </form>
             </div>
             <div id="manage_announcement" class="section">
                 <h2 class="mb-4">Manage Announcements</h2>
@@ -528,24 +541,18 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                                         <tr>
                                             <form method="POST" action="internship-db.php">
                                                 <td class="fw-bold">
-                                                    <input type="text" name="title" value="<?= $a['title'] ?>">
+                                                    <input type="text" name="title" value="<?= $a['title'] ?>" required>
                                                 </td>
 
                                                 <td>
-                                                    <input type="text" name="message" value="<?= $a['message'] ?>">
+                                                    <input type="text" name="message" value="<?= $a['message'] ?>" required>
                                                 </td>
 
                                                 <td>
-                                                    <select name="category" id="category">
-                                                        <option value="news" <?= $a['category'] === 'news' ? 'selected' : '' ?>>
-                                                            News
-                                                        </option>
-                                                        <option value="updates" <?= $a['category'] === 'updates' ? 'selected' : '' ?>>
-                                                            Updates
-                                                        </option>
-                                                        <option value="FAQs" <?= $a['category'] === 'FAQs' ? 'selected' : '' ?>>
-                                                            FAQs
-                                                        </option>
+                                                    <select name="category" id="category" required>
+                                                        <option value="news" <?= $a['category'] === 'news' ? 'selected' : '' ?>>News</option>
+                                                        <option value="updates" <?= $a['category'] === 'updates' ? 'selected' : '' ?>>Updates</option>
+                                                        <option value="FAQs" <?= $a['category'] === 'FAQs' ? 'selected' : '' ?>>FAQs</option>
                                                     </select>
                                                 </td>
 
@@ -581,10 +588,174 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
             </div>
+            <div id="student_register" class="section">
+                <h2>Student Register</h2>
+                <div class="form-card">
+                    <div class="d-flex gap-2 mb-3">
+                        <form action="auto-register.php" method="POST">
+                            <h3>Press to activate the current csv</h3>
+                            <button type="submit" class="btn btn-primary">
+                                Activate CSV Import
+                            </button>
+                        </form>
+                    </div>
+                    <div>
+                        <h3>Excel Sheet for student registration</h3>
+                        <button type="button" class="btn btn-secondary" onclick="showSection('edit_csv')">
+                            Edit Current CSV
+                        </button>
+                    </div>
+                    <form action="auto-register-csv.php" method="POST" enctype="multipart/form-data">
+                        <h3>Choose file to replace the csv<!-- (make sure the name of the csv is students.csv)--></h3>
+                        <label>Select new CSV file</label>
+                        <input type="file" name="students_csv" accept=".csv" required>
+
+                        <button type="submit" class="submit-btn mt-3">
+                            Replace Current CSV
+                        </button>
+                    </form>
+                    <!--
+                    <button class="submit-btn mt-3">
+                        <a href='../../Sources/students.csv' download='students.csv'>Download
+                            csv</a>
+                    </button> -->
+                </div>
+            </div>
+            <div id="edit_csv" class="section">
+                <h2>Edit Student CSV</h2>
+
+                <div class="form-card">
+                    <?php
+                    $csvPath = __DIR__ . '/../Sources/students.csv';
+                    $csvRows = [];
+
+                    if (($handle = fopen($csvPath, 'r')) !== false) {
+                        while (($row = fgetcsv($handle, 1000, ',')) !== false) {
+                            $csvRows[] = $row;
+                        }
+                        fclose($handle);
+                    }
+                    ?>
+                    <pre><?php //print_r($csvRows); ?></pre>
+                    <form method="POST" action="auto-register-save-csv.php">
+                        <table class="table table-bordered">
+                            <tbody>
+                                <?php foreach ($csvRows as $rowIndex => $row): ?>
+                                    <tr>
+                                        <?php foreach ($row as $colIndex => $cell): ?>
+                                            <td>
+                                                <?php if ($rowIndex === 0): ?>
+                                                    <input type="text" value="<?= htmlspecialchars($cell) ?>" readonly
+                                                        class="form-control fw-bold bg-light">
+                                                <?php else: ?>
+                                                    <input type="text" name="csv[<?= $rowIndex ?>][<?= $colIndex ?>]"
+                                                        value="<?= htmlspecialchars($cell) ?>" class="form-control">
+                                                <?php endif; ?>
+                                            </td>
+                                        <?php endforeach; ?>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+
+                        <button type="submit" class="submit-btn">
+                            Save CSV
+                        </button>
+                        <button type="button" class="submit-btn btn-danger" onclick="showSection('student_register')">
+                            Back
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
+
+    <!-- Feedback Modal -->
+    <div id="feedbackModal"
+        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+        <div style="background:#29335C; border-radius:5px; padding:30px; width:500px; max-width:90%;">
+
+            <h5 style="color:white; text-align:center; margin-bottom:25px; font-weight:400;">
+                Reject with Feedback
+            </h5>
+
+            <textarea id="feedbackText" placeholder="Enter feedback here.."
+                style="width:100%; height:130px; border-radius:5px; border:none; padding:14px; font-size:14px; resize:none; outline:none;"></textarea>
+
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+                <button onclick="closeFeedbackModal()"
+                    style="background:transparent; color:white; border:1px solid white; padding:8px 20px; border-radius:20px; cursor:pointer; font-size:14px;">
+                    Cancel
+                </button>
+                <button onclick="sendFeedback()"
+                    style="background:white; color:#29335C; border:none; padding:8px 20px; border-radius:20px; cursor:pointer; font-size:14px; font-weight:600;">
+                    Send Feedback
+                </button>
+            </div>
+
+        </div>
+    </div>
+    <script>
+        function openFeedbackModal(bookmarkId) {
+            document.getElementById('feedbackModal').dataset.id = bookmarkId;
+            document.getElementById('feedbackModal').style.display = 'flex';
+        }
+        function closeFeedbackModal() {
+            document.getElementById('feedbackModal').style.display = 'none';
+            document.getElementById('feedbackModal').dataset.id = null;
+        }
+
+        function sendFeedback() {
+            const modal = document.getElementById('feedbackModal');
+            const bookmarkId = modal.dataset.id;
+            const feedback = document.getElementById('feedbackText').value.trim();
+
+            if (!bookmarkId) {
+                alert("No bookmark selected.");
+                return;
+            }
+
+            if (!feedback) {
+                alert('Please enter feedback before sending.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('bookmark_id', bookmarkId);
+            formData.append('feedback', feedback);
+            formData.append('send_feedback', 1);
+            formData.append('form_type', 'send_feedback');
+
+            fetch('internship-db.php', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.text())
+                .then(text => {
+                    console.log(text);
+
+                    if (text.trim() !== "success") {
+                        alert(text);
+                        return;
+                    }
+
+                    closeFeedbackModal();
+                    location.reload();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Something went wrong.');
+                });
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('feedbackModal').addEventListener('click', function (e) {
+            if (e.target === this) closeFeedbackModal();
+        });
+    </script>
     <script src="../JS/script.js"></script>
+
 </body>
 
 </html>

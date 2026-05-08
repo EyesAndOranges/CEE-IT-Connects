@@ -24,6 +24,16 @@ function getUserType($role)
 
     return $roleMap[$role] ?? 'student';
 }
+function getDashboardByRole($role)
+{
+    return match ($role) {
+        'student' => 'message.php',
+        'hte_adviser' => 'hte-ui.php',
+        'internship_adviser' => 'ojt-rooms.php',
+        default => 'index.php'
+    };
+}
+
 function getUserProfile($pdo, $id, $type)
 {
     switch (strtolower($type)) {

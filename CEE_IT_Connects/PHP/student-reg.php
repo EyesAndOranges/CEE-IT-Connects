@@ -10,6 +10,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $prefix = $_POST['year_no'];
     $suffix = $_POST['id_no'];
+    $email = $_POST['email'];
     if (!preg_match('/^(20|21|22|23|24|25)$/', $prefix)) {
         die("Invalid student year.");
     }
@@ -32,7 +33,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $year_level = $_POST['year_level'];
     $section = $_POST['section'];
     $contact_number = $_POST['contact_number'];
-    $email = $_POST['email'];
 
     // HASH PASSWORD
     $password_hash = password_hash($_POST['password'], PASSWORD_DEFAULT);
@@ -77,6 +77,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         ':email' => $email
     ]);
 
+
+    $newStudentId = $pdo->lastInsertId();
+
+    $stmt = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
+    $stmt->execute([
+        ':user_id' => $newStudentId,
+        ':roles' => 'student',
+        ':activity' => 'Student registered an account with schoold Id ' . $student_id
+    ]);
     // Redirect after success
     header("Location: ../PHP/student-welcome.php");
     exit();

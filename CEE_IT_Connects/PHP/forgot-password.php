@@ -71,7 +71,7 @@ if (isset($_POST['send_code'])) {
 }
 
 
-// ================= VERIFY CODE =================
+// VERIFY CODE 
 if (isset($_POST['verify_code'])) {
     $entered_code = trim($_POST['code']);
     $email = $_POST['email'];
@@ -100,7 +100,7 @@ if (isset($_POST['verify_code'])) {
 }
 
 
-// ================= RESET PASSWORD =================
+// RESET PASSWORD 
 if (isset($_POST['reset_password'])) {
     $email = $_POST['email'];
     $new_password = $_POST['new_password'];
@@ -164,7 +164,8 @@ if (isset($_POST['reset_password'])) {
 
             <form method="POST">
                 <input type="hidden" name="email" value="<?php echo htmlspecialchars($_GET['email']); ?>">
-                <input type="password" name="new_password" class="form-control mb-3" placeholder="New Password" required>
+                <input type="password" name="new_password" pattern="^(?=.*[a-z])(?=.*[A-Z]).{8,16}$"
+                    class="form-control mb-3" placeholder="New Password" required>
                 <input type="password" name="confirm_password" class="form-control mb-3" placeholder="Confirm Password"
                     required>
                 <button name="reset_password" class="btn btn-success w-100">Reset Password</button>

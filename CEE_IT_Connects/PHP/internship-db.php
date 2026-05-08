@@ -2,6 +2,7 @@
 session_start();
 require 'db.php';
 
+
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'internship_admin') {
     header("Location: login-ui.php?role=admin");
     exit();
@@ -12,8 +13,9 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     exit();
 }
 
+$form_type = $_POST['form_type'] ?? '';
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $form_type = $_POST['form_type'] ?? '';
 
     if ($form_type === 'internship_posting') {
         // Handle internship posting
@@ -88,21 +90,40 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 ]);
             }
 
+            $stmtAudit = $pdo->prepare("
+                INSERT INTO audits (user_id, roles, activity)
+                VALUES (:user_id, :roles, :activity)
+            ");
+
+            $stmtAudit->execute([
+                ':user_id' => $admin_id,
+                ':roles' => 'internship_admin',
+                ':activity' => 'Posted a new internship: ' . $title . ' at ' . $company
+            ]);
             header("Location: internship-ui.php?success=1");
             exit();
         } catch (PDOException $e) {
             die("Database error: " . $e->getMessage());
         }
-    } elseif ($form_type === 'announcement_posting') {
+    }
+    if ($form_type === 'announcement_posting') {
         // Handle announcement posting
         $title = $_POST['title'] ?? '';
         $message = $_POST['message'] ?? '';
+
         try {
             $stmt = $pdo->prepare("INSERT INTO announcements (title, message, created_at, category) VALUES (:title, :message, NOW(), :category)");
             $stmt->execute([
                 'title' => $title,
                 'message' => $message,
                 'category' => $_POST['category'] ?? ''
+            ]);
+
+            $stmtActivity = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
+            $stmtActivity->execute([
+                ':user_id' => $_SESSION['user_id'],
+                ':roles' => 'internship_admin',
+                ':activity' => 'Posted a new announcement: ' . $title
             ]);
         } catch (PDOException $e) {
             die("Database error: " . $e->getMessage());
@@ -111,36 +132,107 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         header("Location: internship-ui.php?success=1");
         exit();
     }
+    if ($form_type === 'send_feedback') {
 
-    //for bookmark reject
-    if (isset($_POST['reject'])) {
+        $bookmark_id = $_POST['bookmark_id'] ?? null;
+        $feedback = trim($_POST['feedback'] ?? '');
 
-        $bookmark_id = $_POST['bookmark_id'];
+        if (!$bookmark_id || !$feedback) {
+            http_response_code(400);
+            echo "Missing required fields.";
+            exit;
+        }
 
-        $stmt = $pdo->prepare("
-        DELETE FROM internship_bookmarks
-        WHERE id = ?
-    ");
+        try {
+            $pdo->beginTransaction();
 
-        $stmt->execute([$bookmark_id]);
+            $stmt = $pdo->prepare("
+            SELECT ib.student_id, i.title, i.company, s.full_name
+            FROM internship_bookmarks ib
+            JOIN internships i ON i.id = ib.internship_id
+            JOIN students s ON s.id = ib.student_id
+            WHERE ib.id = ?
+        ");
+            $stmt->execute([$bookmark_id]);
+            $bookmark = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        header("Location: internship-ui.php?removed=1");
-        exit;
+            if (!$bookmark) {
+                throw new Exception("Bookmark not found.");
+            }
+
+            $notifTitle = "Internship Interested Update";
+            $notifMessage = "Your interest in {$bookmark['title']} at {$bookmark['company']} was rejected. Feedback: $feedback";
+
+            $notifStmt = $pdo->prepare("
+            INSERT INTO notifications (user_id, user_type, title, message, is_read, created_at)
+            VALUES (?, 'student', ?, ?, FALSE, NOW())
+        ");
+
+            $notifStmt->execute([
+                $bookmark['student_id'],
+                $notifTitle,
+                $notifMessage
+            ]);
+
+            $stmtDelete = $pdo->prepare("DELETE FROM internship_bookmarks WHERE id = ?");
+            $stmtDelete->execute([$bookmark_id]);
+
+
+
+            $stmtActivity = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
+            $stmtActivity->execute([
+                ':user_id' => $_SESSION['user_id'],
+                ':roles' => 'internship_admin',
+                ':activity' => 'Sent feedback for student ' . $bookmark['full_name'] .
+                    ' regarding internship ' . $bookmark['title'] . ' at ' . $bookmark['company']
+            ]);
+
+            $pdo->commit();
+
+            echo "success";
+            exit;
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            http_response_code(500);
+            echo $e->getMessage();
+            exit;
+        }
     }
 
+
+
+    /*$stmt = $pdo->prepare("
+    DELETE FROM internship_bookmarks
+    WHERE id = ?
+");
+
+    $stmt->execute([$bookmark_id]);
+
+    header("Location: internship-ui.php?removed=1");
+    exit;
+} */
+
     if (isset($_POST['delete_announcement'])) {
+        $title = $_POST['title'] ?? '';
         $announcement_id = $_POST['announcement_id'];
 
         $stmt = $pdo->prepare("
-        DELETE FROM announcements
-        WHERE id = ?
-        ");
+    DELETE FROM announcements
+    WHERE id = ?
+    ");
         $stmt->execute([$announcement_id]);
 
+        $stmtActivity = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
+        $stmtActivity->execute([
+            ':user_id' => $_SESSION['user_id'],
+            ':roles' => 'internship_admin',
+            ':activity' => 'Deleted the announcement: ' . $title
+        ]);
         header("location: internship-ui.php?removed=1");
         exit;
     }
     if (isset($_POST['edit_announcement'])) {
+        $title = $_POST['title'] ?? '';
         $announcement_id = $_POST['announcement_id'];
 
         $stmt = $pdo->prepare("UPDATE announcements SET title = ?, message = ?, category = ? WHERE id = ?");
@@ -151,13 +243,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $announcement_id
         ]);
 
+        $stmtActivity = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
+        $stmtActivity->execute([
+            ':user_id' => $_SESSION['user_id'],
+            ':roles' => 'internship_admin',
+            ':activity' => 'Deleted the announcement: ' . $title
+        ]);
+
         header("location: internship-ui.php?updated=1");
         exit;
     }
 }
-
-
-
-
-
 ?>

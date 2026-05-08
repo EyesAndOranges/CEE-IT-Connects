@@ -4,6 +4,12 @@ require 'auth.php';
 
 /* var_dump($_SESSION);
 exit(); */
+$internshipStmt = $pdo->query("
+    SELECT id, company, title
+    FROM internships
+    ORDER BY company ASC, title ASC
+");
+$internships = $internshipStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <?php
@@ -38,6 +44,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
     for ($i = 0; $i < count($admin_ids); $i++) {
         $stmt->execute([$roles[$i], $admin_ids[$i]]);
     }
+
+    $stmtActivity = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
+    $stmtActivity->execute([
+        ':user_id' => $_SESSION['user_id'],
+        ':roles' => 'superadmin',
+        ':activity' => 'Updated admin roles'
+    ]);
     header("Location: superadmin.php?updated=1");
     exit;
 }
@@ -57,6 +70,28 @@ $stmt = $pdo->query("
 ");
 
 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$stmt = $pdo->query("
+    SELECT 
+        a.id,
+        a.user_id,
+        a.roles,
+        a.activity,
+        a.activity_date,
+        u.name
+    FROM audits a
+    LEFT JOIN (
+        SELECT id, full_name AS name, 'student' AS role FROM students
+        UNION ALL
+        SELECT id, name, role FROM admins
+        UNION ALL
+        SELECT id, full_name AS name, role::text AS role FROM advisers
+    ) u
+        ON a.user_id = u.id
+       AND a.roles = u.role
+    ORDER BY a.activity_date DESC
+");
+$activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -357,12 +392,24 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <!-- <option value="cma">Content Management Admin</option> -->
                     </select>
 
-                    <select name="role" required>
+                    <select name="role" id="adviserRole" required>
                         <option value="" disabled selected>Select Role</option>
                         <option value="HTE_adviser">HTE Adviser</option>
                         <option value="internship_adviser">Internship Adviser</option>
                         <!-- <option value="cma">Content Management Admin</option> -->
                     </select>
+                    <div id="internshipWrapper" style="display:none;">
+                        <select name="internship_id" id="internshipSelect">
+                            <option value="" selected>Select Internship</option>
+
+                            <?php foreach ($internships as $internship): ?>
+                                <option value="<?= $internship['id'] ?>">
+                                    <?= htmlspecialchars($internship['company']) ?> —
+                                    <?= htmlspecialchars($internship['title']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
 
                     <button type="submit" name="create-adviser" class="btn-find">Create Adviser</button>
                 </form>
@@ -433,12 +480,12 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Role</th>
-                                <th>Action</th>
+                                <!--<th>Action</th> -->
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($admins as $admin): ?>
-                                <tr style="text-align:center; border-bottom:1px solid #ddd;">
+                                <tr style="text-align:left; border-bottom:1px solid #ddd;">
 
                                     <!-- <td><?//= $admin['id'] ?></td> -->
                                     <td><?= htmlspecialchars($admin['name']) ?></td>
@@ -471,7 +518,27 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <!-- MONITOR SECTION -->
             <div id="monitor" class="section">
                 <h2>System Monitoring</h2>
-                <p>For the student, adviser and admn activity logs</p>
+
+                <table>
+                    <thead>
+                        <tr style="text-align:left; border-bottom:1px solid #ddd;">
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Activity</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($activityLogs as $log): ?>
+                            <tr style="text-align:left; border-bottom:1px solid #ddd; ">
+                                <td><?= htmlspecialchars($log['name']) ?></td>
+                                <td><?= htmlspecialchars($log['roles']) ?></td>
+                                <td><?= htmlspecialchars($log['activity']) ?></td>
+                                <td><?= htmlspecialchars($log['activity_date']) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
 
         </div>
@@ -486,6 +553,26 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 setTimeout(() => msg.remove(), 500);
             }
         }, 2000); // disappears after 3 seconds
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const role = document.getElementById('adviserRole');
+            const wrapper = document.getElementById('internshipWrapper');
+            const internship = document.getElementById('internshipSelect');
+
+            function toggleInternshipDropdown() {
+                if (role.value === 'HTE_adviser') {
+                    wrapper.style.display = 'block';
+                    internship.required = true;
+                } else {
+                    wrapper.style.display = 'none';
+                    internship.required = false;
+                    internship.value = '';
+                }
+            }
+
+            role.addEventListener('change', toggleInternshipDropdown);
+            toggleInternshipDropdown();
+        });
     </script>
 </body>
 

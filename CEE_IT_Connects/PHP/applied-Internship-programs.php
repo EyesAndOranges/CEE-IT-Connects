@@ -56,6 +56,11 @@ $sql .= " ORDER BY id DESC";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$studentstmt = $pdo->prepare("SELECT program FROM students WHERE id = ?");
+$studentstmt->execute([$_SESSION['user_id']]);
+$student = $studentstmt->fetch(PDO::FETCH_ASSOC);
+$studentProgram = $student['program'] ?? '';
 ?>
 
 <?php $page = 'opportunity'; ?>
@@ -256,7 +261,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <a href="applied-Internship-programs.php" class="btn btn-dark">Clear Filters</a>
                             </div>
 
-                            <div class="mb-3">
+                            <!-- <div class="mb-3">
                                 <strong>Program</strong>
 
                                 <div class="form-check">
@@ -279,7 +284,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                             echo "checked"; ?>>
                                     Electrical Engineering
                                 </div>
-                            </div>
+                            </div> -->
 
                             <div class="mb-3">
                                 <strong>Deadline</strong>
@@ -325,57 +330,69 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </div>
                             </div>
 
+
                             <div class="mb-3">
                                 <strong>Company Classification</strong>
                                 <div>
-                                    <input class="form-check-input" type="radio" name="company_classification"
-                                        value="All" <?php if (
-                                            isset($_GET['company_classification']) &&
-                                            $_GET['company_classification'] == "All"
-                                        )
-                                            echo "checked" ?>>
-                                        All organization
-                                    </div>
-                                    <div>
-                                        <input class="form-check-input" type="radio" name="company_classification"
-                                            value="Engineering" <?php if (
-                                            isset($_GET['company_classification']) &&
-                                            $_GET['company_classification'] == "Engineering"
-                                        )
-                                            echo "checked" ?>>
-                                        Engineering Firm
-                                    </div>
-                                    <div>
-                                        <input class="form-check-input" type="radio" name="company_classification"
-                                            value="IT" <?php if (
-                                            isset($_GET['company_classification']) &&
-                                            $_GET['company_classification'] == "IT"
-                                        )
-                                            echo "checked" ?>>
-                                        IT Company
-                                    </div>
-                                    <div>
-                                        <input class="form-check-input" type="radio" name="company_classification"
-                                            value="Industrial company" <?php if (
-                                            isset($_GET['company_classification']) &&
-                                            $_GET['company_classification'] == "industrial"
-                                        )
-                                            echo "checked" ?>>
-                                        Industrial company
-                                    </div>
+                                    <select class="form-select" name="company_classification">
+                                        <option value="" selected disabled>Select an option</option>
+
+                                        <option value="private" <?= (($_GET['company_classification'] ?? '') === 'private') ? 'selected' : '' ?>>Private Sector</option>
+
+                                        <option value="public" <?= (($_GET['company_classification'] ?? '') === 'public') ? 'selected' : '' ?>>Public Sector (Government)</option>
+
+                                        <option value="institution" <?= (($_GET['company_classification'] ?? '') === 'institution') ? 'selected' : '' ?>>Academic & Research Institutions
+                                        </option>
+
+                                        <option value="NGO" <?= (($_GET['company_classification'] ?? '') === 'NGO') ? 'selected' : '' ?>>Nonprofit & Civil Society
+                                        </option>
+
+                                        <option value="multilateral_org" <?= (($_GET['company_classification'] ?? '') === 'multilateral_org') ? 'selected' : '' ?>>International & Multilateral
+                                            Organizations
+                                        </option>
+
+                                        <option value="media" <?= (($_GET['company_classification'] ?? '') === 'media') ? 'selected' : '' ?>>Creative & Media Sector
+                                        </option>
+
+                                        <option value="technology" <?= (($_GET['company_classification'] ?? '') === 'technology') ? 'selected' : '' ?>>Technology & Innovation Sector
+                                        </option>
+
+                                        <option value="healthcare" <?= (($_GET['company_classification'] ?? '') === 'healthcare') ? 'selected' : '' ?>>Healthcare & Social Services
+                                        </option>
+
+                                        <option value="industrial" <?= (($_GET['company_classification'] ?? '') === 'industrial') ? 'selected' : '' ?>>Industrial & Manufacturing
+                                        </option>
+
+                                        <option value="financial" <?= (($_GET['company_classification'] ?? '') === 'financial') ? 'selected' : '' ?>>Financial & Business Services
+                                        </option>
+
+                                        <option value="tourism" <?= (($_GET['company_classification'] ?? '') === 'tourism') ? 'selected' : '' ?>>Hospitality & Tourism
+                                        </option>
+
+                                        <option value="freelance" <?= (($_GET['company_classification'] ?? '') === 'freelance') ? 'selected' : '' ?>>Freelance / Independent & Gig-Based
+                                        </option>
+
+                                        <option value="religious" <?= (($_GET['company_classification'] ?? '') === 'religious') ? 'selected' : '' ?>>Religious & Faith-Based
+                                            Organizations
+                                        </option>
+
+                                        <option value="hybrid" <?= (($_GET['company_classification'] ?? '') === 'hybrid') ? 'selected' : '' ?>>Hybrid / Public-Private Partnerships
+                                        </option>
+                                    </select>
                                 </div>
                             </div>
+                        </div>
+                    </form>
+                </div>
 
-                        </form>
-                    </div>
-
-                    <div class="col-lg-9">
-                        <small class="text-muted">
-                            Showing <?php echo count($internships); ?> internship listings
+                <div class="col-lg-9">
+                    <small class="text-muted">
+                        Showing <?php echo count($internships); ?> internship listings
                     </small>
 
                     <?php foreach ($internships as $internship): ?>
-
+                        <?php if ($internship['program'] !== $studentProgram)
+                            continue; ?>
                         <div class="listing-card mt-3">
 
                             <h6><?php echo htmlspecialchars($internship['title']); ?></h6>
@@ -477,7 +494,6 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </div>
                             </div>
                         </div>
-
                     <?php endforeach; ?>
 
                 </div>

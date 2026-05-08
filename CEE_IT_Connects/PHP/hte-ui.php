@@ -624,7 +624,7 @@ $page = 'messages'
                                     <option value="Late">Late</option>
                                 </select>
 
-                                <input type="number" name="hours" placeholder="hrs" min="0" max="24">
+                                <input type="number" name="hours" placeholder="hrs" min="0" max="24" required>
 
                             </div>
 

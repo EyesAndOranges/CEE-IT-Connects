@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user && password_verify($password, $user['password_hash'])) {
 
             $_SESSION['user_id'] = $user['id'];
-            $_SESSION['role'] = strtolower(trim($user['role']));
+            $_SESSION['role'] = 'student';
 
             header("Location: ../PHP/index.php");
             exit;
