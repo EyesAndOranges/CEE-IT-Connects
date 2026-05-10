@@ -2,6 +2,15 @@
 require 'db.php';
 require 'auth.php';
 
+$statePath = __DIR__ . '/register_toggle.txt';
+$registerVisible = file_exists($statePath) ? trim(file_get_contents($statePath)) : 'show';
+
+if (isset($_POST['toggle_register'])) {
+    $newState = $registerVisible === 'show' ? 'hide' : 'show';
+    file_put_contents($statePath, $newState);
+    $registerVisible = $newState;
+}
+
 /* var_dump($_SESSION);
 exit(); */
 $internshipStmt = $pdo->query("
@@ -344,8 +353,8 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <!-- SIDEBAR -->
         <div class="sidebar">
             <h3>Superadmin</h3>
-
-            <a href="#" onclick="showSection(event, 'add-admin')" class="active">Add Admin Accounts</a>
+            <a href="#" onclick="showSection(event, 'dashboard')" class="active">Dashboard</a>
+            <a href="#" onclick="showSection(event, 'add-admin')">Add Admin Accounts</a>
             <a href="#" onclick="showSection(event, 'add-adviser')">Add Adviser Accounts</a>
             <a href="#" onclick="showSection(event, 'delete')">Delete Account</a>
             <a href="#" onclick="showSection(event, 'roles')">Change Roles</a>
@@ -354,9 +363,27 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         <!-- MAIN CONTENT -->
         <div class="main-content">
+            <div id="dashboard" class="section active">
+                <div id="register-toggle">
+                    <h2>Registration Link</h2>
+                    <div class="dashboard-container">
+                        <p>Control whether the registration link is visible on the login page.</p>
 
+                        <form method="POST">
+                            <p>Current Status:
+                                <strong style="color: <?= $registerVisible === 'show' ? 'green' : 'red' ?>">
+                                    <?= $registerVisible === 'show' ? 'Visible' : 'Hidden' ?>
+                                </strong>
+                            </p>
+                            <button type="submit" name="toggle_register" class="btn-find">
+                                <?= $registerVisible === 'show' ? 'Hide Registration Link' : 'Show Registration Link' ?>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
             <!-- ADD ADMIN ACCOUNT SECTION -->
-            <div id="add-admin" class="section active">
+            <div id="add-admin" class="section">
                 <h2>Create New Admin Account</h2>
 
                 <form method="POST" action="superadmin-db.php" class="admin-form">

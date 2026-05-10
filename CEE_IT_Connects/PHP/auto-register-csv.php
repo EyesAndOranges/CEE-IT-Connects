@@ -1,6 +1,6 @@
 <?php
 session_start();
-
+include 'auto-register.php';
 if (!isset($_FILES['students_csv'])) {
     die("No file uploaded.");
 }

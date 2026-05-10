@@ -1,7 +1,4 @@
-Student Id,Full Name,E-mail,Program,Year,Section,Contact No.
-23-2134,Bato Duterte,duterte@gmail.com,Information Technology,3,7,9281234748
-23-3124,Danay Sanaya,sanaya@gmail.com,Civil Engineering,4,1,9001265728
-23-3354,Herold James Elisterio,jamesherold25@gmail.com,Information Technology,3,7,9562336531
-23-3357,Suzane Mikyla Escatron,escatronsuzanemikyla@gmail.com,Information Technology,3,7,9135611231
-24-2313,Jeje Mon Mon,jamesherold35@gmail.com,Information Technology,2,7,9562336532
-22-2313,Patrick Francisco,patrick@gmail.com,Information Technology,4,7,9281234832
+student_id	full_name	email	program	year_level	section	contact_number
+23-2134	Bato Duterte	duterte@gmail.com	Information Technology	3	7	9281234748
+23-3124	Danaya Sanaya	sanaya@gmail.com	Civil Engineering	4	1	9001265728
+24-2918	Hina Nami	nami@gmail.com	Information Technology	3	1	9876123465

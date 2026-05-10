@@ -242,7 +242,7 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                         <div class="form-grid">
                             <input type="text" name="title" placeholder="Title" required>
                             <input type="text" name="company" placeholder="Company Name" required>
-                            <input type="text" name="location" placeholder="Location">
+                            <input type="text" name="location" placeholder="Location" required>
                             <select name="program" id="program" required>
                                 <option value="" disabled selected>Select Program</option>
                                 <option value="Information Technology">Information Technology</option>
@@ -257,6 +257,7 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                                 <option value="4">4 years</option>
                                 <option value="5">5 years</option>
                             </select>
+
                         </div>
                     </div>
 
@@ -435,6 +436,10 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
 
                 <div class="form-card">
 
+                    <div class="mb-3">
+                        <input type="text" id="search-interested" class="form-control"
+                            placeholder="Search by name, email, company...">
+                    </div>
                     <table style="width:100%; border-collapse: collapse;">
                         <thead>
                             <tr style="text-align:left; border-bottom:1px solid #ddd;">
@@ -446,7 +451,7 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                             </tr>
                         </thead>
 
-                        <tbody>
+                        <tbody id="interested-tbody">
                             <?php foreach ($interests as $i): ?>
                                 <tr style="border-bottom:1px solid #eee;">
 
@@ -515,6 +520,10 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                 <div class="card shadow-sm">
                     <div class="card-body">
 
+                        <div class="mb-3">
+                            <input type="text" id="search-announcements" class="form-control"
+                                placeholder="Search announcements...">
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
 
@@ -528,7 +537,7 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                                     </tr>
                                 </thead>
 
-                                <tbody>
+                                <tbody id="manage-announcements-tbody">
                                     <?php if (empty($announcements)): ?>
                                         <tr>
                                             <td colspan="5" class="text-center py-4">
@@ -591,6 +600,7 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
             <div id="student_register" class="section">
                 <h2>Student Register</h2>
                 <div class="form-card">
+                    <!--
                     <div class="d-flex gap-2 mb-3">
                         <form action="auto-register.php" method="POST">
                             <h3>Press to activate the current csv</h3>
@@ -598,7 +608,7 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                                 Activate CSV Import
                             </button>
                         </form>
-                    </div>
+                    </div> -->
                     <div>
                         <h3>Excel Sheet for student registration</h3>
                         <button type="button" class="btn btn-secondary" onclick="showSection('edit_csv')">
@@ -606,7 +616,7 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                         </button>
                     </div>
                     <form action="auto-register-csv.php" method="POST" enctype="multipart/form-data">
-                        <h3>Choose file to replace the csv<!-- (make sure the name of the csv is students.csv)--></h3>
+                        <h3>Import New CSV Files<!-- (make sure the name of the csv is students.csv)--></h3>
                         <label>Select new CSV file</label>
                         <input type="file" name="students_csv" accept=".csv" required>
 
@@ -614,6 +624,9 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                             Replace Current CSV
                         </button>
                     </form>
+                    <a href="download-csv.php" class="btn submit-btn mt-3 py-19">
+                        <i class="bi bi-download"></i> Download CSV
+                    </a>
                     <!--
                     <button class="submit-btn mt-3">
                         <a href='../../Sources/students.csv' download='students.csv'>Download
@@ -630,27 +643,65 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                     $csvRows = [];
 
                     if (($handle = fopen($csvPath, 'r')) !== false) {
-                        while (($row = fgetcsv($handle, 1000, ',')) !== false) {
-                            $csvRows[] = $row;
+                        while (($row = fgetcsv($handle, 1000, "\t")) !== false) {
+                            $csvPath = __DIR__ . '/../Sources/students.csv';
+                            $csvRows = [];
+
+                            $content = file_get_contents($csvPath);
+                            $content = str_replace("\r\n", "\n", $content);
+                            $content = str_replace("\r", "\n", $content);
+
+                            $lines = explode("\n", $content);
+                            $csvRows = [];
+
+                            foreach ($lines as $line) {
+                                $line = trim($line, " \t\n\r\0\x0B\""); // strip surrounding quotes
+                                if ($line === '')
+                                    continue;
+
+                                // detect delimiter per row
+                                $row = str_contains($line, "\t")
+                                    ? explode("\t", $line)
+                                    : str_getcsv($line, ",");
+
+                                // clean each cell of extra quotes
+                                $row = array_map(fn($cell) => trim($cell, '"'), $row);
+
+                                $csvRows[] = $row;
+                            }
+
+                            // Remove duplicate header if present
+                            if (count($csvRows) > 1 && $csvRows[0] === $csvRows[1]) {
+                                array_shift($csvRows);
+                            }
                         }
                         fclose($handle);
                     }
                     ?>
                     <pre><?php //print_r($csvRows); ?></pre>
                     <form method="POST" action="auto-register-save-csv.php">
-                        <table class="table table-bordered">
-                            <tbody>
+                        <?php foreach ($csvRows[0] as $colIndex => $headerCell): ?>
+                            <input type="hidden" name="headers[<?= $colIndex ?>]"
+                                value="<?= htmlspecialchars($headerCell) ?>">
+                        <?php endforeach; ?>
+
+                        <table class="table table-bordered" id="csv-table">
+                            <thead>
+                                <tr>
+                                    <?php foreach ($csvRows[0] as $headerCell): ?>
+                                        <th><?= htmlspecialchars($headerCell) ?></th>
+                                    <?php endforeach; ?>
+                                </tr>
+                            </thead>
+                            <tbody id="csv-tbody">
                                 <?php foreach ($csvRows as $rowIndex => $row): ?>
+                                    <?php if ($rowIndex === 0)
+                                        continue; // skip header row ?>
                                     <tr>
                                         <?php foreach ($row as $colIndex => $cell): ?>
                                             <td>
-                                                <?php if ($rowIndex === 0): ?>
-                                                    <input type="text" value="<?= htmlspecialchars($cell) ?>" readonly
-                                                        class="form-control fw-bold bg-light">
-                                                <?php else: ?>
-                                                    <input type="text" name="csv[<?= $rowIndex ?>][<?= $colIndex ?>]"
-                                                        value="<?= htmlspecialchars($cell) ?>" class="form-control">
-                                                <?php endif; ?>
+                                                <input type="text" name="csv[<?= $rowIndex ?>][<?= $colIndex ?>]"
+                                                    value="<?= htmlspecialchars($cell) ?>" class="form-control">
                                             </td>
                                         <?php endforeach; ?>
                                     </tr>
@@ -658,12 +709,20 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                             </tbody>
                         </table>
 
-                        <button type="submit" class="submit-btn">
-                            Save CSV
-                        </button>
-                        <button type="button" class="submit-btn btn-danger" onclick="showSection('student_register')">
-                            Back
-                        </button>
+                        <!-- store col count for JS -->
+                        <input type="hidden" id="col-count" value="<?= count($csvRows[0]) ?>">
+                        <input type="hidden" id="row-count" value="<?= count($csvRows) ?>">
+
+                        <div class="d-flex gap-2 mt-3">
+                            <button type="button" class="btn btn-success" onclick="addRow()">
+                                <i class="bi bi-plus-circle"></i> Add Row
+                            </button>
+                            <button type="submit" class="submit-btn">Save CSV</button>
+                            <button type="button" class="submit-btn btn-danger"
+                                onclick="showSection('student_register')">
+                                Back
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -697,6 +756,33 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
     <script>
+        function addRow() {
+            const tbody = document.getElementById('csv-tbody');
+            const colCount = parseInt(document.getElementById('col-count').value);
+            const rowCount = parseInt(document.getElementById('row-count').value);
+
+            // use current row count as new index to avoid collisions
+            const newRowIndex = rowCount;
+            document.getElementById('row-count').value = rowCount + 1;
+
+            const tr = document.createElement('tr');
+
+            for (let col = 0; col < colCount; col++) {
+                const td = document.createElement('td');
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.name = `csv[${newRowIndex}][${col}]`;
+                input.className = 'form-control';
+                input.placeholder = '—';
+                td.appendChild(input);
+                tr.appendChild(td);
+            }
+
+            tbody.appendChild(tr);
+
+            // scroll to new row
+            tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
         function openFeedbackModal(bookmarkId) {
             document.getElementById('feedbackModal').dataset.id = bookmarkId;
             document.getElementById('feedbackModal').style.display = 'flex';
@@ -753,7 +839,34 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
         document.getElementById('feedbackModal').addEventListener('click', function (e) {
             if (e.target === this) closeFeedbackModal();
         });
+
+        // Announcements search (manage_announcement)
+        document.getElementById('search-announcements').addEventListener('input', function () {
+            const query = this.value.toLowerCase();
+            document.querySelectorAll('#manage-announcements-tbody tr').forEach(row => {
+                // collect text from inputs, selects, and plain td text
+                const text = Array.from(row.querySelectorAll('input, select, td'))
+                    .map(el => {
+                        if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                            return el.value;
+                        }
+                        return el.innerText;
+                    })
+                    .join(' ')
+                    .toLowerCase();
+
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        });
+        // Interested search
+        document.getElementById('search-interested').addEventListener('input', function () {
+            const query = this.value.toLowerCase();
+            document.querySelectorAll('#interested-tbody tr').forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
+            });
+        });
     </script>
+
     <script src="../JS/script.js"></script>
 
 </body>

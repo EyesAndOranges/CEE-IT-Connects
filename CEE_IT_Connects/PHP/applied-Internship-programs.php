@@ -248,20 +248,24 @@ $studentProgram = $student['program'] ?? '';
 
                 <div class="col-lg-3">
                     <form method="GET">
+
                         <!-- <div class="search-box">
                             <input type="text" id="searchInput" placeholder="Search for an internship listing"
                                 onkeyup="filterListings()">
                         </div> -->
                         <div class="filter-box">
-
+                            <div class="mb-3">
+                                <input type="text" id="search-internship" class="form-control"
+                                    placeholder="Search by name, email, company...">
+                            </div>
                             <h6>Filters</h6>
-
+                            <!--
                             <div class="d-grid gap-2 mb-3">
                                 <button type="submit" class="btn btn-dark">Apply Filters</button>
                                 <a href="applied-Internship-programs.php" class="btn btn-dark">Clear Filters</a>
                             </div>
 
-                            <!-- <div class="mb-3">
+                            <div class="mb-3">
                                 <strong>Program</strong>
 
                                 <div class="form-check">
@@ -393,7 +397,9 @@ $studentProgram = $student['program'] ?? '';
                     <?php foreach ($internships as $internship): ?>
                         <?php if ($internship['program'] !== $studentProgram)
                             continue; ?>
-                        <div class="listing-card mt-3">
+                        <div class="listing-card mt-3"
+                            data-type="<?= htmlspecialchars($internship['internship_type'] ?? '') ?>"
+                            data-classification="<?= htmlspecialchars($internship['company_classification'] ?? '') ?>">
 
                             <h6><?php echo htmlspecialchars($internship['title']); ?></h6>
 
@@ -422,7 +428,9 @@ $studentProgram = $student['program'] ?? '';
                             <?php endif; ?>
 
                             <?php if (!empty($internship['deadline'])): ?>
-                                <p><strong>Deadline:</strong> <?php echo htmlspecialchars($internship['deadline']); ?></p>
+                                <p data-deadline="<?= htmlspecialchars($internship['deadline']) ?>">
+                                    <strong>Deadline:</strong> <?= htmlspecialchars($internship['deadline']) ?>
+                                </p>
                             <?php endif; ?>
 
                             <?php if (!empty($internship['phone_numbers'])): ?>
@@ -511,13 +519,66 @@ $studentProgram = $student['program'] ?? '';
         }
         function toggleFiles(id) {
             const panel = document.getElementById("files-" + id);
-
-            if (panel.style.display === "none") {
-                panel.style.display = "block";
-            } else {
-                panel.style.display = "none";
-            }
+            panel.style.display = panel.style.display === "none" ? "block" : "none";
         }
+
+        function applyFilters() {
+            const search = document.getElementById('search-internship').value.toLowerCase();
+            const deadline = document.querySelector('input[name="deadline"]:checked')?.value ?? '';
+            const internshipType = document.querySelector('input[name="internship_type"]:checked')?.value ?? '';
+            const companyClass = document.querySelector('select[name="company_classification"]').value ?? '';
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            document.querySelectorAll('.listing-card').forEach(card => {
+                const text = card.innerText.toLowerCase();
+
+                // search filter
+                const matchSearch = search === '' || text.includes(search);
+
+                // deadline filter
+                let matchDeadline = true;
+                if (deadline) {
+                    const deadlineEl = card.querySelector('[data-deadline]');
+                    const deadlineStr = deadlineEl ? deadlineEl.dataset.deadline : '';
+                    const deadlineDate = deadlineStr ? new Date(deadlineStr) : null;
+
+                    if (deadlineDate) {
+                        const week = new Date(today); week.setDate(today.getDate() + 7);
+                        const month = new Date(today); month.setDate(today.getDate() + 30);
+
+                        if (deadline === 'week') matchDeadline = deadlineDate >= today && deadlineDate <= week;
+                        if (deadline === 'month') matchDeadline = deadlineDate >= today && deadlineDate <= month;
+                        if (deadline === 'future') matchDeadline = deadlineDate >= today;
+                    } else {
+                        matchDeadline = false;
+                    }
+                }
+
+                // internship type filter
+                const matchType = internshipType === '' || internshipType === 'All'
+                    || card.dataset.type === internshipType;
+
+                // company classification filter
+                const matchClass = companyClass === '' || card.dataset.classification === companyClass;
+
+                card.style.display = (matchSearch && matchDeadline && matchType && matchClass) ? '' : 'none';
+            });
+        }
+
+        // attach listeners
+        document.getElementById('search-internship').addEventListener('input', applyFilters);
+        document.querySelectorAll('input[name="deadline"]').forEach(r => r.addEventListener('change', applyFilters));
+        document.querySelectorAll('input[name="internship_type"]').forEach(r => r.addEventListener('change', applyFilters));
+        document.querySelector('select[name="company_classification"]').addEventListener('change', applyFilters);
+
+        document.getElementById('search-internship').addEventListener('input', function () {
+            const query = this.value.toLowerCase();
+            document.querySelectorAll('#internship-tbody tr').forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
+            });
+        });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../JS/index-script.js"></script>

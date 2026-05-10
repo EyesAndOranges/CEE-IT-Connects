@@ -1,5 +1,7 @@
 <?php
 $role = $_GET['role'] ?? 'student';
+$statePath = __DIR__ . '/register_toggle.txt';
+$registerVisible = file_exists($statePath) ? trim(file_get_contents($statePath)) : 'show';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -70,9 +72,12 @@ $role = $_GET['role'] ?? 'student';
                     <a href="forgot-password.php" class="forgot-link">Forgot password?</a>
                     <button type="submit" class="btn-login">Login</button>
                 </form>
-                <div class="register-text mt-3" style="text-align: center; margin-top: 20px; 
-                font-size: 0.9rem; color: #333;">Click <a href="student-register.php" style="color: #e05834;">here</a>
-                    to register</div>
+                <?php if ($registerVisible === 'show'): ?>
+                    <div class="register-text mt-3" style="text-align: center; margin-top: 20px; 
+                        font-size: 0.9rem; color: #333;">Click <a href="student-register.php"
+                            style="color: #e05834;">here</a>
+                        to register</div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
