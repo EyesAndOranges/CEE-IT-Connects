@@ -7,6 +7,8 @@
 body{
     padding-top:80px;
     z-index: 1000;
+    display:flex;
+    flex-direction:column;
 }
 
 body,html{
@@ -38,10 +40,12 @@ body,html{
 }
 
 .welcome-overlay{
+    margin-left: 20px;
     background:rgba(39,47,84,0.35);
     padding:40px;
     border-radius:12px;
-    max-width:600px;
+    width: 920px;
+    max-width:80%;
     backdrop-filter:blur(3px);
     opacity: 0;
     transform: translateX(-30px);
@@ -50,19 +54,20 @@ body,html{
 
 .welcome-text{
     font-weight:700;
-    color:#000;
     font-size:1.4rem;
     margin-bottom:0;
+    color: #ededed;
 }
 
 .main-heading{
     font-size:4rem;
     font-weight:900;
-    color:#000;
-    margin-bottom:30px;
+    margin-bottom:10px;
     opacity: 0;
     transform: translateY(-10px);
     animation: fadeInDown 1s forwards 0.7s;
+    font-family: 'Geogrotesque TRIAL', sans-serif; 
+    color: #1c2442;
 }
 
 .description-box{
@@ -70,7 +75,7 @@ body,html{
     color:white;
     padding:25px;
     border-radius:12px;
-    max-width:520px;
+    max-width:100%;
     font-size:14px;
     line-height:1.6;
     box-shadow:0 6px 20px rgba(0,0,0,0.25);
@@ -78,6 +83,7 @@ body,html{
     opacity: 0;
     transform: translateY(20px);
     animation: fadeInUp 1s forwards 0.9s;
+    text-align: justify;
 }
 
 /* BUTTON */
@@ -361,7 +367,7 @@ body,html{
 }
 
 .feature-icon{
-    font-size:42px;
+    font-size:54px;
     margin-bottom:18px;
     color:white;
 }
@@ -380,48 +386,20 @@ body,html{
 
 /* ABOUT US */
 .about-section{
-    background: linear-gradient(135deg, #FFB62F 0%, #E4572E 100%);
-    padding: 100px 0 60px 0;
-    color: #fff;
+    background: linear-gradient(135deg, #eea620 0%, #e34d20 100%);
+    padding: 50px 0 0 0;
     position: relative;
     overflow: hidden;
-    opacity: 0;
-    transform: translateY(30px);
-    animation: fadeInUp 1s forwards 2.2s;
+    color: #fff;
 }
 
-.about-section::before{
-    content: '';
-    position: absolute;
-    top: -50px;
-    right: -50px;
-    width: 300px;
-    height: 300px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 50%;
-    filter: blur(80px);
-}
-
-.about-section::after{
-    content: '';
-    position: absolute;
-    bottom: -60px;
-    left: -60px;
-    width: 400px;
-    height: 400px;
-    background: rgba(0,0,0,0.05);
-    border-radius: 50%;
-    filter: blur(100px);
-}
+/* about section before and after removed */
 
 .about-title{
     font-weight:900;
     font-size:3rem;
     margin-bottom:25px;
-    text-shadow:1px 2px 5px rgba(0,0,0,0.2);
-    opacity:0;
-    transform: translateY(-10px);
-    animation: fadeInDown 1s forwards 2.4s;
+    text-shadow:1px 2px 5px rgba(227, 83, 0, 0.807);
 }
 
 .about-text{
@@ -430,9 +408,7 @@ body,html{
     font-size:1.1rem;
     line-height:1.8;
     text-shadow:0px 1px 4px rgba(0,0,0,0.2);
-    opacity:0;
-    transform: translateY(20px);
-    animation: fadeInUp 1s forwards 2.6s;
+    text-align: justify;
 }
 
 .about-info-bar{
@@ -442,9 +418,6 @@ body,html{
     backdrop-filter: blur(8px);
     border-top-left-radius: 30px;
     border-top-right-radius: 30px;
-    opacity:0;
-    transform: translateY(20px);
-    animation: fadeInUp 1s forwards 2.8s;
 }
 
 /* Dissappear */

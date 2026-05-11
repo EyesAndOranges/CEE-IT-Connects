@@ -14,7 +14,7 @@ $now = new DateTime(); // current time
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home - CEE IT Connects</title>
+    <title>Home | CEE IT Connects</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -50,7 +50,7 @@ $now = new DateTime(); // current time
                         <h1 class="main-heading animate-on-scroll animate-right">CEE IT Connects</h1>
                         <div class="description-box animate-on-scroll animate-scale">
                             <p>
-                                CEE IT Connects is a web-based internship coordination platform
+                                &nbsp;&nbsp;&nbsp;&nbsp;CEE IT Connects is a web-based internship coordination platform
                                 developed for the College of Engineering and Information Technology
                                 (CEIT) of Pamantasan ng Lungsod ng Valenzuela (PLV). Designed to
                                 streamline and modernize the On-the-Job Training (OJT) process,
@@ -59,7 +59,7 @@ $now = new DateTime(); // current time
                                 partner institutions.
                             </p>
                         </div>
-                        <a href="applied-internship-programs.php" class="btn-find animate-on-scroll animate-scale">
+                        <a href="applied-internship-programs.php" class="btn-find animate-on-scroll animate-scale" style="color:white; background-color: #ff673a;">
                             Browse for Internships
                         </a>
                     </div>
@@ -73,7 +73,7 @@ $now = new DateTime(); // current time
     <!-- FEATURES -->
     <section class="features-section">
         <div class="container text-center">
-            <h2 class="features-title animate-on-scroll animate-left">CEE IT Connects Features</h2>
+            <h2 class="features-title animate-on-scroll animate-left" style="font-family: 'Geogrotesque TRIAL', sans-serif; color: #ff673a; font-size: 3rem;">CEE IT Connects Features</h2>
             <div class="row g-5 mt-2">
                 <div class="col-md-4">
                     <div class="feature-item animate-on-scroll animate-scale">
@@ -139,7 +139,7 @@ $now = new DateTime(); // current time
                                 <i class="fas fa-phone"
                                     onclick="toggleNumbers(this,'<?= htmlspecialchars($loc['phone_numbers']) ?>')"></i>
                                 <i class="fas fa-location-arrow"
-                                    onclick="getDirections(<?= $loc['latitude'] ?>,<?= $loc['longitude'] ?>)"></i>
+                                    onclick="getDirections(<?= $loc['latitude'] ?>,<?= $loc['longtitude'] ?>)"></i>
                             </div>
                             <div class="phone-dropdown"></div>
                         </div>
@@ -149,6 +149,7 @@ $now = new DateTime(); // current time
                 <div id="map"></div>
             </div>
         </div>
+        
     </section>
 
     <!-- ABOUT -->
@@ -156,7 +157,7 @@ $now = new DateTime(); // current time
         <div class="container text-center">
             <h2 class="about-title animate-on-scroll animate-left">About CEE IT Connects</h2>
             <p class="about-text animate-on-scroll animate-right">
-                CEE IT Connects is an internship coordination platform developed
+                &nbsp;&nbsp;&nbsp;&nbsp;CEE IT Connects is an internship coordination platform developed
                 to support students from the College of Engineering and Information
                 Technology of Pamantasan ng Lungsod ng Valenzuela. The system
                 simplifies the internship process by connecting students,
@@ -166,13 +167,12 @@ $now = new DateTime(); // current time
         <div class="about-info-bar">
             <div class="container">
                 <div class="row text-center align-items-center">
-                    <div class="col-md-4 info-item"><i class="fas fa-map-marker-alt"></i> Tongco St., Maysan, Valenzuela
-                        City</div>
-                    <div class="col-md-4 brand-center"><strong>CEE IT CONNECTS</strong></div>
-                    <div class="col-md-4 info-item"><i class="fas fa-envelope"></i> ceeitconnects@gmail.com</div>
-                    <div class="col-md-4 info-item"><i class="fab fa-facebook"></i> CEE IT Connects</div>
-                    <div class="col-md-4 copyright">©2026 CEE IT Connects. All rights reserved</div>
-                    <div class="col-md-4 info-item"><i class="fas fa-phone"></i> 09123456789</div>
+                    <div class="col-md-4" style="font-size: 1.15rem;"><i class="fas fa-map-marker-alt"></i> Tongco St., Maysan, Valenzuela City
+                    <br><i class="fab fa-facebook"></i> CEE IT Connects</div>
+                    <div class="col-md-4" style="color: #272f54; font-weight: bolder; font-size: 1.25rem;"><strong>CEE IT CONNECTS</strong>
+                    <br>©2026 CEE IT Connects. All rights reserved</div>
+                    <div class="col-md-4" style="font-size: 1.15rem;"><i class="fas fa-envelope"></i> ceeitconnects@gmail.com
+                    <br><i class="fas fa-phone"></i> 09123456789</div>
                 </div>
             </div>
         </div>
