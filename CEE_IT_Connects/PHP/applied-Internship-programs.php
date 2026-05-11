@@ -5,6 +5,11 @@ require 'auth.php';
 $params = [];
 $conditions = [];
 
+$studentstmt = $pdo->prepare("SELECT program FROM students WHERE id = ?");
+$studentstmt->execute([$_SESSION['user_id']]);
+$student = $studentstmt->fetch(PDO::FETCH_ASSOC);
+$studentProgram = $student['program'] ?? '';
+
 if (!empty($_GET['program'])) {
     $conditions[] = "program = :program";
     $params['program'] = $_GET['program'];
@@ -57,10 +62,6 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$studentstmt = $pdo->prepare("SELECT program FROM students WHERE id = ?");
-$studentstmt->execute([$_SESSION['user_id']]);
-$student = $studentstmt->fetch(PDO::FETCH_ASSOC);
-$studentProgram = $student['program'] ?? '';
 ?>
 
 <?php $page = 'opportunity'; ?>
@@ -259,12 +260,12 @@ $studentProgram = $student['program'] ?? '';
                                     placeholder="Search by name, email, company...">
                             </div>
                             <h6>Filters</h6>
-                            <!--
+
                             <div class="d-grid gap-2 mb-3">
-                                <button type="submit" class="btn btn-dark">Apply Filters</button>
                                 <a href="applied-Internship-programs.php" class="btn btn-dark">Clear Filters</a>
                             </div>
 
+                            <!-- <button type="submit" class="btn btn-dark">Apply Filters</button> -->
                             <div class="mb-3">
                                 <strong>Program</strong>
 
@@ -288,7 +289,7 @@ $studentProgram = $student['program'] ?? '';
                                             echo "checked"; ?>>
                                     Electrical Engineering
                                 </div>
-                            </div> -->
+                            </div>
 
                             <div class="mb-3">
                                 <strong>Deadline</strong>
@@ -395,8 +396,8 @@ $studentProgram = $student['program'] ?? '';
                     </small>
 
                     <?php foreach ($internships as $internship): ?>
-                        <?php if ($internship['program'] !== $studentProgram)
-                            continue; ?>
+                        <?php /* if ($internship['program'] !== $studentProgram)
+                 continue;*/ ?>
                         <div class="listing-card mt-3"
                             data-type="<?= htmlspecialchars($internship['internship_type'] ?? '') ?>"
                             data-classification="<?= htmlspecialchars($internship['company_classification'] ?? '') ?>">
@@ -577,6 +578,11 @@ $studentProgram = $student['program'] ?? '';
             const query = this.value.toLowerCase();
             document.querySelectorAll('#internship-tbody tr').forEach(row => {
                 row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
+            });
+        });
+        document.querySelectorAll('input[name="program"]').forEach(r => {
+            r.addEventListener('change', function () {
+                this.closest('form').submit();
             });
         });
     </script>
