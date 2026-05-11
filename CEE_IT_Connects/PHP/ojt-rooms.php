@@ -4,12 +4,13 @@ require 'db.php';
 require 'auth.php';
 $current_room_id = $_GET['room_id'] ?? null;
 
+$isAdviser = isset($_SESSION['role']) && $_SESSION['role'] === 'internship_adviser';
 $stmt = $pdo->prepare("
     SELECT r.*, a.full_name, a.title, a.role
     FROM rooms r
     LEFT JOIN advisers a ON r.adviser_id = a.id
     JOIN room_members rm ON r.id = rm.room_id
-    WHERE rm.user_id = ?
+    WHERE rm.user_id = ? " . (!$isAdviser ? "AND r.is_archived = FALSE" : "") . "
 ");
 $stmt->execute([$_SESSION['user_id']]);
 
@@ -294,25 +295,26 @@ $page = 'messages'
             <h6>ROOMS</h6>
 
             <?php foreach ($rooms as $room): ?>
+                <?php if (!$isAdviser && $room['is_archived'])
+                    continue; ?>
 
                 <?php if ($current_room_id == $room['id']): ?>
-
-                    <!-- CURRENT ROOM (NOT CLICKABLE) -->
                     <div class="room-item active-room">
-                        <?= $room['room_name'] ?>
+                        <?= htmlspecialchars($room['room_name']) ?>
+                        <?php if ($room['is_archived']): ?>
+                            <span style="font-size:10px;"> (Archived)</span>
+                        <?php endif; ?>
                     </div>
-
                 <?php else: ?>
-
-                    <!-- CLICKABLE ROOM -->
                     <a href="?room_id=<?= $room['id'] ?>" class="room-link">
-                        <div class="room-item">
-                            <?= $room['room_name'] ?>
+                        <div class="room-item <?= $room['is_archived'] ? 'text-muted' : '' ?>">
+                            <?= htmlspecialchars($room['room_name']) ?>
+                            <?php if ($room['is_archived']): ?>
+                                <span style="font-size:10px;"> (Archived)</span>
+                            <?php endif; ?>
                         </div>
                     </a>
-
                 <?php endif; ?>
-
             <?php endforeach; ?>
         </div>
     </div>
@@ -337,22 +339,35 @@ $page = 'messages'
                 <div class="row mt-4">
                     <?php foreach ($rooms as $room): ?>
                         <div class="col-md-4">
-                            <div class="card shadow-sm">
+                            <div class="card shadow-sm <?= $room['is_archived'] ? 'opacity-50' : '' ?>">
 
                                 <div class="room-card" style="background: <?= $color ?>">
-                                    <h5 style="text-color <? $color ?>">
-                                        <?= $room['room_name'] ?>
-                                    </h5>
-                                    <small>
-                                        <?= $room['full_name'] ?> (
-                                        <?= $room['role'] ?>)
-                                    </small>
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h5><?= htmlspecialchars($room['room_name']) ?></h5>
+                                            <small><?= htmlspecialchars($room['full_name']) ?>
+                                                (<?= htmlspecialchars($room['role']) ?>)</small>
+                                        </div>
+                                        <?php if ($isAdviser && !$room['is_archived']): ?>
+                                            <form method="POST" action="archive-room.php"
+                                                onsubmit="return confirm('Archive this room? Students will no longer see it.')">
+                                                <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
+                                                <button type="submit" class="btn btn-sm btn-light" title="Archive room"
+                                                    style="font-size:11px; padding: 2px 8px;">
+                                                    <i class="fa-solid fa-box-archive"></i>
+                                                </button>
+                                            </form>
+                                        <?php elseif ($isAdviser && $room['is_archived']): ?>
+                                            <span class="badge bg-secondary" style="font-size:10px;">Archived</span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
 
                                 <div class="room-footer">
                                     <form method="GET">
                                         <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
-                                        <button class="enter-btn">Enter Room</button>
+                                        <button class="enter-btn" <?= $room['is_archived'] ? 'disabled' : '' ?>>Enter
+                                            Room</button>
                                     </form>
                                 </div>
 

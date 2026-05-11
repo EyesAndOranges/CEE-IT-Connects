@@ -15,7 +15,7 @@ if (!isset($_POST['headers']) || !is_array($_POST['headers'])) {
 $rows = $_POST['csv'];
 ksort($rows);
 
-/* map headers from hidden inputs — no need to shift $rows at all */
+/* map headers from hidden inputs */
 $headers = [];
 foreach ($_POST['headers'] as $colIndex => $value) {
     $h = strtolower(trim($value));
@@ -56,7 +56,11 @@ foreach ($rows as $row) {
 fclose($fp);
 
 /* save to database */
-$stmt = $pdo->prepare("
+$checkStudent = $pdo->prepare("
+    SELECT id FROM students WHERE student_id = :student_id
+");
+
+$insertStudent = $pdo->prepare("
     INSERT INTO students (email, full_name, student_id, program, year_level, section, contact_number, password_hash)
     VALUES (:email, :full_name, :student_id, :program, :year_level, :section, :contact_number, :password_hash)
     ON CONFLICT (student_id) DO UPDATE SET
@@ -66,6 +70,11 @@ $stmt = $pdo->prepare("
         year_level     = EXCLUDED.year_level,
         section        = EXCLUDED.section,
         contact_number = EXCLUDED.contact_number
+");
+
+$insertAudit = $pdo->prepare("
+    INSERT INTO audits (user_id, roles, activity, activity_date)
+    VALUES (:user_id, :roles, :activity, NOW())
 ");
 
 foreach ($rows as $row) {
@@ -80,16 +89,30 @@ foreach ($rows as $row) {
     if (empty($cleanRow['student_id']))
         continue;
 
-    $stmt->execute([
-        'email' => $cleanRow['email'] ?? '',
-        'full_name' => $cleanRow['full_name'] ?? '',
-        'student_id' => $cleanRow['student_id'],
-        'program' => $cleanRow['program'] ?? '',
-        'year_level' => (int) ($cleanRow['year_level'] ?? 0),
-        'section' => $cleanRow['section'] ?? '',
-        'contact_number' => $cleanRow['contact_number'] ?? '',
-        'password_hash' => password_hash($cleanRow['student_id'], PASSWORD_DEFAULT)
+    // Check if student already exists BEFORE inserting
+    $checkStudent->execute([':student_id' => $cleanRow['student_id']]);
+    $isNew = $checkStudent->fetchColumn() === false;
+
+    $insertStudent->execute([
+        ':email' => $cleanRow['email'] ?? '',
+        ':full_name' => $cleanRow['full_name'] ?? '',
+        ':student_id' => $cleanRow['student_id'],
+        ':program' => $cleanRow['program'] ?? '',
+        ':year_level' => (int) ($cleanRow['year_level'] ?? 0),
+        ':section' => $cleanRow['section'] ?? '',
+        ':contact_number' => $cleanRow['contact_number'] ?? '',
+        ':password_hash' => password_hash($cleanRow['student_id'], PASSWORD_DEFAULT)
     ]);
+
+    // Only audit if this was a new student
+    if ($isNew) {
+        $newStudentId = $pdo->lastInsertId();
+        $insertAudit->execute([
+            ':user_id' => $newStudentId,
+            ':roles' => 'student',
+            ':activity' => 'Student registered an account with school Id ' . $cleanRow['student_id']
+        ]);
+    }
 }
 
 header("Location: internship-ui.php");

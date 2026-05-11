@@ -4,12 +4,14 @@ require 'db.php';
 require 'auth.php';
 $current_room_id = $_GET['room_id'] ?? null;
 
+$isAdviser = isset($_SESSION['role']) && $_SESSION['role'] === 'internship_adviser';
 $stmt = $pdo->prepare("
     SELECT r.*, a.full_name, a.title, a.role
     FROM rooms r
     LEFT JOIN advisers a ON r.adviser_id = a.id
     JOIN room_members rm ON r.id = rm.room_id
     WHERE rm.user_id = ?
+    " . (!$isAdviser ? "AND r.is_archived = FALSE" : "") . "
 ");
 $stmt->execute([$_SESSION['user_id']]);
 

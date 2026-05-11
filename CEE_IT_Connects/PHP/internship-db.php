@@ -183,7 +183,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmtActivity->execute([
                 ':user_id' => $_SESSION['user_id'],
                 ':roles' => 'internship_admin',
-                ':activity' => 'Sent feedback for student ' . $bookmark['full_name'] .
+                ':activity' => 'Sent feedback for student ' . $bookmark['student_id'] .
                     ' regarding internship ' . $bookmark['title'] . ' at ' . $bookmark['company']
             ]);
 
