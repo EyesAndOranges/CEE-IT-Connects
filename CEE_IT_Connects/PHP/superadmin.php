@@ -19,6 +19,42 @@ $internshipStmt = $pdo->query("
     ORDER BY company ASC, title ASC
 ");
 $internships = $internshipStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Stats for dashboard
+$statsStmt = $pdo->query("SELECT COUNT(*) AS total FROM internships");
+$totalInternships = $statsStmt->fetchColumn();
+
+$interestedStmt = $pdo->query("SELECT COUNT(*) AS total FROM internship_bookmarks");
+$totalInterested = $interestedStmt->fetchColumn();
+
+$announcementsStmt = $pdo->query("SELECT COUNT(*) AS total FROM announcements");
+$totalAnnouncements = $announcementsStmt->fetchColumn();
+
+$recentInternshipsStmt = $pdo->query("
+    SELECT title, company, location, created_at 
+    FROM internships 
+    ORDER BY created_at DESC 
+    LIMIT 5
+");
+$recentInternships = $recentInternshipsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$recentInterestedStmt = $pdo->query("
+    SELECT s.full_name, s.email, i.title AS internship_title, i.company, ib.created_at
+    FROM internship_bookmarks ib
+    JOIN students s ON s.id = ib.student_id
+    JOIN internships i ON i.id = ib.internship_id
+    ORDER BY ib.created_at DESC
+    LIMIT 5
+");
+$recentInterested = $recentInterestedStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$recentAnnouncementsStmt = $pdo->query("
+    SELECT title, category, created_at 
+    FROM announcements 
+    ORDER BY created_at DESC 
+    LIMIT 5
+");
+$recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <?php
@@ -108,7 +144,8 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <head>
     <meta charset="UTF-8">
     <title>Superadmin Dashboard</title>
-
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <style>
         :root {
             --gradient-start: #FFB62F;
@@ -227,6 +264,11 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             padding: 20px;
             display: flex;
             flex-direction: column;
+            height: 100%;
+
+            position: fixed;
+            top: 0;
+            left: 0;
         }
 
         .sidebar h3 {
@@ -257,6 +299,7 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             padding: 40px;
             background: #f5f7ff;
             width: 50vw;
+            margin-left: 220px;
         }
 
         /* SECTIONS */
@@ -343,6 +386,9 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return true;
     }
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</body>
 
 <body>
 
@@ -351,7 +397,7 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="layout">
 
         <!-- SIDEBAR -->
-        <div class="sidebar">
+        <div class="sidebar" style="">
             <h3>Superadmin</h3>
             <a href="#" onclick="showSection(event, 'dashboard')" class="active">Dashboard</a>
             <a href="#" onclick="showSection(event, 'add-admin')">Add Admin Accounts</a>
@@ -364,6 +410,231 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <!-- MAIN CONTENT -->
         <div class="main-content">
             <div id="dashboard" class="section active">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <div>
+                        <h4 class="fw-bold mb-0" style="color:#272f54;">Internship Admin Overview</h4>
+                        <p class="text-muted small mb-0">Live summary from the internship admin panel</p>
+                    </div>
+                    <span class="badge rounded-pill px-3 py-2" style="background:green; font-size:12px;">
+                        <i class="bi bi-circle-fill me-1" style="color:#4cff91; font-size:8px;"></i>
+                        Live
+                    </span>
+                </div>
+
+                <!-- Stat Cards -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="card border-0 rounded-4 h-100" style="background:#272f54;">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <p class="text-white-50 small mb-1 fw-semibold text-uppercase"
+                                            style="letter-spacing:.05em; font-size:11px;">Internship Postings</p>
+                                        <h2 class="fw-bold text-white mb-0"><?= (int) $totalInternships ?></h2>
+                                    </div>
+                                    <div class="rounded-3 d-flex align-items-center justify-content-center"
+                                        style="width:44px; height:44px; background:rgba(255,255,255,0.1);">
+                                        <i class="bi bi-briefcase-fill text-white fs-5"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 rounded-4 h-100" style="background:#FFB62F;">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <p class="small mb-1 fw-semibold text-uppercase"
+                                            style="letter-spacing:.05em; font-size:11px; color:#7a5200;">Students
+                                            Interested</p>
+                                        <h2 class="fw-bold mb-0" style="color:#3b2600;"><?= (int) $totalInterested ?>
+                                        </h2>
+                                    </div>
+                                    <div class="rounded-3 d-flex align-items-center justify-content-center"
+                                        style="width:44px; height:44px; background:rgba(0,0,0,0.1);">
+                                        <i class="bi bi-bookmarks-fill fs-5" style="color:#3b2600;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 rounded-4 h-100" style="background:#E4572E;">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <p class="text-white-50 small mb-1 fw-semibold text-uppercase"
+                                            style="letter-spacing:.05em; font-size:11px;">Announcements</p>
+                                        <h2 class="fw-bold text-white mb-0"><?= (int) $totalAnnouncements ?></h2>
+                                    </div>
+                                    <div class="rounded-3 d-flex align-items-center justify-content-center"
+                                        style="width:44px; height:44px; background:rgba(255,255,255,0.15);">
+                                        <i class="bi bi-bell-fill text-white fs-5"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Internship Postings -->
+                <div class="card border-0 rounded-4 shadow-sm mb-4">
+                    <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
+                        <i class="bi bi-briefcase" style="color:#272f54;"></i>
+                        <h6 class="fw-bold mb-0" style="color:#272f54;">Recent Internship Postings</h6>
+                        <span class="badge ms-auto rounded-pill"
+                            style="background:#eef1ff; color:#272f54; font-size:11px;">
+                            Latest 5
+                        </span>
+                    </div>
+                    <div class="card-body px-4 pb-4 pt-2">
+                        <?php if (empty($recentInternships)): ?>
+                            <p class="text-muted small mb-0">No internships posted yet.</p>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table id="table-internships" class="table table-hover align-middle mb-0"
+                                    style="font-size:14px;">
+                                    <thead>
+                                        <tr
+                                            style="color:#aaa; font-size:12px; text-transform:uppercase; letter-spacing:.04em;">
+                                            <th class="border-0 pb-2 fw-semibold">Title</th>
+                                            <th class="border-0 pb-2 fw-semibold">Company</th>
+                                            <th class="border-0 pb-2 fw-semibold">Location</th>
+                                            <th class="border-0 pb-2 fw-semibold">Posted</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($recentInternships as $ri): ?>
+                                            <tr>
+                                                <td class="fw-semibold" style="color:#272f54;">
+                                                    <?= htmlspecialchars($ri['title']) ?>
+                                                </td>
+                                                <td><?= htmlspecialchars($ri['company']) ?></td>
+                                                <td class="text-muted">
+                                                    <i class="bi bi-geo-alt me-1"></i>
+                                                    <?= htmlspecialchars($ri['location']) ?>
+                                                </td>
+                                                <td>
+                                                    <span class="badge rounded-pill px-3"
+                                                        style="background:#f0f4ff; color:#272f54; font-weight:500; font-size:12px;">
+                                                        <?= date("M d, Y", strtotime($ri['created_at'])) ?>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Interested Students + Announcements -->
+                <div class="row g-4">
+                    <!-- Recently Interested Students -->
+                    <div class="col-lg-7">
+                        <div class="card border-0 rounded-4 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
+                                <i class="bi bi-people" style="color:#272f54;"></i>
+                                <h6 class="fw-bold mb-0" style="color:#272f54;">Recently Interested Students</h6>
+                                <span class="badge ms-auto rounded-pill"
+                                    style="background:#fff8e1; color:#7a5200; font-size:11px;">
+                                    Latest 5
+                                </span>
+                            </div>
+                            <div id="table-interested" class="card-body px-4 pb-4 pt-2">
+                                <?php if (empty($recentInterested)): ?>
+                                    <p class="text-muted small mb-0">No student interest recorded yet.</p>
+                                <?php else: ?>
+                                    <div class="d-flex flex-column gap-3">
+                                        <?php foreach ($recentInterested as $ri): ?>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 fw-bold"
+                                                    style="width:38px; height:38px; background:#eef1ff; color:#272f54; font-size:13px;">
+                                                    <?= strtoupper(substr($ri['full_name'], 0, 1)) ?>
+                                                </div>
+                                                <div class="flex-grow-1 overflow-hidden">
+                                                    <p class="fw-semibold mb-0 text-truncate"
+                                                        style="color:#272f54; font-size:14px;">
+                                                        <?= htmlspecialchars($ri['full_name']) ?>
+                                                    </p>
+                                                    <p class="text-muted mb-0 text-truncate" style="font-size:12px;">
+                                                        <?= htmlspecialchars($ri['email']) ?>
+                                                    </p>
+                                                </div>
+                                                <div class="text-end flex-shrink-0">
+                                                    <span class="badge rounded-pill px-2"
+                                                        style="background:#f5f5f5; color:#555; font-size:11px; font-weight:500;">
+                                                        <?= htmlspecialchars($ri['company']) ?>
+                                                    </span>
+                                                    <p class="text-muted mb-0 mt-1" style="font-size:11px;">
+                                                        <?= date("M d", strtotime($ri['created_at'])) ?>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Announcements -->
+                    <div class="col-lg-5">
+                        <div class="card border-0 rounded-4 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
+                                <i class="bi bi-bell" style="color:#272f54;"></i>
+                                <h6 class="fw-bold mb-0" style="color:#272f54;">Recent Announcements</h6>
+                                <span class="badge ms-auto rounded-pill"
+                                    style="background:#fdecea; color:#7f1d1d; font-size:11px;">
+                                    Latest 5
+                                </span>
+                            </div>
+                            <div id="table-announcements" class="card-body px-4 pb-4 pt-2">
+                                <?php if (empty($recentAnnouncements)): ?>
+                                    <p class="text-muted small mb-0">No announcements yet.</p>
+                                <?php else: ?>
+                                    <div class="d-flex flex-column gap-3">
+                                        <?php foreach ($recentAnnouncements as $a):
+                                            $catColors = [
+                                                'news' => ['bg' => '#e6f1fb', 'color' => '#0c447c'],
+                                                'updates' => ['bg' => '#eaf3de', 'color' => '#27500a'],
+                                                'FAQs' => ['bg' => '#faeeda', 'color' => '#633806'],
+                                            ];
+                                            $c = $catColors[$a['category']] ?? ['bg' => '#f0f0f0', 'color' => '#444'];
+                                            ?>
+                                            <div class="d-flex align-items-start gap-3">
+                                                <span class="badge rounded-pill px-3 py-2 flex-shrink-0"
+                                                    style="background:<?= $c['bg'] ?>; color:<?= $c['color'] ?>; font-size:11px; font-weight:600;">
+                                                    <?= htmlspecialchars(ucfirst($a['category'])) ?>
+                                                </span>
+                                                <div class="flex-grow-1 overflow-hidden">
+                                                    <p class="fw-semibold mb-0 text-truncate"
+                                                        style="color:#272f54; font-size:14px;">
+                                                        <?= htmlspecialchars($a['title']) ?>
+                                                    </p>
+                                                    <p class="text-muted mb-0" style="font-size:12px;">
+                                                        <?= date("M d, Y", strtotime($a['created_at'])) ?>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4 mb-3">
+                        <button onclick="downloadDashboardCSV()" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-filetype-csv me-1"></i> Download CSV
+                        </button>
+                        <button onclick="downloadDashboardPDF()" class="btn btn-sm"
+                            style="background:#272f54; color:white;">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF
+                        </button>
+                    </div>
+                </div>
                 <div id="register-toggle">
                     <h2>Registration Link</h2>
                     <div class="dashboard-container">
@@ -600,6 +871,122 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             role.addEventListener('change', toggleInternshipDropdown);
             toggleInternshipDropdown();
         });
+
+        function downloadDashboardCSV() {
+            let csv = '';
+
+            // --- Internship Postings (HTML table) ---
+            csv += 'Recent Internship Postings\n';
+            csv += '"Title","Company","Location","Posted"\n';
+            document.querySelectorAll('#table-internships tbody tr').forEach(row => {
+                const cells = [...row.querySelectorAll('td')].map(td => `"${td.innerText.trim().replace(/\n/g, ' ').replace(/"/g, '""')}"`);
+                if (cells.length) csv += cells.join(',') + '\n';
+            });
+
+            // --- Interested Students ---
+            csv += '\nRecently Interested Students\n';
+            csv += '"Name","Email","Company","Date"\n';
+            document.querySelectorAll('#table-interested .d-flex.align-items-center').forEach(row => {
+                const name = row.querySelector('.fw-semibold')?.innerText.trim() ?? '';
+                const email = row.querySelectorAll('p')[1]?.innerText.trim() ?? '';
+                const company = row.querySelector('.badge')?.innerText.trim() ?? '';
+                const date = row.querySelector('.text-muted.mb-0.mt-1')?.innerText.trim() ?? '';
+                csv += `"${name}","${email}","${company}","${date}"\n`;
+            });
+
+            // --- Announcements ---
+            csv += '\nRecent Announcements\n';
+            csv += '"Category","Title","Date"\n';
+            document.querySelectorAll('#table-announcements .d-flex.align-items-start').forEach(row => {
+                const cells = row.querySelectorAll('p, .badge');
+                const category = row.querySelector('.badge')?.innerText.trim() ?? '';
+                const title = row.querySelector('.fw-semibold')?.innerText.trim() ?? '';
+                const date = row.querySelector('.text-muted')?.innerText.trim() ?? '';
+                csv += `"${category}","${title}","${date}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'dashboard_summary.csv';
+            a.click();
+        }
+
+        function downloadDashboardPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let y = 15;
+
+            doc.setFontSize(16);
+            doc.setTextColor(39, 47, 84);
+            doc.text('Dashboard Summary', 14, y);
+            y += 10;
+
+            // --- Internship Postings ---
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text('Recent Internship Postings', 14, y);
+            y += 2;
+
+            const internshipRows = [];
+            document.querySelectorAll('#table-internships tbody tr').forEach(row => {
+                const cells = [...row.querySelectorAll('td')].map(td => td.innerText.trim().replace(/\n/g, ' '));
+                if (cells.length) internshipRows.push(cells);
+            });
+
+            doc.autoTable({
+                head: [['Title', 'Company', 'Location', 'Posted']],
+                body: internshipRows,
+                startY: y,
+                styles: { fontSize: 10 },
+                headStyles: { fillColor: [39, 47, 84], textColor: [255, 255, 255] },
+            });
+            y = doc.lastAutoTable.finalY + 10;
+
+            // --- Interested Students ---
+            doc.text('Recently Interested Students', 14, y);
+            y += 2;
+
+            const studentRows = [];
+            document.querySelectorAll('#table-interested .d-flex.align-items-center').forEach(row => {
+                const name = row.querySelector('.fw-semibold')?.innerText.trim() ?? '';
+                const email = row.querySelectorAll('p')[1]?.innerText.trim() ?? '';
+                const company = row.querySelector('.badge')?.innerText.trim() ?? '';
+                const date = row.querySelector('.text-muted.mb-0.mt-1')?.innerText.trim() ?? '';
+                studentRows.push([name, email, company, date]);
+            });
+
+            doc.autoTable({
+                head: [['Name', 'Email', 'Company', 'Date']],
+                body: studentRows,
+                startY: y,
+                styles: { fontSize: 10 },
+                headStyles: { fillColor: [255, 182, 47], textColor: [39, 47, 84] },
+            });
+            y = doc.lastAutoTable.finalY + 10;
+
+            // --- Announcements ---
+            doc.text('Recent Announcements', 14, y);
+            y += 2;
+
+            const announcementRows = [];
+            document.querySelectorAll('#table-announcements .d-flex.align-items-start').forEach(row => {
+                const category = row.querySelector('.badge')?.innerText.trim() ?? '';
+                const title = row.querySelector('.fw-semibold')?.innerText.trim() ?? '';
+                const date = row.querySelector('.text-muted')?.innerText.trim() ?? '';
+                if (title) announcementRows.push([category, title, date]);
+            });
+
+            doc.autoTable({
+                head: [['Category', 'Title', 'Date']],
+                body: announcementRows,
+                startY: y,
+                styles: { fontSize: 10 },
+                headStyles: { fillColor: [228, 87, 46], textColor: [255, 255, 255] },
+            });
+
+            doc.save('dashboard_summary.pdf');
+        }   
     </script>
 </body>
 
