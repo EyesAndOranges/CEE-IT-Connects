@@ -34,4 +34,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    function checkPassword(password){
+        const regex = /^(?=.*[a-z])(?=.*[A-Z]).{8,16}$/;
+        return regex.test(password);
+    }
+
+    const passwordInput = document.getElementById('password').value;
+    if(!checkPassword(passwordInput)){
+        alert('Password must be 8-16 characters long and include at least one uppercase and one lowercase letter.');
+    }
 });

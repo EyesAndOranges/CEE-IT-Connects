@@ -1,9 +1,10 @@
-<?php session_start();
-/*require 'db.php';
-
-$stmtbookmark = $pdo->prepare("
+<?php error_log(print_r($_POST, true));
+session_start();
+//require 'db.php';
+$stmtinterest = $pdo->prepare("
     SELECT 
-        ib.id AS bookmark_id,
+        ib.id AS interest_id,
+        ib.student_id,
         ib.created_at,
         s.full_name,
         s.email,
@@ -15,8 +16,8 @@ $stmtbookmark = $pdo->prepare("
     ORDER BY ib.created_at DESC
 ");
 
-$stmtbookmark->execute();
-$bookmarks = $stmtbookmark->fetchAll(PDO::FETCH_ASSOC);
+$stmtinterest->execute();
+$interests = $stmtinterest->fetchAll(PDO::FETCH_ASSOC);
 
 $stmtannouncement = $pdo->prepare("
 SELECT id, title, message, created_at, category 
@@ -24,17 +25,8 @@ FROM announcements
 ORDER BY created_at DESC");
 $stmtannouncement->execute();
 $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
-*/
-// new (dummy data)
-$bookmarks = [
-    ['bookmark_id' => 1, 'full_name' => 'John Doe', 'email' => 'john@email.com', 'company' => 'Company XYZ', 'title' => 'IT Intern'],
-    ['bookmark_id' => 2, 'full_name' => 'Jane Smith', 'email' => 'jane@email.com', 'company' => 'Company ABC', 'title' => 'Web Developer Intern'],
-];
 
-$announcements = [
-    ['id' => 1, 'title' => 'Sample Announcement', 'message' => 'This is a sample announcement message for display purposes.', 'category' => 'news', 'created_at' => '2026-01-25'],
-    ['id' => 2, 'title' => 'Another Announcement', 'message' => 'This is another sample announcement message for display purposes.', 'category' => 'updates', 'created_at' => '2026-01-26'],
-];
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -89,6 +81,11 @@ $announcements = [
             padding: 20px;
             display: flex;
             flex-direction: column;
+
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
         }
 
         .sidebar h3 {
@@ -168,11 +165,6 @@ $announcements = [
         .submit-btn:hover {
             opacity: 0.9;
         }
-        /*new*/
-        #bookmarks table td,
-        #bookmarks table th {
-            padding: 5px;
-        }
     </style>
 </head>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -219,9 +211,9 @@ $announcements = [
                 <i class="bi bi-file-earmark-text-fill"></i>
                 Documents
             </a>
-            <a href="#" onclick="showSection('bookmarks')">
+            <a href="#" onclick="showSection('interested')">
                 <i class="bi bi-bookmarks-fill"></i>
-                Bookmarks
+                Interested
             </a>
             <a href="#" onclick="showSection('announcements')">
                 <i class="bi bi-bell-fill"></i>
@@ -231,6 +223,10 @@ $announcements = [
                 <i class="bi bi-bookmark"></i>
                 Manage Announcement
             </a>
+            <a href="#" onclick="showSection('student_register')">
+                <i class="bi bi-file-earmark-person"></i>
+                Student Register
+            </a>
         </aside>
         <div class="main-content">
             <div id="dashboard" class="section active">
@@ -238,20 +234,30 @@ $announcements = [
             </div>
             <div id="postings" class="section">
                 <h2>Intership Posting</h2>
-                <form method="POST" action="internship-db.php" class="internship-form">
+                <form method="POST" action="internship-db.php" class="internship-form"
+                    onsubmit="return confirm('You are creating a new internship posting. Are you sure?');">
                     <input type="hidden" name="form_type" value="internship_posting">
                     <div class="form-card">
                         <h3>Basic Information</h3>
                         <div class="form-grid">
                             <input type="text" name="title" placeholder="Title" required>
                             <input type="text" name="company" placeholder="Company Name" required>
-                            <input type="text" name="location" placeholder="Location">
+                            <input type="text" name="location" placeholder="Location" required>
                             <select name="program" id="program" required>
                                 <option value="" disabled selected>Select Program</option>
                                 <option value="Information Technology">Information Technology</option>
                                 <option value="Civil Engineering">Civil Engineering</option>
                                 <option value="Electrical Engineering">Electrical Engineering</option>
                             </select>
+                            <select name="year" id="year" required>
+                                <option value="" disabled selected>Select Contract Duration</option>
+                                <option value="1">1 year</option>
+                                <option value="2">2 years</option>
+                                <option value="3">3 years</option>
+                                <option value="4">4 years</option>
+                                <option value="5">5 years</option>
+                            </select>
+
                         </div>
                     </div>
 
@@ -425,11 +431,15 @@ $announcements = [
                 </div>
             </div>
 
-            <div id="bookmarks" class="section">
-                <h2>Bookmarks</h2>
+            <div id="interested" class="section">
+                <h2>Interested</h2>
 
                 <div class="form-card">
 
+                    <div class="mb-3">
+                        <input type="text" id="search-interested" class="form-control"
+                            placeholder="Search by name, email, company...">
+                    </div>
                     <table style="width:100%; border-collapse: collapse;">
                         <thead>
                             <tr style="text-align:left; border-bottom:1px solid #ddd;">
@@ -441,29 +451,32 @@ $announcements = [
                             </tr>
                         </thead>
 
-                        <tbody>
-                            <?php foreach ($bookmarks as $b): ?>
-                                <tr style="border-bottom:1px solid #eee; padding:10px;">
+                        <tbody id="interested-tbody">
+                            <?php foreach ($interests as $i): ?>
+                                <tr style="border-bottom:1px solid #eee;">
 
                                     <td>
-                                        <?= htmlspecialchars($b['full_name']) ?>
+                                        <?= htmlspecialchars($i['full_name']) ?>
                                     </td>
                                     <td>
-                                        <?= htmlspecialchars($b['email']) ?>
+                                        <?= htmlspecialchars($i['email']) ?>
                                     </td>
                                     <td>
-                                        <?= htmlspecialchars($b['company']) ?>
+                                        <?= htmlspecialchars($i['company']) ?>
                                     </td>
                                     <td>
-                                        <?= htmlspecialchars($b['title']) ?>
+                                        <?= htmlspecialchars($i['title']) ?>
                                     </td>
 
                                     <td>
-                                        <button type="button" 
-                                            onclick="openFeedbackModal(<?= $b['bookmark_id'] ?>, '<?= htmlspecialchars($b['full_name']) ?>')"
-                                            style="background:#FF5C5C;color:white;border:none;padding:6px 10px;border-radius:6px;font-weight:600; font-size:13px;cursor:pointer;">
-                                            Reject with Feedback
-                                        </button>
+                                        <form method="POST" action="internship-db.php">
+                                            <button type="button" class="btn btn-sm btn-danger"
+                                                onclick="openFeedbackModal(<?= $i['interest_id'] ?>)"
+                                                style="background:#FF5C5C;color:white;border:none;padding:6px 10px;border-radius:6px;font-weight:600; font-size:13px;cursor:pointer;">
+                                                <i class="bi bi-x-circle me-1"></i>
+                                                Reject with Feedback
+                                            </button>
+                                        </form>
                                     </td>
 
                                 </tr>
@@ -474,7 +487,6 @@ $announcements = [
 
                 </div>
             </div>
-
             <div id="announcements" class="section">
                 <h2>Post Announcements</h2>
 
@@ -508,6 +520,10 @@ $announcements = [
                 <div class="card shadow-sm">
                     <div class="card-body">
 
+                        <div class="mb-3">
+                            <input type="text" id="search-announcements" class="form-control"
+                                placeholder="Search announcements...">
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
 
@@ -521,7 +537,7 @@ $announcements = [
                                     </tr>
                                 </thead>
 
-                                <tbody>
+                                <tbody id="manage-announcements-tbody">
                                     <?php if (empty($announcements)): ?>
                                         <tr>
                                             <td colspan="5" class="text-center py-4">
@@ -532,42 +548,43 @@ $announcements = [
 
                                     <?php foreach ($announcements as $a): ?>
                                         <tr>
+                                            <form method="POST" action="internship-db.php">
+                                                <td class="fw-bold">
+                                                    <input type="text" name="title" value="<?= $a['title'] ?>" required>
+                                                </td>
 
-                                            <td class="fw-bold">
-                                                <?= htmlspecialchars($a['title']) ?>
-                                            </td>
+                                                <td>
+                                                    <input type="text" name="message" value="<?= $a['message'] ?>" required>
+                                                </td>
 
-                                            <td>
-                                                <?= htmlspecialchars(substr($a['message'], 0, 60)) ?>...
-                                            </td>
+                                                <td>
+                                                    <select name="category" id="category" required>
+                                                        <option value="news" <?= $a['category'] === 'news' ? 'selected' : '' ?>>News</option>
+                                                        <option value="updates" <?= $a['category'] === 'updates' ? 'selected' : '' ?>>Updates</option>
+                                                        <option value="FAQs" <?= $a['category'] === 'FAQs' ? 'selected' : '' ?>>FAQs</option>
+                                                    </select>
+                                                </td>
 
-                                            <td>
-                                                <span class="badge bg-warning text-dark p-2">
-                                                    <?= htmlspecialchars($a['category']) ?>
-                                                </span>
-                                            </td>
+                                                <td>
+                                                    <?= date("M d, Y", strtotime($a['created_at'])) ?>
+                                                </td>
 
-                                            <td>
-                                                <?= date("M d, Y", strtotime($a['created_at'])) ?>
-                                            </td>
+                                                <td class="text-center">
 
-                                            <td class="text-center">
-
-                                                <!-- DELETE -->
-                                                <form method="POST" action="internship-db.php" class="d-inline">
+                                                    <!-- DELETE -->
                                                     <input type="hidden" name="announcement_id" value="<?= $a['id'] ?>">
                                                     <button type="submit" name="delete_announcement"
                                                         class="btn btn-sm btn-danger">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
-                                                </form>
 
-                                                <!-- EDIT -->
-                                                <button class="btn btn-sm btn-primary"
-                                                    onclick="editAnnouncement(<?= $a['id'] ?>)">
-                                                    <i class="bi bi-pencil"></i>
-                                                </button>
-
+                                                    <!-- EDIT -->
+                                                    <input type="hidden" name="announcement_id" value="<?= $a['id'] ?>">
+                                                    <button type="submit" name="edit_announcement"
+                                                        class="btn btn-sm btn-primary">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                            </form>
                                             </td>
 
                                         </tr>
@@ -580,22 +597,150 @@ $announcements = [
                     </div>
                 </div>
             </div>
+            <div id="student_register" class="section">
+                <h2>Student Register</h2>
+                <div class="form-card">
+                    <!--
+                    <div class="d-flex gap-2 mb-3">
+                        <form action="auto-register.php" method="POST">
+                            <h3>Press to activate the current csv</h3>
+                            <button type="submit" class="btn btn-primary">
+                                Activate CSV Import
+                            </button>
+                        </form>
+                    </div> -->
+                    <div>
+                        <h3>Excel Sheet for student registration</h3>
+                        <button type="button" class="btn btn-secondary" onclick="showSection('edit_csv')">
+                            Edit Current CSV
+                        </button>
+                    </div>
+                    <form action="auto-register-csv.php" method="POST" enctype="multipart/form-data">
+                        <h3>Import New CSV Files<!-- (make sure the name of the csv is students.csv)--></h3>
+                        <label>Select new CSV file</label>
+                        <input type="file" name="students_csv" accept=".csv" required>
+
+                        <button type="submit" class="submit-btn mt-3">
+                            Replace Current CSV
+                        </button>
+                    </form>
+                    <a href="download-csv.php" class="btn submit-btn mt-3 py-19">
+                        <i class="bi bi-download"></i> Download CSV
+                    </a>
+                    <!--
+                    <button class="submit-btn mt-3">
+                        <a href='../../Sources/students.csv' download='students.csv'>Download
+                            csv</a>
+                    </button> -->
+                </div>
+            </div>
+            <div id="edit_csv" class="section">
+                <h2>Edit Student CSV</h2>
+
+                <div class="form-card">
+                    <?php
+                    $csvPath = __DIR__ . '/../Sources/students.csv';
+                    $csvRows = [];
+
+                    if (($handle = fopen($csvPath, 'r')) !== false) {
+                        while (($row = fgetcsv($handle, 1000, "\t")) !== false) {
+                            $csvPath = __DIR__ . '/../Sources/students.csv';
+                            $csvRows = [];
+
+                            $content = file_get_contents($csvPath);
+                            $content = str_replace("\r\n", "\n", $content);
+                            $content = str_replace("\r", "\n", $content);
+
+                            $lines = explode("\n", $content);
+                            $csvRows = [];
+
+                            foreach ($lines as $line) {
+                                $line = trim($line, " \t\n\r\0\x0B\""); // strip surrounding quotes
+                                if ($line === '')
+                                    continue;
+
+                                // detect delimiter per row
+                                $row = str_contains($line, "\t")
+                                    ? explode("\t", $line)
+                                    : str_getcsv($line, ",");
+
+                                // clean each cell of extra quotes
+                                $row = array_map(fn($cell) => trim($cell, '"'), $row);
+
+                                $csvRows[] = $row;
+                            }
+
+                            // Remove duplicate header if present
+                            if (count($csvRows) > 1 && $csvRows[0] === $csvRows[1]) {
+                                array_shift($csvRows);
+                            }
+                        }
+                        fclose($handle);
+                    }
+                    ?>
+                    <pre><?php //print_r($csvRows); ?></pre>
+                    <form method="POST" action="auto-register-save-csv.php">
+                        <?php foreach ($csvRows[0] as $colIndex => $headerCell): ?>
+                            <input type="hidden" name="headers[<?= $colIndex ?>]"
+                                value="<?= htmlspecialchars($headerCell) ?>">
+                        <?php endforeach; ?>
+
+                        <table class="table table-bordered" id="csv-table">
+                            <thead>
+                                <tr>
+                                    <?php foreach ($csvRows[0] as $headerCell): ?>
+                                        <th><?= htmlspecialchars($headerCell) ?></th>
+                                    <?php endforeach; ?>
+                                </tr>
+                            </thead>
+                            <tbody id="csv-tbody">
+                                <?php foreach ($csvRows as $rowIndex => $row): ?>
+                                    <?php if ($rowIndex === 0)
+                                        continue; // skip header row ?>
+                                    <tr>
+                                        <?php foreach ($row as $colIndex => $cell): ?>
+                                            <td>
+                                                <input type="text" name="csv[<?= $rowIndex ?>][<?= $colIndex ?>]"
+                                                    value="<?= htmlspecialchars($cell) ?>" class="form-control">
+                                            </td>
+                                        <?php endforeach; ?>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+
+                        <!-- store col count for JS -->
+                        <input type="hidden" id="col-count" value="<?= count($csvRows[0]) ?>">
+                        <input type="hidden" id="row-count" value="<?= count($csvRows) ?>">
+
+                        <div class="d-flex gap-2 mt-3">
+                            <button type="button" class="btn btn-success" onclick="addRow()">
+                                <i class="bi bi-plus-circle"></i> Add Row
+                            </button>
+                            <button type="submit" class="submit-btn">Save CSV</button>
+                            <button type="button" class="submit-btn btn-danger"
+                                onclick="showSection('student_register')">
+                                Back
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!--new-->
-    <!-- FEEDBACK MODAL -->
-    <div id="feedbackModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+
+    <!-- Feedback Modal -->
+    <div id="feedbackModal"
+        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
         <div style="background:#29335C; border-radius:5px; padding:30px; width:500px; max-width:90%;">
-            
+
             <h5 style="color:white; text-align:center; margin-bottom:25px; font-weight:400;">
                 Reject with Feedback
             </h5>
 
-            <textarea id="feedbackText" 
-                placeholder="Enter feedback here.."
-                style="width:100%; height:130px; border-radius:5px; border:none; padding:14px; font-size:14px; resize:none; outline:none;">
-            </textarea>
+            <textarea id="feedbackText" placeholder="Enter feedback here.."
+                style="width:100%; height:130px; border-radius:5px; border:none; padding:14px; font-size:14px; resize:none; outline:none;"></textarea>
 
             <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
                 <button onclick="closeFeedbackModal()"
@@ -610,58 +755,120 @@ $announcements = [
 
         </div>
     </div>
-
     <script>
-        let currentBookmarkId = null;
+        function addRow() {
+            const tbody = document.getElementById('csv-tbody');
+            const colCount = parseInt(document.getElementById('col-count').value);
+            const rowCount = parseInt(document.getElementById('row-count').value);
 
-        function openFeedbackModal(bookmarkId, studentName) {
-            currentBookmarkId = bookmarkId;
-            document.getElementById('feedbackText').value = '';
-            const modal = document.getElementById('feedbackModal');
-            modal.style.display = 'flex';
+            // use current row count as new index to avoid collisions
+            const newRowIndex = rowCount;
+            document.getElementById('row-count').value = rowCount + 1;
+
+            const tr = document.createElement('tr');
+
+            for (let col = 0; col < colCount; col++) {
+                const td = document.createElement('td');
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.name = `csv[${newRowIndex}][${col}]`;
+                input.className = 'form-control';
+                input.placeholder = '—';
+                td.appendChild(input);
+                tr.appendChild(td);
+            }
+
+            tbody.appendChild(tr);
+
+            // scroll to new row
+            tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-
+        function openFeedbackModal(bookmarkId) {
+            document.getElementById('feedbackModal').dataset.id = bookmarkId;
+            document.getElementById('feedbackModal').style.display = 'flex';
+        }
         function closeFeedbackModal() {
             document.getElementById('feedbackModal').style.display = 'none';
-            currentBookmarkId = null;
+            document.getElementById('feedbackModal').dataset.id = null;
         }
 
         function sendFeedback() {
+            const modal = document.getElementById('feedbackModal');
+            const bookmarkId = modal.dataset.id;
             const feedback = document.getElementById('feedbackText').value.trim();
+
+            if (!bookmarkId) {
+                alert("No bookmark selected.");
+                return;
+            }
 
             if (!feedback) {
                 alert('Please enter feedback before sending.');
                 return;
             }
 
-            // Submit via fetch to your PHP handler
             const formData = new FormData();
-            formData.append('bookmark_id', currentBookmarkId);
+            formData.append('bookmark_id', bookmarkId);
             formData.append('feedback', feedback);
             formData.append('send_feedback', 1);
+            formData.append('form_type', 'send_feedback');
 
             fetch('internship-db.php', {
                 method: 'POST',
                 body: formData
             })
-            .then(res => res.text())
-            .then(() => {
-                closeFeedbackModal();
-                alert('Feedback sent successfully.');
-                location.reload(); // reload to update table
-            })
-            .catch(() => {
-                alert('Something went wrong. Please try again.');
-            });
+                .then(res => res.text())
+                .then(text => {
+                    console.log(text);
+
+                    if (text.trim() !== "success") {
+                        alert(text);
+                        return;
+                    }
+
+                    closeFeedbackModal();
+                    location.reload();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Something went wrong.');
+                });
         }
 
         // Close modal when clicking outside
-        document.getElementById('feedbackModal').addEventListener('click', function(e) {
+        document.getElementById('feedbackModal').addEventListener('click', function (e) {
             if (e.target === this) closeFeedbackModal();
         });
-    </script> <!--new-->
+
+        // Announcements search (manage_announcement)
+        document.getElementById('search-announcements').addEventListener('input', function () {
+            const query = this.value.toLowerCase();
+            document.querySelectorAll('#manage-announcements-tbody tr').forEach(row => {
+                // collect text from inputs, selects, and plain td text
+                const text = Array.from(row.querySelectorAll('input, select, td'))
+                    .map(el => {
+                        if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                            return el.value;
+                        }
+                        return el.innerText;
+                    })
+                    .join(' ')
+                    .toLowerCase();
+
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        });
+        // Interested search
+        document.getElementById('search-interested').addEventListener('input', function () {
+            const query = this.value.toLowerCase();
+            document.querySelectorAll('#interested-tbody tr').forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
+            });
+        });
+    </script>
 
     <script src="../JS/script.js"></script>
+
 </body>
 
 </html>

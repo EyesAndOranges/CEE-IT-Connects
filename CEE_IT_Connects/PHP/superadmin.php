@@ -1,30 +1,106 @@
 <?php
-//require 'db.php';
-//require 'auth.php';
+require 'db.php';
+require 'auth.php';
+
+$statePath = __DIR__ . '/register_toggle.txt';
+$registerVisible = file_exists($statePath) ? trim(file_get_contents($statePath)) : 'show';
+
+if (isset($_POST['toggle_register'])) {
+    $newState = $registerVisible === 'show' ? 'hide' : 'show';
+    file_put_contents($statePath, $newState);
+    $registerVisible = $newState;
+}
+
+/* var_dump($_SESSION);
+exit(); */
+$internshipStmt = $pdo->query("
+    SELECT id, company, title
+    FROM internships
+    ORDER BY company ASC, title ASC
+");
+$internships = $internshipStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <?php
-/**$stmt = $pdo->query("SELECT id, name, email, role FROM admins");
+$stmt = $pdo->query("SELECT id, name, email, role FROM admins ORDER BY id ASC");
 $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
 
-    $admin_id = $_POST['admin_id'];
-    $new_role = $_POST['role'];
+    $admin_ids = $_POST['admin_id'];
+    $roles = $_POST['role'];
+
+    if (!is_array($roles)) {
+        $roles = [$roles];
+    }
+
+    if (!is_array($admin_ids)) {
+        $admin_ids = [$admin_ids];
+    }
+    $superadmincount = 0;
+    foreach ($roles as $role) {
+        if ($role === 'superadmin') {
+            $superadmincount++;
+        }
+    }
+
+    if ($superadmincount > 3) {
+        die("Only three superadmins are allowed buckooo.");
+    }
 
     $stmt = $pdo->prepare("UPDATE admins SET role = ? WHERE id = ?");
-    $stmt->execute([$new_role, $admin_id]);
 
+    for ($i = 0; $i < count($admin_ids); $i++) {
+        $stmt->execute([$roles[$i], $admin_ids[$i]]);
+    }
+
+    $stmtActivity = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
+    $stmtActivity->execute([
+        ':user_id' => $_SESSION['user_id'],
+        ':roles' => 'superadmin',
+        ':activity' => 'Updated admin roles'
+    ]);
     header("Location: superadmin.php?updated=1");
     exit;
 }
-**/
 
-//dagdag ni susu (temporary lang to test)
-$admins = [
-    ['id' => 1, 'name' => 'Sample Admin', 'email' => 'admin@test.com', 'role' => 'superadmin'],
-    ['id' => 2, 'name' => 'John Doe', 'email' => 'john@test.com', 'role' => 'cma']
-];
+$stmt = $pdo->query("
+    SELECT id, full_name AS name, email, 'student' AS role, 'students' AS source FROM students
+
+    UNION ALL
+
+    SELECT id, name, email, role, 'admins' AS source FROM admins WHERE role != 'superadmin'
+
+    UNION ALL
+
+    SELECT id, full_name AS name, email, 'adviser' AS role, 'advisers' AS source FROM advisers
+
+    ORDER BY name ASC
+");
+
+$users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$stmt = $pdo->query("
+    SELECT 
+        a.id,
+        a.user_id,
+        a.roles,
+        a.activity,
+        a.activity_date,
+        u.name
+    FROM audits a
+    LEFT JOIN (
+        SELECT id, full_name AS name, 'student' AS role FROM students
+        UNION ALL
+        SELECT id, name, role FROM admins
+        UNION ALL
+        SELECT id, full_name AS name, role::text AS role FROM advisers
+    ) u
+        ON a.user_id = u.id
+       AND a.roles = u.role
+    ORDER BY a.activity_date DESC
+");
+$activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -94,8 +170,6 @@ $admins = [
 
         .admin-form input,
         .admin-form select {
-            width: 50%;
-            align-self: center;
             padding: 12px 14px;
             border-radius: 10px;
             border: 1px solid #ddd;
@@ -111,37 +185,18 @@ $admins = [
         }
 
         .btn-find {
-            width: 50%;
             background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
             color: white;
-            border: 2px solid transparent;
+            border: none;
             padding: 14px;
             border-radius: 12px;
             font-weight: 700;
             cursor: pointer;
         }
 
-        .btn-update {
-            transition: all 0.4s ease;
-        }
+        .btn-find:hover {
 
-        .btn-update:hover {
-            /* HOVER STATE: Line/Outline Button */
-            background: transparent; /* Inaalis ang solid color */
-            border: 2px solid var(--gradient-end); /* Nilalabas ang outline */
-            color: var(--gradient-end); /* Binabago ang kulay ng text para mabasa */
-        }
-
-        .btn-create {
-            margin-top: 30px;
-            align-self: center;
-            opacity: 80%;
-            transition: transform 0.3s ease-in-out, background 0.3s ease-in-out;
-        }
-
-        .btn-create:hover {
-            opacity: 100%;
-            box-shadow: 0 5px 5px rgba(228, 87, 46, 0.3);
+            box-shadow: 0 8px 20px rgba(228, 87, 46, 0.3);
         }
 
         .top-bar {
@@ -166,7 +221,7 @@ $admins = [
 
         /* SIDEBAR */
         .sidebar {
-            width: 300px;
+            width: 220px;
             background: #272f54;
             color: white;
             padding: 20px;
@@ -201,26 +256,18 @@ $admins = [
             flex: 1;
             padding: 40px;
             background: #f5f7ff;
-            width: 100%;
+            width: 50vw;
         }
 
         /* SECTIONS */
         .section {
             display: none;
-            width: 95%;
-            
+            width: 50vw;
+
         }
 
         .section.active {
             display: block;
-        }
-
-        .section thead th {
-            padding: 10px;
-        }
-
-        .section tbody td {
-            padding: 10px;
         }
 
         @keyframes fadeIn {
@@ -234,62 +281,10 @@ $admins = [
                 transform: translateY(0);
             }
         }
-
-        /*MONITORING TABLE*/
-        .monitoring-table {
-            width: 100%;
-            background: white;
-            border-collapse: collapse;
-            border-radius: 10px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
-        }
-
-        .monitoring-table thead th {
-            font-size: 15px;
-            font-weight: 800;
-            color: #2c3e67;
-            border-bottom: 1px solid #f1f1f1;
-            padding: 20px;
-        }
-
-        .monitoring-table tbody tr:hover {
-            background-color: #fcfcfc;
-            transition: 0.3s;
-        }
-
-        .monitoring-table td {
-            padding: 10px;
-            font-size: 14px;
-            border-bottom: 1px solid #dee2e6;
-        }
-
-        /*ICONS*/
-        .btn-action {
-            background: transparent;
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: all 0.4s ease;
-            outline: none;
-            padding: 15px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .btn-action:hover {
-            background-color: #f3f5f6;
-        }
-
-        .table-icon {
-            width: 23px;
-            height: 23px;
-            object-fit: contain;
-        }
     </style>
 </head>
 <script>
-    function showSection(sectionId) {
+    function showSection(event, sectionId) {
 
         // hide all sections
         document.querySelectorAll('.section').forEach(sec => {
@@ -306,6 +301,47 @@ $admins = [
 
         event.target.classList.add('active');
     }
+    function confirmSuperadminGlobal() {
+        const roles = document.querySelectorAll("select[name='role[]']");
+
+        let superadminCount = 0;
+        let hasChangeToSuperadmin = false;
+        let hasRemovalFromSuperadmin = false;
+
+        roles.forEach(select => {
+            const original = select.dataset.original;
+            const current = select.value;
+
+            if (current === 'superadmin') {
+                superadminCount++;
+            }
+
+            // ANY upgrade to superadmin
+            if (current === 'superadmin' && original !== 'superadmin') {
+                hasChangeToSuperadmin = true;
+            }
+
+            // ANY downgrade from superadmin
+            if (original === 'superadmin' && current !== 'superadmin') {
+                hasRemovalFromSuperadmin = true;
+            }
+        });
+
+        if (superadminCount > 3) {
+            alert("Only 3 superadmins are allowed.");
+            return false;
+        }
+
+        if (hasRemovalFromSuperadmin) {
+            return confirm("You are removing a Superadmin. Continue?");
+        }
+
+        if (hasChangeToSuperadmin) {
+            return confirm("You are assigning a Superadmin. Are you sure?");
+        }
+
+        return true;
+    }
 </script>
 
 <body>
@@ -317,18 +353,38 @@ $admins = [
         <!-- SIDEBAR -->
         <div class="sidebar">
             <h3>Superadmin</h3>
-
-            <a href="#" onclick="showSection('add')" class="active">Add Accounts</a>
-            <a href="#" onclick="showSection('roles')">Change Roles</a>
-            <a href="#" onclick="showSection('monitor')">Monitor</a>
+            <a href="#" onclick="showSection(event, 'dashboard')" class="active">Dashboard</a>
+            <a href="#" onclick="showSection(event, 'add-admin')">Add Admin Accounts</a>
+            <a href="#" onclick="showSection(event, 'add-adviser')">Add Adviser Accounts</a>
+            <a href="#" onclick="showSection(event, 'delete')">Delete Account</a>
+            <a href="#" onclick="showSection(event, 'roles')">Change Roles</a>
+            <a href="#" onclick="showSection(event, 'monitor')">Monitor</a>
         </div>
 
         <!-- MAIN CONTENT -->
         <div class="main-content">
+            <div id="dashboard" class="section active">
+                <div id="register-toggle">
+                    <h2>Registration Link</h2>
+                    <div class="dashboard-container">
+                        <p>Control whether the registration link is visible on the login page.</p>
 
-            <!-- ADD ACCOUNT SECTION -->
-            <div id="add" class="section active">
-                <h2 style="margin-bottom: 70px;">Create New Admin Account</h2>
+                        <form method="POST">
+                            <p>Current Status:
+                                <strong style="color: <?= $registerVisible === 'show' ? 'green' : 'red' ?>">
+                                    <?= $registerVisible === 'show' ? 'Visible' : 'Hidden' ?>
+                                </strong>
+                            </p>
+                            <button type="submit" name="toggle_register" class="btn-find">
+                                <?= $registerVisible === 'show' ? 'Hide Registration Link' : 'Show Registration Link' ?>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <!-- ADD ADMIN ACCOUNT SECTION -->
+            <div id="add-admin" class="section">
+                <h2>Create New Admin Account</h2>
 
                 <form method="POST" action="superadmin-db.php" class="admin-form">
                     <input type="text" name="name" placeholder="Full Name" required>
@@ -338,13 +394,104 @@ $admins = [
                     <select name="role" required>
                         <option value="" disabled selected>Select Role</option>
                         <option value="internship_admin">Internship Admin</option>
-                        <option value="cma">Content Management Admin</option>
+                        <!-- <option value="cma">Content Management Admin</option> -->
                     </select>
 
-                    <button type="submit" class="btn-find btn-create">Create Admin</button>
+                    <button type="submit" name="create-admin" class="btn-find">Create Admin</button>
                 </form>
             </div>
+            <!-- Create Adviser Account Section-->
+            <div id="add-adviser" class="section">
+                <h2>Create New Adviser Account</h2>
 
+                <form method="POST" action="superadmin-db.php" class="admin-form">
+                    <input type="text" name="name" placeholder="Full Name" required>
+                    <input type="email" name="email" placeholder="Email Address" required>
+                    <input type="password" name="password" placeholder="Password" required>
+
+                    <select name="title" required>
+                        <option value="" disabled selected>Select Title</option>
+                        <option value="Adviser">Adviser</option>
+                        <option value="Professor">Professor</option>
+                        <option value="Engineer">Engineer</option>
+                        <option value="Doctor">Doctor</option>
+                        <option value="Instructor">Instructor</option>
+                        <!-- <option value="cma">Content Management Admin</option> -->
+                    </select>
+
+                    <select name="role" id="adviserRole" required>
+                        <option value="" disabled selected>Select Role</option>
+                        <option value="HTE_adviser">HTE Adviser</option>
+                        <option value="internship_adviser">Internship Adviser</option>
+                        <!-- <option value="cma">Content Management Admin</option> -->
+                    </select>
+                    <div id="internshipWrapper" style="display:none;">
+                        <select name="internship_id" id="internshipSelect">
+                            <option value="" selected>Select Internship</option>
+
+                            <?php foreach ($internships as $internship): ?>
+                                <option value="<?= $internship['id'] ?>">
+                                    <?= htmlspecialchars($internship['company']) ?> —
+                                    <?= htmlspecialchars($internship['title']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <button type="submit" name="create-adviser" class="btn-find">Create Adviser</button>
+                </form>
+            </div>
+            <!-- DELETE USER SECTION -->
+            <div id="delete" class="section">
+                <h2>Delete User</h2>
+
+                <div class="form-card">
+
+                    <table style="width:100%; border-collapse: collapse;">
+                        <thead>
+                            <!-- Table Header -->
+                            <tr style="text-align:left; border-bottom:1px solid #ddd;">
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <?php foreach ($users as $u): ?>
+                                <tr style="border-bottom:1px solid #eee;">
+                                    <!-- Out puts the data per row -->
+                                    <td>
+                                        <?= htmlspecialchars($u['name']) ?>
+                                    </td>
+                                    <td>
+                                        <?= htmlspecialchars($u['email']) ?>
+                                    </td>
+                                    <td>
+                                        <?= htmlspecialchars($u['role']) ?>
+                                    </td>
+                                    <!-- This is the Action-->
+                                    <td>
+                                        <form method="POST" action="superadmin-db.php"
+                                            onsubmit="return confirm('Are you sure?')">
+                                            <input type="hidden" name="id" value="<?= $u['id'] ?>">
+                                            <input type="hidden" name="source" value="<?= $u['source'] ?>">
+                                            <button type="submit" name="delete"
+                                                style="background:red;color:white;border:none;padding:6px 10px;border-radius:6px;">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </td>
+
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+
+                    </table>
+
+                </div>
+            </div>
             <!-- CHANGE ROLES SECTION -->
             <div id="roles" class="section">
                 <h2>Admin Management</h2>
@@ -352,31 +499,29 @@ $admins = [
                 <?php if (isset($_GET['updated'])): ?>
                     <p class="success-box" id="successMsg">Role updated successfully!</p>
                 <?php endif; ?>
+                <form method="POST" onsubmit="return confirmSuperadminGlobal()">
+                    <table style="width:100%; border-collapse: collapse; margin-top:20px; background:white;">
+                        <thead>
+                            <tr style="background:#272f54; color:white;">
+                                <!-- <th style="padding:10px;">ID</th> -->
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <!--<th>Action</th> -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($admins as $admin): ?>
+                                <tr style="text-align:left; border-bottom:1px solid #ddd;">
 
-                <table style="width:100%; border-collapse: collapse; margin-top:20px; background:white;">
-                    <thead>
-                        <tr style="background:#272f54; color:white; text-align:center;">
-                            <!-- <th style="padding:10px;">ID</th> -->
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        <?php foreach ($admins as $admin): ?>
-                            <tr style="text-align:center; border-bottom:1px solid #ddd;">
-
-                                <!-- <td><?//= $admin['id'] ?></td> -->
-                                <td><?= htmlspecialchars($admin['name']) ?></td>
-                                <td><?= htmlspecialchars($admin['email']) ?></td>
-
-                                <form method="POST">
+                                    <!-- <td><?//= $admin['id'] ?></td> -->
+                                    <td><?= htmlspecialchars($admin['name']) ?></td>
+                                    <td><?= htmlspecialchars($admin['email']) ?></td>
                                     <td style="padding: 0px, 40px;">
-                                        <input type="hidden" name="admin_id" value="<?= $admin['id'] ?>">
+                                        <input type="hidden" name="admin_id[]" value="<?= $admin['id'] ?>">
 
-                                        <select name="role" required>
+                                        <select name="role[]" data-original="<?= $admin['role'] ?>" required>
+                                            <option value="null" disabled <?= $admin['role'] !== 'superadmin' && $admin['role'] !== 'internship_admin' ? 'selected' : '' ?>>None</option>
                                             <option value="superadmin" <?= $admin['role'] == 'superadmin' ? 'selected' : '' ?>>
                                                 Superadmin
                                             </option>
@@ -384,76 +529,47 @@ $admins = [
                                             <option value="internship_admin" <?= $admin['role'] == 'internship_admin' ? 'selected' : '' ?>>
                                                 Internship Admin
                                             </option>
-
-                                            <option value="cma" <?= $admin['role'] == 'cma' ? 'selected' : '' ?>>
-                                                CMA
-                                            </option>
                                         </select>
                                     </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <br>
+                    <button type="submit" name="update_role" class="btn-find p-10">
+                        Update
+                    </button>
+                </form>
+            </div>
 
-                                    <td>
-                                        <button type="submit" name="update_role" class="btn-find btn-update" style="padding:5px;">
-                                            Update
-                                        </button>
-                                    </td>
-                                </form>
+            <!-- MONITOR SECTION -->
+            <div id="monitor" class="section">
+                <h2>System Monitoring</h2>
 
+                <table>
+                    <thead>
+                        <tr style="text-align:left; border-bottom:1px solid #ddd;">
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Activity</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($activityLogs as $log): ?>
+                            <tr style="text-align:left; border-bottom:1px solid #ddd; ">
+                                <td><?= htmlspecialchars($log['name']) ?></td>
+                                <td><?= htmlspecialchars($log['roles']) ?></td>
+                                <td><?= htmlspecialchars($log['activity']) ?></td>
+                                <td><?= htmlspecialchars($log['activity_date']) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
 
-            <!-- MONITOR SECTION -->
-            <div id="monitor" class="section">
-                <div class="monitor-header">
-                    <h2>System Monitoring</h2>
-                    <p>For the student, adviser and admin activity logs</p>
-                </div>
-
-                <div class="log-container">
-                    <table class="monitoring-table">
-                        <thead>
-                            <tr style="text-align: center;">
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Activity</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr style="text-align: center;">
-                                <td>Maria Carmela Alfonso</td>
-                                <td>macarmelaalfonso@gmail.com</td>
-                                <td>Reserved a slot</td>
-                                <td>
-                                    <button class="btn-action">
-                                        <img src="../Sources/history.png" alt="History" class="table-icon">
-                                    </button>
-                                    <button class="btn-action">
-                                        <img src="../Sources/delete.png" alt="Delete" class="table-icon">
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr style="text-align: center;">
-                                <td>Juan Leonardo Seleno</td>
-                                <td>leoseleno@gmail.com</td>
-                                <td>Updated listing detail</td>
-                                <td>
-                                    <button class="btn-action">
-                                        <img src="../Sources/history.png" alt="History" class="table-icon">
-                                    </button>
-                                    <button class="btn-action">
-                                        <img src="../Sources/delete.png" alt="Delete" class="table-icon">
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-            </div>
         </div>
+
     </div>
     <script>
         setTimeout(() => {
@@ -464,6 +580,26 @@ $admins = [
                 setTimeout(() => msg.remove(), 500);
             }
         }, 2000); // disappears after 3 seconds
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const role = document.getElementById('adviserRole');
+            const wrapper = document.getElementById('internshipWrapper');
+            const internship = document.getElementById('internshipSelect');
+
+            function toggleInternshipDropdown() {
+                if (role.value === 'HTE_adviser') {
+                    wrapper.style.display = 'block';
+                    internship.required = true;
+                } else {
+                    wrapper.style.display = 'none';
+                    internship.required = false;
+                    internship.value = '';
+                }
+            }
+
+            role.addEventListener('change', toggleInternshipDropdown);
+            toggleInternshipDropdown();
+        });
     </script>
 </body>
 

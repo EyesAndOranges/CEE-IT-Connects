@@ -4,9 +4,60 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 if (!isset($_SESSION['user_id'])) {
-    header("Location: student-login.php");
+    header("Location: login-ui.php");
     exit();
 }
 
 $user_id = $_SESSION['user_id'];
+function getUserType($role)
+{
+    $role = strtolower(trim($role));
+
+    $roleMap = [
+        'student' => 'student',
+        'internship_adviser' => 'adviser',
+        'hte adviser' => 'adviser',
+        'adviser' => 'adviser',
+        'internship_admin' => 'admin',
+        'superadmin' => 'admin'
+    ];
+
+    return $roleMap[$role] ?? 'student';
+}
+function getDashboardByRole($role)
+{
+    return match ($role) {
+        'student' => 'message.php',
+        'hte_adviser' => 'hte-ui.php',
+        'internship_adviser' => 'ojt-rooms.php',
+        default => 'index.php'
+    };
+}
+
+function getUserProfile($pdo, $id, $type)
+{
+    switch (strtolower($type)) {
+
+        case 'student':
+            $stmt = $pdo->prepare("SELECT full_name, email FROM students WHERE id=?");
+            break;
+
+        case 'adviser':
+            $stmt = $pdo->prepare("SELECT full_name, email FROM advisers WHERE id=?");
+            break;
+
+        case 'admin':
+            $stmt = $pdo->prepare("SELECT name AS full_name, email FROM admins WHERE id=?");
+            break;
+
+        default:
+            return [
+                'full_name' => 'Unknown',
+                'email' => 'Unknown'
+            ];
+    }
+
+    $stmt->execute([$id]);
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
 ?>

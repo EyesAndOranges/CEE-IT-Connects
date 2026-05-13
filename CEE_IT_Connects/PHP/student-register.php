@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CEE IT Connects - Student Register</title>
-    
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
+
     <link rel="stylesheet" href="../CSS/student-register.css">
 </head>
+
 <body>
 
     <div id="loading-screen">
@@ -21,16 +23,16 @@
             <div class="col-md-5 p-0 left-panel"></div>
 
             <div class="col-md-7 right-panel">
-                
+
                 <img src="../Sources/CEE IT Connects Logo.png" alt="CEE IT Logo" class="logo-img">
                 <h2 class="login-title">CEE IT CONNECTS</h2>
                 <h3 class="login-subtitle">Register</h3>
 
-                <form class="form-wrapper" method="POST" action="student-reg.php" 
-                enctype="multipart/form-data">
-                    
+                <form class="form-wrapper" method="POST" action="student-reg.php" enctype="multipart/form-data">
+
                     <div class="mb-3">
-                        <input type="text" name="full_name" class="form-control" placeholder="Full Name (First Name, Last Name)">
+                        <input type="text" name="full_name" class="form-control"
+                            placeholder="Full Name (First Name, Last Name)">
                     </div>
 
                     <div class="mb-3 d-flex gap-2">
@@ -41,18 +43,18 @@
                             <option value="22">22</option>
                             <option value="23">23</option>
                             <option value="24">24</option>
-                            <option value="25">25</option>    
+                            <option value="25">25</option>
                         </select>
-                        <input type="text" name="id_no" class="form-control" 
-                        placeholder="Last four digits of ID No." maxlength="4" pattern="\d{4}" required>
+                        <input type="text" name="id_no" class="form-control" placeholder="Last four digits of ID No."
+                            maxlength="4" pattern="\d{4}" required>
                     </div>
 
                     <div class="mb-3">
                         <select class="form-select" name="program" required>
                             <option value="" disabled selected>Program</option>
-                            <option value="IT">Information Technology</option>
-                            <option value="EE">Electrical Engineering</option>
-                            <option value="CE">Civil Engineering</option>
+                            <option value="Information Technology">Information Technology</option>
+                            <option value="Electrical Engineering">Electrical Engineering</option>
+                            <option value="Civil Engineering">Civil Engineering</option>
                         </select>
                     </div>
 
@@ -82,11 +84,15 @@
                     </div>
 
                     <div class="mb-3">
-                        <input type="password" name="password" class="form-control" placeholder="Password (Use 8 or more characters)">
+                        <input type="password" name="password" pattern="^(?=.*[a-z])(?=.*[A-Z]).{8,16}$"
+                            class="form-control"
+                            placeholder="Password (Use 8-16 characters with at least one uppercase and one lowercase letter)"
+                            id="password" required>
                     </div>
 
                     <div class="mb-3">
-                        <input type="text" name="contact_number" inputmode="numeric" pattern="[0-9]*" maxlength="10" class="form-control" placeholder="Contact Number">
+                        <input type="text" name="contact_number" inputmode="numeric" pattern="[0-9]*" maxlength="10"
+                            class="form-control" placeholder="Contact Number">
                     </div>
 
                     <div class="mb-3">
@@ -94,13 +100,14 @@
                     </div>
 
                     <div class="terms-text">
-                        By creating an account, you agree to the <a href="#" class="terms-link">Terms of Use</a> and <a href="#" class="terms-link">Privacy Policy</a>
+                        By creating an account, you agree to the <a href="#" class="terms-link">Terms of Use</a> and <a
+                            href="#" class="terms-link">Privacy Policy</a>
                     </div>
 
                     <button type="submit" class="btn-login mt-3">
-                    Create an account
-                    </button>                
-                    
+                        Create an account
+                    </button>
+
                     <div class="register-text mt-3">
                         Already have an account? <a href="student-login.php" class="register-link">Sign in</a>
                     </div>
@@ -109,9 +116,10 @@
             </div>
         </div>
     </div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <script src="../JS/student-register.js"></script>
 </body>
+
 </html>

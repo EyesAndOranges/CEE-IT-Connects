@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (password_verify($password, $user['password'])) {
 
             $_SESSION['user_id'] = $user['id'];
-            $_SESSION['role'] = $user['role'];
+            $_SESSION['role'] = strtolower(trim($user['role']));
 
             // centralized redirect (cleaner)
             $dashboards = [
@@ -85,10 +85,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (password_verify($password, $user['password_hash'])) {
 
             $_SESSION['user_id'] = $user['id'];
-            $_SESSION['role'] = 'adviser';
+            $_SESSION['role'] = strtolower(trim($user['role']));
 
-            header("Location: ../PHP/index.php");
-            exit;
+            if ($user['role'] === 'HTE_adviser') {
+                header("Location: ../PHP/hte-ui.php");
+                exit;
+            } elseif ($user['role'] === 'internship_adviser') {
+                header("Location: ../PHP/ojt-rooms.php");
+                exit;
+            }
 
         } else {
             echo "<script>alert('Invalid adviser credentials!'); window.history.back();</script>";

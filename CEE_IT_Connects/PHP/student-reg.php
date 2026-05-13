@@ -1,12 +1,16 @@
 <?php
 require 'db.php';
 
+$stmt = $pdo->query("SELECT * FROM students");
+$stmt->execute();
+$students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $full_name = $_POST['full_name'];
 
     $prefix = $_POST['year_no'];
     $suffix = $_POST['id_no'];
+    $email = $_POST['email'];
     if (!preg_match('/^(20|21|22|23|24|25)$/', $prefix)) {
         die("Invalid student year.");
     }
@@ -14,7 +18,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!preg_match('/^\d{4}$/', $suffix)) {
         die("Student ID must be exactly 4 digits.");
     }
-
+    foreach ($students as $student) {
+        if ($student['student_id'] === $prefix . '-' . $suffix) {
+            die("Student ID already exists.");
+        }
+        if ($email === $student['email']) {
+            die("Email already registered.");
+        }
+    }
     // Combine final student ID
     $student_id = $prefix . '-' . $suffix;
 
@@ -22,25 +33,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $year_level = $_POST['year_level'];
     $section = $_POST['section'];
     $contact_number = $_POST['contact_number'];
-    $email = $_POST['email'];
 
-    // HASH PASSWORD (SECURE)
+    // HASH PASSWORD
     $password_hash = password_hash($_POST['password'], PASSWORD_DEFAULT);
 
     // UPLOAD
     $cor_path = null;
     $allowed_types = ['image/jpeg', 'image/png', 'application/pdf'];
 
-    if(!in_array($_FILES['cor_upload']['type'], $allowed_types)){
+    if (!in_array($_FILES['cor_upload']['type'], $allowed_types)) {
         die("Only JPG, PNG, PDF allowed.");
     }
     if (!empty($_FILES['cor_upload']['name'])) {
         $target_dir = "../uploads/";
-        
+
         $file_name = time() . "_" . basename($_FILES["cor_upload"]["name"]);
         $full_path = $target_dir . $file_name;
 
-        if(move_uploaded_file($_FILES["cor_upload"]["tmp_name"], $full_path)) {
+        if (move_uploaded_file($_FILES["cor_upload"]["tmp_name"], $full_path)) {
             $cor_path = $file_name; // Save only filename
         } else {
             die("Upload failed.");
@@ -67,6 +77,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         ':email' => $email
     ]);
 
+
+    $newStudentId = $pdo->lastInsertId();
+
+    $stmt = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
+    $stmt->execute([
+        ':user_id' => $newStudentId,
+        ':roles' => 'student',
+        ':activity' => 'Student registered an account with schoold Id ' . $student_id
+    ]);
     // Redirect after success
     header("Location: ../PHP/student-welcome.php");
     exit();
