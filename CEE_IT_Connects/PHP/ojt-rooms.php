@@ -4,23 +4,24 @@ require 'db.php';
 require 'auth.php';
 $current_room_id = $_GET['room_id'] ?? null;
 
+$isAdviser = isset($_SESSION['role']) && $_SESSION['role'] === 'internship_adviser';
 $stmt = $pdo->prepare("
     SELECT r.*, a.full_name, a.title, a.role
     FROM rooms r
     LEFT JOIN advisers a ON r.adviser_id = a.id
     JOIN room_members rm ON r.id = rm.room_id
-    WHERE rm.user_id = ?
+    WHERE rm.user_id = ? " . (!$isAdviser ? "AND r.is_archived = FALSE" : "") . "
 ");
 $stmt->execute([$_SESSION['user_id']]);
 
 $rooms = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
-
 <?php
 $colors = ['#d63ba5', '#1abc9c', '#3498db', '#9b59b6'];
 $color = $colors[array_rand($colors)];
 $page = 'messages'
-    ?>
+?>
+   
 
 <!DOCTYPE html>
 <html lang="en">
@@ -29,16 +30,20 @@ $page = 'messages'
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Virtual Rooms</title>
+    <title>OJT Adviser | CEE IT Connects</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
         body {
-            background: #f5f6fa;
+            background-color: #f0f2f7;
             margin: 0;
             padding-top: 70px;
+            /* height: 100%; */
+            /* overflow: hidden; */
+            /* overflow-y: auto; */
+            min-height: 100vh;
         }
 
         /* SIDEBAR */
@@ -46,47 +51,80 @@ $page = 'messages'
             width: 240px;
             background: #fff;
             position: fixed;
-            padding: 20px;
-            border-right: 1px solid #ddd;
+            /* box-sizing: border-box; */
+            padding: 20px 0px 20px 20px;
+            border-radius: 20px;
+            /* top: 70px;
+            left: 0;
+            bottom: 0; */
+            /* padding: 20px; */
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            display: none;
         }
 
         .sidebar a {
             display: block;
-            padding: 10px;
+            align-items: center;
+            padding: 10px 12px;
             color: #333;
             text-decoration: none;
-            border-radius: 8px;
-            margin-bottom: 5px;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .sidebar a:hover {
+            background: #f0f0f0;
         }
 
         .sidebar a.active {
-            background: #ffe5d9;
+            background: #ffdac8;
             color: #ff6b2c;
         }
 
         .rooms-list {
+            font-size: 12px;
+            color: #585858;
             margin-top: 20px;
+            /* display: flex;
+            flex-direction: column;
+            gap: 4px; */
+            /* margin-left: -20px;   
+            margin-right: -20px;  
+            padding-left: 20px;   
+            padding-right: 20px; */
         }
 
         .room-item {
-            padding: 8px;
-            border-radius: 6px;
-            background: #f1f1f1;
-            margin-bottom: 5px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            font-size: 13px;
+            /* box-sizing: border-box; */
         }
 
         .room-link {
             text-decoration: none;
+            display: block;
+            margin: 4px;
+            /* padding: 0; */
+            
+            width: calc(100% + 24px); 
+            margin-left: -12px;
         }
 
         .room-link .room-item:hover {
-            background: #e0e0e0;
             cursor: pointer;
         }
 
         /* ACTIVE ROOM */
         .active-room {
-            background: #ffe5d9;
+            background: #ffdac8;
             color: #ff6b2c;
             font-weight: bold;
             cursor: default;
@@ -94,18 +132,24 @@ $page = 'messages'
 
         /* MAIN */
         .main {
+            background-color: #f0f2f7;
             margin-left: 260px;
             padding: 20px;
+            min-height: calc(100vh - 70px); 
         }
 
         .room-card {
-            border-radius: 12px;
+            border-radius: 12px 12px 0px 0px;
             color: white;
             padding: 15px;
+            /* min-height: 120px;
+            flex-direction: column;
+            justify-content: space-between; */
         }
 
+
         .room-footer {
-            background: #eee;
+            background: #fff;
             padding: 10px;
             border-radius: 0 0 12px 12px;
             text-align: center;
@@ -114,23 +158,39 @@ $page = 'messages'
         .enter-btn {
             background: #f4a62a;
             border: none;
+            color: #fff;
+            font-weight: 600;
             padding: 5px 15px;
             border-radius: 8px;
+        }
+
+        .btn-create {
+            background: #33448f;
+            color: #fff;
+            font-weight: 600;
+            padding: 8px 20px;
+            border-radius: 8px;
+        }
+
+        .btn-create:hover {
+            background: #272f54;
+            color: #fff;
         }
 
         /* SECTION PANELS */
         .section-panel {
             display: none;
         }
+
         .section-panel.active {
             display: block;
         }
 
-        .panel-card {
+        /* .panel-card {
             background: #fff;
             border-radius: 12px;
             padding: 24px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             margin-bottom: 20px;
         }
 
@@ -138,12 +198,39 @@ $page = 'messages'
             font-weight: 700;
             margin-bottom: 16px;
             color: #333;
+        } */
+
+        .badge-on-track {
+            background: #d4edda;
+            color: #155724;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.78rem;
         }
 
-        .badge-on-track  { background: #d4edda; color: #155724; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; }
-        .badge-pending   { background: #fff3cd; color: #856404; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; }
-        .badge-submitted { background: #cce5ff; color: #004085; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; }
-        .badge-missing   { background: #f8d7da; color: #721c24; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; }
+        .badge-pending {
+            background: #fff3cd;
+            color: #856404;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+        }
+
+        .badge-submitted {
+            background: #cce5ff;
+            color: #004085;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+        }
+
+        .badge-missing {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+        }
 
         .req-item {
             display: flex;
@@ -153,10 +240,21 @@ $page = 'messages'
             border-bottom: 1px solid #f0f0f0;
         }
 
-        .req-item:last-child { border-bottom: none; }
+        .req-item:last-child {
+            border-bottom: none;
+        }
 
-        .req-title { font-size: 0.9rem; font-weight: 600; color: #333; }
-        .req-sub   { font-size: 0.78rem; color: #888; margin-top: 2px; }
+        .req-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .req-sub {
+            font-size: 0.78rem;
+            color: #888;
+            margin-top: 2px;
+        }
 
         /* FROM HTE-STATUS */
         .page-section h2 {
@@ -237,6 +335,17 @@ $page = 'messages'
             border-radius: 4px;
             background: #ff6b2c;
         }
+
+        @media (max-width: 992px) {
+            .main {
+                margin-left: 0;
+            }
+
+            .sidebar {
+                position: relative;
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
@@ -245,33 +354,37 @@ $page = 'messages'
     <?php include 'navbar.php'; ?>
     <!-- SIDEBAR -->
     <div class="sidebar">
-        <a href="#" onclick="showSection('home')" class="active" id="nav-home"><i class="fa-solid fa-house"></i> Home</a>
-        <a href="#" onclick="showSection('status')" id="nav-status"><i class="fa-solid fa-calendar-check"></i> Status</a>
-        <a href="#" onclick="showSection('requirements')" id="nav-requirements"><i class="fa-solid fa-list"></i> Requirements</a>
-        <div class="rooms-list">
+        <div style="display:flex; flex-direction:column; width:100%;">
+        <a href="#" onclick="event.preventDefault(); showSection('home', event)" class="active" id="nav-home"><i class="fa-solid fa-house me-1"></i>
+            Virtual Rooms</a>
+        <a href="#" onclick="event.preventDefault(); showSection('status', event)" id="nav-status"><i class="fa-solid fa-calendar-check me-2"></i>
+            Status</a>
+        <!-- <a href="#" onclick="event.preventDefault(); showSection('requirements', event)" id="nav-requirements"><i class="fa-solid fa-list"></i>
+            Requirements</a> -->
+        <div class="rooms-list" style="overflow-y: auto; max-height: 400px; scrollbar-width: none;">
+            <hr><br>
             <h6>ROOMS</h6>
 
             <?php foreach ($rooms as $room): ?>
+                <?php if (!$isAdviser && $room['is_archived'])
+                    continue; ?>
 
+                
                 <?php if ($current_room_id == $room['id']): ?>
-
-                    <!-- CURRENT ROOM (NOT CLICKABLE) -->
-                    <div class="room-item active-room">
-                        <?= $room['room_name'] ?>
-                    </div>
-
-                <?php else: ?>
-
-                    <!-- CLICKABLE ROOM -->
-                    <a href="?room_id=<?= $room['id'] ?>" class="room-link">
-                        <div class="room-item">
-                            <?= $room['room_name'] ?>
+                    <a href="#" onclick="return false;" class="room-link">
+                        <div class="room-item active-room">
+                            <?= htmlspecialchars($room['room_name']) ?>
                         </div>
                     </a>
-
+                <?php else: ?>
+                    <a href="?room_id=<?= $room['id'] ?>" class="room-link">
+                        <div class="room-item <?= $room['is_archived'] ? 'text-muted' : '' ?>">
+                            <?= htmlspecialchars($room['room_name']) ?>
+                        </div>
+                    </a>
                 <?php endif; ?>
-
             <?php endforeach; ?>
+        </div>
         </div>
     </div>
 
@@ -287,25 +400,44 @@ $page = 'messages'
             <div class="section-panel active" id="section-home">
                 <div class="d-flex justify-content-between align-items-center">
                     <h3><strong>Virtual Rooms</strong></h3>
-                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
+                    <button class="btn-create" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
                         + Create a Room
                     </button>
                 </div>
 
-                <div class="row mt-4">
+                <div class="row mt-1 g-4">
                     <?php foreach ($rooms as $room): ?>
-                        <div class="col-md-4">
-                            <div class="card shadow-sm">
+                        <!-- PENDING -->
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <div class="card shadow-sm  <?= $room['is_archived'] ? 'opacity-50' : '' ?>" style="border-radius:12px;">
 
                                 <div class="room-card" style="background: <?= $color ?>">
-                                    <h5 style="text-color <? $color ?>"><?= $room['room_name'] ?></h5>
-                                    <small><?= $room['full_name'] ?> (<?= $room['role'] ?>)</small>
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h5><?= htmlspecialchars($room['room_name']) ?></h5>
+                                            <small><?= htmlspecialchars($room['full_name']) ?>
+                                                (<?= htmlspecialchars($room['role']) ?>)</small>
+                                        </div>
+                                        <?php if ($isAdviser && !$room['is_archived']): ?>
+                                            <form method="POST" action="archive-room.php"
+                                                onsubmit="return confirm('Archive this room? Students will no longer see it.')">
+                                                <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
+                                                <button type="submit" class="btn btn-sm btn-light" title="Archive room"
+                                                    style="font-size:11px; color: #616161; border: 1px solid #ccc;">
+                                                    <i class="fa-solid fa-box-archive"></i>
+                                                </button>
+                                            </form>
+                                        <?php elseif ($isAdviser && $room['is_archived']): ?>
+                                            <span class="badge bg-secondary" style="font-size:10px;">Archived</span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
 
                                 <div class="room-footer">
                                     <form method="GET">
                                         <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
-                                        <button class="enter-btn">Enter Room</button>
+                                        <button class="enter-btn" <?= $room['is_archived'] ? 'disabled' : '' ?>>Enter
+                                            Room</button>
                                     </form>
                                 </div>
 
@@ -324,15 +456,18 @@ $page = 'messages'
                         <i class="fa-solid fa-magnifying-glass"></i>
                         <input type="text" id="searchInput" placeholder="Search student" oninput="filterTable()">
                     </div>
-                    <select id="roomFilter" onchange="filterTable()" style="padding:7px 14px;border:1px solid;border-radius:24px;font-size:12px;">
+                    <select id="roomFilter" onchange="filterTable()"
+                        style="padding:7px 14px;border:1px solid;border-radius:24px;font-size:12px;">
                         <option value="">All Rooms</option>
                         <?php foreach ($rooms as $r): ?>
-                            <option value="<?= htmlspecialchars($r['room_name']) ?>"><?= htmlspecialchars($r['room_name']) ?></option>
+                            <option value="<?= htmlspecialchars($r['room_name']) ?>">
+                                <?= htmlspecialchars($r['room_name']) ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
 
-                <div style="background:white;border:1px solid #00000060;border-radius:8px;overflow:hidden;">
+                <div style="background:white;border:1px solid #00000060;border-radius:8px;">
                     <table>
                         <thead>
                             <tr>
@@ -392,7 +527,7 @@ $page = 'messages'
 
             <!-- REQUIREMENTS SECTION -->
             <div class="section-panel" id="section-requirements">
-                
+
             </div>
 
         <?php endif; ?>
@@ -411,7 +546,7 @@ $page = 'messages'
                 <!-- BODY -->
                 <div class="modal-body">
 
-                    <form method="POST" action="create-room.php">
+                    <form method="POST" action="ojt-rooms-db.php">
 
                         <!-- ROOM NAME -->
                         <div class="mb-3">
@@ -419,7 +554,11 @@ $page = 'messages'
                             <input type="text" name="room_name" class="form-control" placeholder="Enter room name"
                                 required>
                         </div>
-
+                        <div class="mb-3">
+                            <label class="form-label">Section</label>
+                            <input type="text" name="section" class="form-control" placeholder="e.g. 3-4"
+                                pattern="^[0-9]+-[0-9]+$" title="Format must be like 3-4" required>
+                        </div>
                         <!-- BUTTON -->
                         <div class="text-end">
                             <button type="submit" class="btn btn-warning px-4">
@@ -436,7 +575,13 @@ $page = 'messages'
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function showSection(name) {
+        function showSection(name, e) {
+            if (e) e.preventDefault();
+            const target = document.getElementById('section-' + name);
+            if (!target) {
+                window.location = 'ojt-rooms.php?section=' + name;
+                return;
+            };
             document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
             document.getElementById('section-' + name).classList.add('active');
@@ -445,18 +590,19 @@ $page = 'messages'
 
         function filterTable() {
             const search = document.getElementById('searchInput').value.toLowerCase();
-            const room   = document.getElementById('roomFilter').value.toLowerCase();
+            const room = document.getElementById('roomFilter').value.toLowerCase();
 
             document.querySelectorAll('#all-students-tbody tr').forEach(row => {
-                const name    = row.querySelector('.student-cell h6')?.textContent.toLowerCase() ?? '';
+                const name = row.querySelector('.student-cell h6')?.textContent.toLowerCase() ?? '';
                 const rowRoom = (row.dataset.room ?? '').toLowerCase();
 
                 const matchSearch = name.includes(search);
-                const matchRoom   = room === '' || rowRoom === room;
+                const matchRoom = room === '' || rowRoom === room;
 
                 row.style.display = (matchSearch && matchRoom) ? '' : 'none';
             });
         }
     </script>
 </body>
+
 </html>
