@@ -576,11 +576,32 @@ $backLink = getDashboardByRole($_SESSION['role']);
             background: #e5b8d8;
             cursor: not-allowed;
         }
+
+        /*susu*/
+        #roomChatBackBar {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            #roomChatBackBar {
+                display: flex !important;
+                padding-top: 10px;
+                padding-left: 10px;
+            }
+
+            .progress-bar-bg {
+                width: 150px;
+                height: 8px;
+                background: #e0e0e0;
+                border-radius: 4px;
+                overflow: hidden;
+            }
+        }
     </style>
 </head>
 <?php print_r($_SESSION); ?>
-<div class="d-flex justify-content-end mb-2">
-    <a href="<?= $backLink ?>" class="text-danger fw-semibold" style="text-decoration:none;">
+<div class="d-flex justify-content-start mb-2">
+    <a href="<?= $backLink ?>" class="text-danger fw-semibold" style="text-decoration:none; padding: 20px 0 15px;">
         <i class="fa-solid fa-arrow-left"></i> Back to rooms
     </a>
 </div>
@@ -670,7 +691,15 @@ $backLink = getDashboardByRole($_SESSION['role']);
     <?php elseif ($tab === 'chats'): ?>
 
         <div class="chat-container">
-
+            <!-- susu (Mobile back button) -->
+            <div class="d-flex align-items-center mb-3" id="roomChatBackBar">
+                <button onclick="history.back()" 
+                    class="btn btn-light rounded-circle me-2 d-flex align-items-center justify-content-center"
+                    style="width:38px; height:38px; border: 1px solid #ddd;">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+            </div>
+                
             <div class="chat-messages" id="chatMessages">
                 <div class="chat-day-divider">Today, Apr 26</div>
 
@@ -718,7 +747,6 @@ $backLink = getDashboardByRole($_SESSION['role']);
                     </button>
                 </div>
             </div>
-
         </div>
 
     <?php else: ?>

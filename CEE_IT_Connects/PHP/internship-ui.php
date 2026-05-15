@@ -1,6 +1,6 @@
 <?php error_log(print_r($_POST, true));
 session_start();
-//require 'db.php';
+require 'db.php';
 $stmtinterest = $pdo->prepare("
     SELECT 
         ib.id AS interest_id,

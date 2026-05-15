@@ -424,6 +424,259 @@ $page = 'messages';
             color: #333;
             align-self: flex-end;
         }
+
+        /*susu*/
+        /* chat */
+        .chat-slide-track { display: contents; }
+
+        .chat-panel-screen { display: contents; }
+
+        .mobile-chat-header, .mobile-profile-header { display: none; }
+
+        /*MOBILE SIDEBAR & LAYOUT*/
+        @media (max-width: 768px) {
+
+            .sidebar {
+                width: 60px;
+                padding: 10px 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                overflow: hidden;
+            }
+
+            /* Hide all text labels */
+            .sidebar .sidebar-text,
+            .rooms-list h6 {
+                display: none !important;
+            }
+
+            /* Icon-only links */
+            .sidebar a {
+                width: 44px;
+                height: 44px;
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                border-radius: 12px;
+                margin-bottom: 8px;
+                font-size: 1.2rem;
+                padding: 0;
+            }
+
+            /* Rooms list centering */
+            .rooms-list {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                margin-top: 10px;
+                width: 100%;
+            }
+
+            .room-link {
+                display: flex !important;
+                justify-content: center;
+                width: 100%;
+                text-decoration: none;
+            }
+
+            /* Room initial bubble */
+            .room-item {
+                width: 44px !important;
+                height: 44px !important;
+                border-radius: 12px !important;
+                background: #D63BA5 !important;
+                color: white !important;
+                font-weight: bold !important;
+                font-size: 1.1rem !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                margin-bottom: 8px !important;
+                padding: 0 !important;
+            }
+
+            /* Hide the letter text inside .room-item directly (only show .room-initial) */
+            .room-item .sidebar-text {
+                display: none !important;
+            }
+
+            .room-initial {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+            }
+
+            /* Active room same style */
+            .active-room {
+                width: 44px !important;
+                height: 44px !important;
+                border-radius: 12px !important;
+                background: #ff6b2c !important;
+                color: white !important;
+                font-weight: bold !important;
+                font-size: 1.1rem !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                margin: 0 auto 8px auto !important;
+            }
+
+            .main {
+                margin-left: 70px;
+                padding: 15px;
+            }
+
+            .btn-join-top {
+                display: none !important;
+            }
+
+            .fab-join {
+                display: flex !important;
+            }
+            
+            /*===MOBILE CHAT PANEL===*/
+            .chat-container {
+                position: fixed;
+                top: 70px;
+                left: 60px;
+                right: 0;
+                bottom: 0;
+                width: auto;
+                margin: 0;
+                overflow: hidden;
+                display: flex !important;
+                flex-direction: row;
+            }
+
+            .chat-slide-track {
+                display: flex !important;
+                width: 300%;
+                height: 100%;
+                transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+                transform: translateX(0%); /* Panel 1 default */
+            }
+
+            /* slide to panel 2 */
+            .chat-slide-track.show-chat {
+                transform: translateX(calc(-100% / 3));
+            }
+
+            /* slide to panel 3 */
+            .chat-slide-track.show-chat.show-profile {
+                transform: translateX(calc(-200% / 3));
+            }
+
+            .chat-panel-screen {
+                width: calc((100vw - 60px));
+                flex-shrink: 0;
+                height: 100%;
+                overflow-y: auto;
+                background: #fff;
+                display: flex !important;
+                flex-direction: column;
+            }
+
+            .chat-panel-screen:nth-child(2) {
+                overflow: hidden;
+            }
+
+            .chat-panel-screen .chat-list {
+                width: 100% !important;
+                overflow-y: auto;
+                height: 100%;
+                border: none !important;
+            }
+
+            .chat-panel-screen .message-area {
+                height: 100%;
+                width: 100% !important;
+                border: none;
+                overflow: hidden;
+            }
+
+            .chat-panel-screen .profile-sidebar {
+                width: 100% !important;
+                padding: 20px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                border: none !important;
+            }
+
+            .message-area > .p-3.border-bottom {
+                display: none;
+            }
+
+            .mobile-chat-header {
+                display: flex !important;
+                align-items: center;
+                padding: 12px 16px;
+                border-bottom: 1px solid #eee;
+                background: #fff;
+                gap: 12px;
+                flex-shrink: 0;
+            }
+
+            .mobile-profile-header {
+                display: flex !important;
+                align-items: center;
+                padding: 12px 16px;
+                border-bottom: 1px solid #eee;
+                gap: 12px;
+                flex-shrink: 0;
+                width: 100%;
+            }
+
+            .mobile-back-btn {
+                background: none;
+                border: none;
+                font-size: 1.2rem;
+                color: #333;
+                cursor: pointer;
+                padding: 4px 8px;
+            }
+
+            .mobile-chat-header .chat-name {
+                flex-grow: 1;
+                font-weight: 700;
+                font-size: 1rem;
+            }
+
+            .mobile-info-btn {
+                background: none;
+                border: none;
+                font-size: 1.2rem;
+                color: #ff6b2c;
+                cursor: pointer;
+            }
+        }
+
+        /*room*/
+        .room-initial {
+        display: none;
+        }
+
+        /* FAB */
+        .fab-join {
+        display: none;
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 56px;
+        height: 56px;
+        background: #0B5ED7;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        font-size: 4rem;
+        padding-bottom: 16px;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+        cursor: pointer;
+        z-index: 999;
+        }
     </style>
 </head>
 
@@ -435,17 +688,20 @@ $page = 'messages';
         <a href="?section=home<?php if ($current_room_id)
             echo "&room_id=$current_room_id"; ?>"
             class="sidebar-link <?= $current_section === 'home' ? 'active' : '' ?>">
-            <i class="fa-solid fa-house"></i> Home</a>
+            <i class="fa-solid fa-house"></i> <span class="sidebar-text">Home</span>
+        </a>
 
         <a href="?section=chats<?php if ($current_room_id)
             echo "&room_id=$current_room_id"; ?>" class="sidebar-link 
             <?= $current_section === 'chats' ? 'active' : '' ?>">
-            <i class="fa-solid fa-comments"></i> Chats</a>
+            <i class="fa-solid fa-comments"></i> <span class="sidebar-text">Chats</span>
+        </a>
 
         <a href="?section=connect<?php if ($current_room_id)
             echo "&room_id=$current_room_id"; ?>" class="sidebar-link
             <?= $current_section === 'connect' ? 'active' : '' ?>">
-            <i class="fa-solid fa-user-group"></i> Connect</a>
+            <i class="fa-solid fa-user-group"></i> <span class="sidebar-text">Connect</span>
+        </a>
 
         <div class="rooms-list">
             <h6>ROOMS</h6>
@@ -456,7 +712,8 @@ $page = 'messages';
 
                     <!-- CURRENT ROOM (NOT CLICKABLE) -->
                     <div class="room-item active-room">
-                        <?= $room['room_name'] ?>
+                        <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']),0 , 1)) ?></span>
+                        <span class="sidebar-text"><?= $room['room_name'] ?></span>
                     </div>
 
                 <?php else: ?>
@@ -464,7 +721,8 @@ $page = 'messages';
                     <!-- CLICKABLE ROOM -->
                     <a href="?room_id=<?= $room['id'] ?>" class="room-link">
                         <div class="room-item">
-                            <?= $room['room_name'] ?>
+                            <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']),0 , 1)) ?></span>
+                            <span class="sidebar-text"><?= $room['room_name'] ?></span>
                         </div>
                     </a>
 
@@ -486,7 +744,7 @@ $page = 'messages';
                 <!-- DEFAULT DASHBOARD VIEW -->
                 <div class="d-flex justify-content-between align-items-center">
                     <h3><strong>Virtual Rooms</strong></h3>
-                    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
+                    <button class="btn btn-primary btn-join-top" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
                         + Join a Room
                     </button>
                 </div>
@@ -569,157 +827,208 @@ $page = 'messages';
         <div class="main">
             <div class="chat-container">
 
-                <div class="chat-list">
-                    <div class="p-3">
-                        <h3><strong>Chats</strong></h3>
+                <div class="chat-slide-track" id="chatSlideTrack">
+                    <div class="chat-panel-screen">
+                        <div class="chat-list">
+                            <div class="p-3">
+                                <h3><strong>Chats</strong></h3>
+                            </div>
+                            <div>
+                                <?php foreach ($chatUsers as $chat): ?>
+                                    <?php
+                                    $other_id = $chat['chat_user_id'];
+                                    $other_type = $chat['chat_user_type'];
+                                    $name = getUserName($pdo, $other_id, $other_type);
+                                ?>
+                                <a href="?chat_id=<?= $other_id ?>&chat_type=<?= $other_type ?>&section=chats"
+                                    class="chat-user-link d-block text-decoration-none text-dark mb-2"
+                                    data-id="<?= $other_id ?>"
+                                    data-type="<?= $other_type ?>"
+                                    data-name="<?= htmlspecialchars($name) ?>">
+                                        <div class="chat-user-item d-flex align-items-center p-3 border-bottom
+                                            <?= ($current_chat_id == $other_id) ? 'bg-light' : '' ?>">
+                                            <div class="avatar-circle me-3"></div>
+                                            <div>
+                                                <div class="fw-bold"><?= htmlspecialchars($name) ?></div>
+                                                <small class="text-muted">Click to open chat</small>
+                                            </div>
+                                        </div>
+                                    </a>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                     </div>
 
-                    <div>
-                        <?php foreach ($chatUsers as $chat): ?>
-                            <?php
-                            $other_id = $chat['chat_user_id'];
-                            $other_type = $chat['chat_user_type'];
-
-                            $name = getUserName($pdo, $other_id, $other_type);
-                            ?>
-                            <a href="?chat_id=<?= $other_id ?>&chat_type=<?= $other_type ?>&section=chats"
-                                class="d-block text-decoration-none text-dark mb-2">
-                                <div class="chat-user-item d-flex align-items-center p-3 border-bottom 
-                                    <?= ($current_chat_id == $other_id) ? 'bg-light' : '' ?>">
-
-                                    <div class=" avatar-circle me-3"></div>
-                                    <div>
-                                        <div class="fw-bold"><?= htmlspecialchars($name) ?></div>
-                                        <small class="text-muted">Click to open chat</small>
-                                    </div>
-                                </div>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
-
-                <div class="message-area">
-
-                    <?php if ($current_chat_id): ?>
-
-                        <div class="p-3 border-bottom">
-                            <strong>
+                    <!--susu (message)-->
+                    <div class="chat-panel-screen">
+                    <!-- Mobile header with back + info -->
+                    <div class="mobile-chat-header">
+                        <button class="mobile-back-btn" onclick="mobileChatBack()">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </button>
+                        <span class="chat-name" id="mobileChatName">
+                            <?php if ($current_chat_id): ?>
                                 <?= getUserName($pdo, $current_chat_id, $current_chat_type) ?>
+                            <?php endif; ?>
+                        </span>
+                        <button class="mobile-info-btn" onclick="mobileChatInfo()">
+                            <i class="fa-solid fa-circle-info"></i>
+                        </button>
+                    </div>
+
+                    <div class="message-area">
+                        <!-- Desktop header (hidden on mobile via CSS) -->
+                        <div class="p-3 border-bottom">
+                            <strong id="desktopChatName">
+                                <?php if ($current_chat_id): ?>
+                                    <?= getUserName($pdo, $current_chat_id, $current_chat_type) ?>
+                                <?php endif; ?>
                             </strong>
                         </div>
 
-                        <div class="message-content">
-                            <?php foreach ($messages as $msg): ?>
-                                <?php
-                                $isMe = $msg['sender_id'] == $_SESSION['user_id'];
-                                ?>
-                                <div class="bubble <?= $isMe ? 'outgoing' : 'incoming' ?>">
-                                    <small>
-                                        <?= getUserName($pdo, $msg['sender_id'], $msg['sender_type']) ?>
-                                    </small><br>
-                                    <?= htmlspecialchars($msg['message']) ?>
-                                </div>
-                            <?php endforeach; ?>
+                        <div class="message-content" id="messageContent">
+                            <?php if ($current_chat_id): ?>
+                                <?php foreach ($messages as $msg): ?>
+                                    <?php $isMe = $msg['sender_id'] == $_SESSION['user_id']; ?>
+                                    <div class="bubble <?= $isMe ? 'outgoing' : 'incoming' ?>">
+                                        <small><?= getUserName($pdo, $msg['sender_id'], $msg['sender_type']) ?></small><br>
+                                        <?= htmlspecialchars($msg['message']) ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <div class="p-5 text-center text-muted">Select a chat to start messaging</div>
+                            <?php endif; ?>
                         </div>
 
-                        <!-- SEND MESSAGE -->
+                        <!-- Send form -->
                         <form method="POST" action="message-db.php" class="p-3 border-top d-flex">
                             <input type="hidden" name="receiver_id" value="<?= $current_chat_id ?>">
                             <input type="hidden" name="receiver_type" value="<?= $current_chat_type ?>">
-
-                            <input type="text" name="message" class="form-control me-2" placeholder="Type message..."
-                                required>
-
+                            <input type="text" name="message" class="form-control me-2" placeholder="Type message..." required>
                             <button class="btn btn-primary">Send</button>
                         </form>
-
-                    <?php else: ?>
-
-                        <div class="p-5 text-center text-muted">
-                            Select a chat to start messaging
-                        </div>
-
-                    <?php endif; ?>
-
+                    </div>
                 </div>
 
-                <div class="profile-sidebar">
-                    <div class="big-avatar"></div>
-
-                    <?php if ($current_chat_id): ?>
-                        <?php
-                        $profile = getUserProfile($pdo, $current_chat_id, $current_chat_type);
-                        ?>
-
-                        <h5 class="fw-bold">
-                            <?= htmlspecialchars($profile['full_name']) ?>
-                        </h5>
-
-                        <div class="w-100 text-start mt-3" style="font-size: 0.85rem;">
-                            <div class="mb-3">
-                                <i class="fa-solid fa-envelope me-2 text-muted"></i>
-                                <?= htmlspecialchars($profile['email'] ?? 'No email') ?>
-                            </div>
-                        </div>
-
-                    <?php else: ?>
-                        <h5 class="fw-bold">No chat selected</h5>
-                    <?php endif; ?>
-
-                    <div class="media-tabs" id="profileTabs">
-                        <div class="tab-item active-tab" onclick="switchTab('media')">Media</div>
-                        <div class="tab-item" onclick="switchTab('files')">Files</div>
-                        <div class="tab-indicator" id="tabIndicator"></div>
+                <!--susu(profile sidebar) -->
+                <div class="chat-panel-screen">
+                    <div class="mobile-profile-header">
+                        <button class="mobile-back-btn" onclick="mobileProfileBack()">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </button>
+                        <span class="fw-bold">Profile Info</span>
                     </div>
 
-                    <div cla ss="tab-content-area">
-                        <div id="mediaPane" class="content-pane active-pane">
-                            <div class="media-grid">
-                                <div class="media-box"></div>
-                                <div class="media-box" style="background:#666;"></div>
-                                <div class="media-box" style="background:#999;"></div>
+                    <div class="profile-sidebar">
+                        <div class="big-avatar"></div>
+
+                        <?php if ($current_chat_id): ?>
+                            <?php $profile = getUserProfile($pdo, $current_chat_id, $current_chat_type); ?>
+                            <h5 class="fw-bold"><?= htmlspecialchars($profile['full_name']) ?></h5>
+                            <div class="w-100 text-start mt-3" style="font-size: 0.85rem;">
+                                <div class="mb-3">
+                                    <i class="fa-solid fa-envelope me-2 text-muted"></i>
+                                    <?= htmlspecialchars($profile['email'] ?? 'No email') ?>
+                                </div>
                             </div>
+                        <?php else: ?>
+                            <h5 class="fw-bold">No chat selected</h5>
+                        <?php endif; ?>
+
+                        <div class="media-tabs" id="profileTabs">
+                            <div class="tab-item active-tab" onclick="switchTab('media')">Media</div>
+                            <div class="tab-item" onclick="switchTab('files')">Files</div>
+                            <div class="tab-indicator" id="tabIndicator"></div>
                         </div>
 
-                        <div id="filesPane" class="content-pane">
-                            <div cla ss="mt-2" style="width: 100%; align-self: stretch">
-                                <di class="py-2 border-bottom small d-flex align-items-center gap-2">
-                                    <i class="fa-solid fa-file-pdf text-danger"></i> Internship_Form.pdf
-                                </di v>
-                                <div class="py-2 border-bottom small d-flex align-items-center gap-2">
-                                    <i class="fa-solid fa-file-word text-primary"></i> Resume_Draft.docx
+                        <div class="tab-content-area">
+                            <div id="mediaPane" class="content-pane active-pane">
+                                <div class="media-grid">
+                                    <div class="media-box"></div>
+                                    <div class="media-box" style="background:#666;"></div>
+                                    <div class="media-box" style="background:#999;"></div>
+                                </div>
+                            </div>
+                            <div id="filesPane" class="content-pane">
+                                <div class="mt-2" style="width:100%;">
+                                    <div class="py-2 border-bottom small d-flex align-items-center gap-2">
+                                        <i class="fa-solid fa-file-pdf text-danger"></i> Internship_Form.pdf
+                                    </div>
+                                    <div class="py-2 border-bottom small d-flex align-items-center gap-2">
+                                        <i class="fa-solid fa-file-word text-primary"></i> Resume_Draft.docx
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+
+            </div><!-- end .chat-slide-track -->
+        </div><!-- end .chat-container -->
     </div>
+</div>
     <div id="connect" class="section <?= $current_section === 'connect' ? 'active' : '' ?>">
         <div class="main">
             <h3><strong>Connect</strong></h3>
             <p>Connect content goes here...</p>
         </div>
     </div>
+
+    <!-- susu (mobile FAB) -->
+     <?php if ($current_section === 'home' && !$current_room_id): ?>
+        <button class="fab-join" data-bs-toggle="modal" data-bs-target="#joinRoomModal">+</button>
+    <?php endif; ?>
 </body>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    function showSection(event, sectionId, el) {
-        if (event) event.preventDefault();
+    //susu
+    // ── MOBILE CHAT SLIDE NAVIGATION ──
+    const track = document.getElementById('chatSlideTrack'); // declared ONCE
 
-        document.querySelectorAll('.section').forEach(sec => {
-            sec.classList.remove('active');
+    function isMobile() {
+        return window.innerWidth <= 768;
+    }
+
+    // On page load: if a chat is already open, jump to panel 2
+    document.addEventListener('DOMContentLoaded', () => {
+        <?php if ($current_chat_id && $current_section === 'chats'): ?>
+            if (isMobile() && track) {
+                track.classList.add('show-chat');
+            }
+        <?php endif; ?>
+
+        // Intercept chat-user clicks on mobile
+        document.querySelectorAll('.chat-user-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                if (isMobile()) {
+                    e.preventDefault();
+                    const href = this.href;
+                    const name = this.dataset.name;
+                    if (track) {
+                        track.classList.add('show-chat');
+                        track.classList.remove('show-profile');
+                    }
+                    const mobileNameEl = document.getElementById('mobileChatName');
+                    if (mobileNameEl) mobileNameEl.textContent = name;
+                    setTimeout(() => { window.location.href = href; }, 200);
+                }
+            });
         });
+    });
 
-        document.getElementById(sectionId)?.classList.  ('active');
+    function mobileChatInfo() {
+        if (track) {
+         track.classList.add('show-chat'); track.classList.add('show-profile');
+        }
+    }
 
-        document.querySelectorAll('.sidebar a').forEach(link => {
-            link.classList.remove('active');
-        });
+    function mobileChatBack() {
+        if (track) track.classList.remove('show-chat', 'show-profile'); // only show-profile, NOT show-chat
+    }
 
-        if (el) el.classList.add('active');
+    function mobileProfileBack() {
+        if (track) track.classList.remove('show-profile'); // go back to panel 2
     }
 
     function switchTab(type) {
@@ -752,31 +1061,22 @@ $page = 'messages';
             mediaPane.classList.remove('active-pane');
         }
     }
-    function getUserProfile($pdo, $id, $type) {
-        switch (strtolower($type)) {
 
-            case 'student':
-                $stmt = $pdo -> prepare("SELECT full_name, email FROM students WHERE id=?");
-                break;
-
-            case 'adviser':
-                $stmt = $pdo -> prepare("SELECT full_name, email FROM advisers WHERE id=?");
-                break;
-
-            case 'admin':
-                $stmt = $pdo -> prepare("SELECT name AS full_name, email FROM admins WHERE id=?");
-                break;
-
-            default:
-                return [
-                    'full_name' => 'Unknown',
-                    'email' => 'Unknown'
-                ];
+    function truncateRoomItems() {
+        if (window.innerWidth <= 768) {
+            document.querySelectorAll('.room-link .room-item, .active-room').forEach(el => {
+                if (!el.dataset.original) el.dataset.original = el.textContent.trim();
+                el.textContent = el.dataset.original.trim().charAt(0).toUpperCase();
+            });
+        } else {
+            document.querySelectorAll('.room-link .room-item, .active-room').forEach(el => {
+                if (el.dataset.original) el.textContent = el.dataset.original;
+            });
         }
-
-        $stmt -> execute([$id]);
-        return $stmt -> fetch(PDO:: FETCH_ASSOC);
     }
+
+    window.addEventListener('resize', truncateRoomItems);
+    document.addEventListener('DOMContentLoaded', truncateRoomItems);
 </script>
 
 </html>

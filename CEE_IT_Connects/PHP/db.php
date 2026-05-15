@@ -1,6 +1,6 @@
 <?php
 $host = "localhost";
-$dbname = "CEE_IT_Connects";
+$dbname = "CEE-IT-Connects";
 $user = "postgres";
 $pass = "12345";
 

@@ -18,6 +18,7 @@ require 'auth.php';
     <style>
         body {
             padding-top: 80px;
+            padding-bottom: 50px;
             z-index: 1000;
         }
 
@@ -32,6 +33,7 @@ require 'auth.php';
             border: 2px solid #ffb703;
             padding: 80px 40px 40px;
             position: relative;
+            margin-top: 80px;
         }
 
         .profile-pic {
