@@ -1,4 +1,4 @@
-<?php error_log(print_r($_POST, true));
+<?php
 session_start();
 require 'db.php';
 $stmtinterest = $pdo->prepare("
@@ -26,7 +26,48 @@ ORDER BY created_at DESC");
 $stmtannouncement->execute();
 $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
 
+$internshipStmt = $pdo->query("
+    SELECT id, company, title
+    FROM internships
+    ORDER BY company ASC, title ASC
+");
+$internships = $internshipStmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Stats for dashboard
+$statsStmt = $pdo->query("SELECT COUNT(*) AS total FROM internships");
+$totalInternships = $statsStmt->fetchColumn();
+
+$interestedStmt = $pdo->query("SELECT COUNT(*) AS total FROM internship_bookmarks");
+$totalInterested = $interestedStmt->fetchColumn();
+
+$announcementsStmt = $pdo->query("SELECT COUNT(*) AS total FROM announcements");
+$totalAnnouncements = $announcementsStmt->fetchColumn();
+
+$recentInternshipsStmt = $pdo->query("
+    SELECT title, company, location, created_at 
+    FROM internships 
+    ORDER BY created_at DESC 
+    LIMIT 5
+");
+$recentInternships = $recentInternshipsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$recentInterestedStmt = $pdo->query("
+    SELECT s.full_name, s.email, i.title AS internship_title, i.company, ib.created_at
+    FROM internship_bookmarks ib
+    JOIN students s ON s.id = ib.student_id
+    JOIN internships i ON i.id = ib.internship_id
+    ORDER BY ib.created_at DESC
+    LIMIT 5
+");
+$recentInterested = $recentInterestedStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$recentAnnouncementsStmt = $pdo->query("
+    SELECT title, category, created_at 
+    FROM announcements 
+    ORDER BY created_at DESC 
+    LIMIT 5
+");
+$recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -81,11 +122,6 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
             padding: 20px;
             display: flex;
             flex-direction: column;
-
-            position: sticky;
-            top: 0;
-            height: 100vh;
-            overflow-y: auto;
         }
 
         .sidebar h3 {
@@ -192,6 +228,36 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
 
     <?php include 'navbar.php'; ?>
 
+    <?php if (isset($_SESSION['success'])): ?>
+        <div class="alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
+            style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <?= $_SESSION['success'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['success']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['info'])): ?>
+        <div class="alert alert-info alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
+            style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            <?= $_SESSION['info'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['info']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['error'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
+            style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
+            <i class="bi bi-x-circle-fill me-2"></i>
+            <?= $_SESSION['error'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['error']); ?>
+    <?php endif; ?>
+
     <div class="page-body">
         <!-- SIDEBAR -->
         <aside class="sidebar">
@@ -230,7 +296,202 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
         </aside>
         <div class="main-content">
             <div id="dashboard" class="section active">
+                <div class="monitor-header">
+                    <h2>Dashboard</h2>
+                    <p>For the status and statistics</p>
+                </div>
 
+                <div class="log-container">
+                    <!-- 
+                    <table class="monitoring-table">
+                        <thead>
+                            <tr style="text-align: center;">
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Activity</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="text-align: center;">
+                                <td>Maria Carmela Alfonso</td>
+                                <td>macarmelaalfonso@gmail.com</td>
+                                <td>Reserved a slot</td>
+                                <td>
+                                    <button class="btn-action">
+                                        <img src="../Sources/history.png" alt="History" class="table-icon">
+                                    </button>
+                                    <button class="btn-action">
+                                        <img src="../Sources/delete.png" alt="Delete" class="table-icon">
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr style="text-align: center;">
+                                <td>Juan Leonardo Seleno</td>
+                                <td>leoseleno@gmail.com</td>
+                                <td>Updated listing detail</td>
+                                <td>
+                                    <button class="btn-action">
+                                        <img src="../Sources/history.png" alt="History" class="table-icon">
+                                    </button>
+                                    <button class="btn-action">
+                                        <img src="../Sources/delete.png" alt="Delete" class="table-icon">
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+-->
+                    <div class="row g-4">
+                        <!-- Recently Interested Students -->
+                        <div class="col-lg-7">
+                            <div class="card border-0 rounded-4 shadow-sm h-100">
+                                <div
+                                    class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
+                                    <i class="bi bi-people" style="color:#272f54;"></i>
+                                    <h6 class="fw-bold mb-0" style="color:#272f54;">Recently Interested Students</h6>
+                                    <span class="badge ms-auto rounded-pill"
+                                        style="background:#fff8e1; color:#7a5200; font-size:11px;">
+                                        Latest 5
+                                    </span>
+                                </div>
+                                <div id="table-interested" class="card-body px-4 pb-4 pt-2">
+                                    <?php if (empty($recentInterested)): ?>
+                                        <p class="text-muted small mb-0">No student interest recorded yet.</p>
+                                    <?php else: ?>
+                                        <div class="d-flex flex-column gap-3">
+                                            <?php foreach ($recentInterested as $ri): ?>
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 fw-bold"
+                                                        style="width:38px; height:38px; background:#eef1ff; color:#272f54; font-size:13px;">
+                                                        <?= strtoupper(substr($ri['full_name'], 0, 1)) ?>
+                                                    </div>
+                                                    <div class="flex-grow-1 overflow-hidden">
+                                                        <p class="fw-semibold mb-0 text-truncate"
+                                                            style="color:#272f54; font-size:14px;">
+                                                            <?= htmlspecialchars($ri['full_name']) ?>
+                                                        </p>
+                                                        <p class="text-muted mb-0 text-truncate" style="font-size:12px;">
+                                                            <?= htmlspecialchars($ri['email']) ?>
+                                                        </p>
+                                                    </div>
+                                                    <div class="text-end flex-shrink-0">
+                                                        <span class="badge rounded-pill px-2"
+                                                            style="background:#f5f5f5; color:#555; font-size:11px; font-weight:500;">
+                                                            <?= htmlspecialchars($ri['company']) ?>
+                                                        </span>
+                                                        <p class="text-muted mb-0 mt-1" style="font-size:11px;">
+                                                            <?= date("M d", strtotime($ri['created_at'])) ?>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Announcements -->
+                        <div class="col-lg-5">
+                            <div class="card border-0 rounded-4 shadow-sm h-100">
+                                <div
+                                    class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
+                                    <i class="bi bi-bell" style="color:#272f54;"></i>
+                                    <h6 class="fw-bold mb-0" style="color:#272f54;">Recent Announcements</h6>
+                                    <span class="badge ms-auto rounded-pill"
+                                        style="background:#fdecea; color:#7f1d1d; font-size:11px;">
+                                        Latest 5
+                                    </span>
+                                </div>
+                                <div id="table-announcements" class="card-body px-4 pb-4 pt-2">
+                                    <?php if (empty($recentAnnouncements)): ?>
+                                        <p class="text-muted small mb-0">No announcements yet.</p>
+                                    <?php else: ?>
+                                        <div class="d-flex flex-column gap-3">
+                                            <?php foreach ($recentAnnouncements as $a):
+                                                $catColors = [
+                                                    'news' => ['bg' => '#e6f1fb', 'color' => '#0c447c'],
+                                                    'updates' => ['bg' => '#eaf3de', 'color' => '#27500a'],
+                                                    'FAQs' => ['bg' => '#faeeda', 'color' => '#633806'],
+                                                ];
+                                                $c = $catColors[$a['category']] ?? ['bg' => '#f0f0f0', 'color' => '#444'];
+                                                ?>
+                                                <div class="d-flex align-items-start gap-3">
+                                                    <span class="badge rounded-pill px-3 py-2 flex-shrink-0"
+                                                        style="background:<?= $c['bg'] ?>; color:<?= $c['color'] ?>; font-size:11px; font-weight:600;">
+                                                        <?= htmlspecialchars(ucfirst($a['category'])) ?>
+                                                    </span>
+                                                    <div class="flex-grow-1 overflow-hidden">
+                                                        <p class="fw-semibold mb-0 text-truncate"
+                                                            style="color:#272f54; font-size:14px;">
+                                                            <?= htmlspecialchars($a['title']) ?>
+                                                        </p>
+                                                        <p class="text-muted mb-0" style="font-size:12px;">
+                                                            <?= date("M d, Y", strtotime($a['created_at'])) ?>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card border-0 rounded-4 shadow-sm mb-4">
+                            <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
+                                <i class="bi bi-briefcase" style="color:#272f54;"></i>
+                                <h6 class="fw-bold mb-0" style="color:#272f54;">Recent Internship Postings</h6>
+                                <span class="badge ms-auto rounded-pill"
+                                    style="background:#eef1ff; color:#272f54; font-size:11px;">
+                                    Latest 5
+                                </span>
+                            </div>
+                            <div class="card-body px-4 pb-4 pt-2">
+                                <?php if (empty($recentInternships)): ?>
+                                    <p class="text-muted small mb-0">No internships posted yet.</p>
+                                <?php else: ?>
+                                    <div class="table-responsive">
+                                        <table id="table-internships" class="table table-hover align-middle mb-0"
+                                            style="font-size:14px;">
+                                            <thead>
+                                                <tr
+                                                    style="color:#aaa; font-size:12px; text-transform:uppercase; letter-spacing:.04em;">
+                                                    <th class="border-0 pb-2 fw-semibold">Title</th>
+                                                    <th class="border-0 pb-2 fw-semibold">Company</th>
+                                                    <th class="border-0 pb-2 fw-semibold">Location</th>
+                                                    <th class="border-0 pb-2 fw-semibold">Posted</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($recentInternships as $ri): ?>
+                                                    <tr>
+                                                        <td class="fw-semibold" style="color:#272f54;">
+                                                            <?= htmlspecialchars($ri['title']) ?>
+                                                        </td>
+                                                        <td>
+                                                            <?= htmlspecialchars($ri['company']) ?>
+                                                        </td>
+                                                        <td class="text-muted">
+                                                            <i class="bi bi-geo-alt me-1"></i>
+                                                            <?= htmlspecialchars($ri['location']) ?>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge rounded-pill px-3"
+                                                                style="background:#f0f4ff; color:#272f54; font-weight:500; font-size:12px;">
+                                                                <?= date("M d, Y", strtotime($ri['created_at'])) ?>
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div id="postings" class="section">
                 <h2>Intership Posting</h2>
@@ -278,13 +539,30 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
 
                     <div class="form-card">
                         <h3>Location Information</h3>
-                        <div class="form-grid">
-                            <input type="text" inputmode="decimal"
-                                pattern="^(\+|-)?(?:90(?:(?:\.0{1,8})?)|(?:[0-8]?\d(?:(?:\.\d{1,8})?)))$"
-                                placeholder="Latitude e.g 24.0123912" name="latitude">
-                            <input type="text" inputmode="decimal"
-                                pattern="^(\+|-)?(?:180(?:(?:\.0{1,8})?)|(?:1[0-7]\d(?:(?:\.\d{1,8})?)|(?:[1-9]?\d(?:(?:\.\d{1,8})?))))$"
-                                placeholder="Longitude e.g 120.0123912" name="longitude">
+                        <p class="text-muted" style="font-size:13px;">Click on the map to pin the internship location.
+                        </p>
+
+                        <div id="posting-map"
+                            style="width:100%; height:350px; border-radius:10px; border:1px solid #dee2e6;"></div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Latitude</label>
+                                <input type="text" name="latitude" id="post-lat" class="form-control"
+                                    placeholder="Click map to set" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Longitude</label>
+                                <input type="text" name="longitude" id="post-lng" class="form-control"
+                                    placeholder="Click map to set" readonly>
+                            </div>
+                        </div>
+
+                        <div id="pin-label" class="d-none mt-2 p-2">
+                            <span class="p-1 rounded text-bg-success">
+                                <i class="bi bi-geo-alt-fill"></i> Location pinned - drag the marker or click to a new
+                                location to adjust
+                            </span>
                         </div>
                     </div>
 
@@ -600,38 +878,56 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
             <div id="student_register" class="section">
                 <h2>Student Register</h2>
                 <div class="form-card">
-                    <!--
-                    <div class="d-flex gap-2 mb-3">
-                        <form action="auto-register.php" method="POST">
-                            <h3>Press to activate the current csv</h3>
-                            <button type="submit" class="btn btn-primary">
-                                Activate CSV Import
-                            </button>
-                        </form>
-                    </div> -->
-                    <div>
-                        <h3>Excel Sheet for student registration</h3>
-                        <button type="button" class="btn btn-secondary" onclick="showSection('edit_csv')">
-                            Edit Current CSV
-                        </button>
-                    </div>
-                    <form action="auto-register-csv.php" method="POST" enctype="multipart/form-data">
-                        <h3>Import New CSV Files<!-- (make sure the name of the csv is students.csv)--></h3>
-                        <label>Select new CSV file</label>
-                        <input type="file" name="students_csv" accept=".csv" required>
 
-                        <button type="submit" class="submit-btn mt-3">
-                            Replace Current CSV
-                        </button>
-                    </form>
-                    <a href="download-csv.php" class="btn submit-btn mt-3 py-19">
-                        <i class="bi bi-download"></i> Download CSV
-                    </a>
-                    <!--
-                    <button class="submit-btn mt-3">
-                        <a href='../../Sources/students.csv' download='students.csv'>Download
-                            csv</a>
-                    </button> -->
+                    <!-- View/Edit CSV -->
+                    <div class="mb-4">
+                        <h5 class="fw-semibold mb-1" style="color:#272f54;">Excel Sheet for Student Registration</h5>
+                        <p class="text-muted small mb-2">View and edit the current student CSV file.</p>
+                        <div class="text-end">
+                            <button type="button"
+                                style="background: linear-gradient(135deg, #FFB62F, #E4572E); color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;"
+                                onclick="showSection('edit_csv')">
+                                <i class="bi bi-pencil-square me-1"></i> Edit Current CSV
+                            </button>
+                        </div>
+
+
+                    </div>
+
+                    <hr style="border-color:#eee;">
+
+                    <!-- Import CSV -->
+                    <div class="mb-4 mt-3">
+                        <h5 class="fw-semibold mb-1" style="color:#272f54;">Import New CSV File</h5>
+                        <p class="text-muted small mb-2">Replaces the existing CSV with the uploaded file.</p>
+                        <form action="auto-register-csv.php" method="POST" enctype="multipart/form-data">
+                            <div class="d-flex gap-2">
+                                <input type="file" name="students_csv" accept=".csv" required
+                                    style="border:1px solid #ddd; border-radius:8px; padding:6px 10px; font-size:13px;">
+                                <div class="text-end">
+                                    <button type="submit"
+                                        style="background: linear-gradient(135deg, #FFB62F, #E4572E); color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;">
+                                        <i class="bi bi-upload me-1"></i> Replace CSV
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <hr style="border-color:#eee;">
+
+                    <!-- Download CSV -->
+                    <div class="mt-3">
+                        <h5 class="fw-semibold mb-1" style="color:#272f54;">Download Current CSV</h5>
+                        <p class="text-muted small mb-2">Download the current student registration file.</p>
+                        <div class="text-end">
+                            <a href="download-csv.php"
+                                style="display:inline-flex; align-items:center; gap:6px; background: linear-gradient(135deg, #FFB62F, #E4572E); color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:600; font-size:13px; text-decoration:none;">
+                                <i class="bi bi-download"></i> Download CSV
+                            </a>
+                        </div>
+                    </div>
+
                 </div>
             </div>
             <div id="edit_csv" class="section">
@@ -726,6 +1022,7 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                     </form>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -756,6 +1053,14 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
     <script>
+        setTimeout(() => {
+            const alert = document.getElementById('flashAlert');
+            if (alert) {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 300);
+            }
+        }, 3000);
+
         function addRow() {
             const tbody = document.getElementById('csv-tbody');
             const colCount = parseInt(document.getElementById('col-count').value);
@@ -865,8 +1170,46 @@ $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
                 row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
             });
         });
-    </script>
 
+        // FOr The Map Pinning function
+        let postingMap, postingMarker;
+
+        function initPostingMap() {
+            postingMap = new google.maps.Map(document.getElementById('posting-map'), {
+                zoom: 12,
+                center: { lat: 14.7011, lng: 120.9830 }
+            });
+
+            postingMap.addListener('click', function (e) {
+                const lat = e.latLng.lat();
+                const lng = e.latLng.lng();
+
+                document.getElementById('post-lat').value = lat.toFixed(7);
+                document.getElementById('post-lng').value = lng.toFixed(7);
+                document.getElementById('pin-label').classList.remove('d-none');
+
+                if (postingMarker) {
+                    postingMarker.setPosition(e.latLng);
+                } else {
+                    postingMarker = new google.maps.Marker({
+                        position: e.latLng,
+                        map: postingMap,
+                        title: 'Internship Location',
+                        draggable: true
+                    });
+
+                    postingMarker.addListener('dragend', function () {
+                        const pos = postingMarker.getPosition();
+                        document.getElementById('post-lat').value = pos.lat().toFixed(7);
+                        document.getElementById('post-lng').value = pos.lng().toFixed(7);
+                    });
+                }
+            });
+        }
+    </script>
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDITrnTUmS0AwxqZCE8cfYI3d5kjtzg7RY&callback=initPostingMap"
+        async defer></script>
     <script src="../JS/script.js"></script>
 
 </body>

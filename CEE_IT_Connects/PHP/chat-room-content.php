@@ -578,7 +578,7 @@ $backLink = getDashboardByRole($_SESSION['role']);
         }
     </style>
 </head>
-<?php print_r($_SESSION); ?>
+<?php //print_r($_SESSION); ?>
 <div class="d-flex justify-content-end mb-2">
     <a href="<?= $backLink ?>" class="text-danger fw-semibold" style="text-decoration:none;">
         <i class="fa-solid fa-arrow-left"></i> Back to rooms

@@ -397,7 +397,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                     <?php foreach ($internships as $internship): ?>
                         <?php /* if ($internship['program'] !== $studentProgram)
-                 continue;*/ ?>
+                continue;*/ ?>
                         <div class="listing-card mt-3"
                             data-type="<?= htmlspecialchars($internship['internship_type'] ?? '') ?>"
                             data-classification="<?= htmlspecialchars($internship['company_classification'] ?? '') ?>">
@@ -437,7 +437,9 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php if (!empty($internship['phone_numbers'])): ?>
                                 <p><strong>Contact:</strong> <?php echo htmlspecialchars($internship['phone_numbers']); ?></p>
                             <?php endif; ?>
-
+                            <?php if (!empty($internship['email'])): ?>
+                                <p><strong>Email:</strong> <?php echo htmlspecialchars($internship['email']); ?></p>
+                            <?php endif; ?>
                             <div class="d-flex gap-2">
                                 <button class="btn btn-read" onclick="toggleFiles(<?= $internship['id'] ?>)">
                                     Read More

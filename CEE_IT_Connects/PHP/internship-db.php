@@ -38,10 +38,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $allowed_programs = ['Information Technology', 'Civil Engineering', 'Electrical Engineering'];
 
         if (empty($title) || empty($company) || empty($description) || empty($program)) {
-            die("Title, Company, Description, and Program are required.");
+            echo "<script>alert('Title, Company, Description, and Program are required.'); window.history.back();</script>";
+            exit;
         }
         if (!in_array($program, $allowed_programs)) {
-            die("Invalid program selection.");
+            echo "<script>alert('Invalid program selection.'); window.history.back();</script>";
+            exit;
         }
 
 
@@ -74,8 +76,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $students = $stmtStudents->fetchAll(PDO::FETCH_ASSOC);
 
             $notifStmt = $pdo->prepare("
-                INSERT INTO notifications (user_id, user_type, title, message, is_read, created_at)
-                VALUES (?, 'student', ?, ?, FALSE, NOW())
+                INSERT INTO notifications (user_id, user_type, title, message, link, is_read, created_at)
+                VALUES (?, 'student', ?, ?, ?, FALSE, NOW())
             ");
 
             // MESSAGE CONTENT
@@ -86,7 +88,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $notifStmt->execute([
                     $student['id'],
                     $notifTitle,
-                    $notifMessage
+                    $notifMessage,
+                    'applied-internship-programs.php'
                 ]);
             }
 
@@ -97,13 +100,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             $stmtAudit->execute([
                 ':user_id' => $admin_id,
-                ':roles' => 'internship_admin',
+                ':roles' => $_SESSION['role'],
                 ':activity' => 'Posted a new internship: ' . $title . ' at ' . $company
             ]);
             header("Location: internship-ui.php?success=1");
             exit();
         } catch (PDOException $e) {
-            die("Database error: " . $e->getMessage());
+            echo "<script>alert('Database error: '); </script>" . $e->getMessage() . "<script>window.history.back();</script>";
+            exit;
         }
     }
     if ($form_type === 'announcement_posting') {
@@ -122,13 +126,34 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmtActivity = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
             $stmtActivity->execute([
                 ':user_id' => $_SESSION['user_id'],
-                ':roles' => 'internship_admin',
+                ':roles' => $_SESSION['role'],
                 ':activity' => 'Posted a new announcement: ' . $title
             ]);
         } catch (PDOException $e) {
-            die("Database error: " . $e->getMessage());
+            echo "<script>alert('Database error: '); </script>" . $e->getMessage() . "<script>window.history.back();</script>";
+            exit;
         }
 
+        $stmtStudents = $pdo->query("SELECT id FROM students");
+        $students = $stmtStudents->fetchAll(PDO::FETCH_ASSOC);
+
+        $notifTitle = "New Announcement Posted";
+        $notifMessage = "A new announcement has been posted: $title";
+        $notifStmt = $pdo->prepare("
+            INSERT INTO notifications (user_id, user_type, title, message, link, is_read, created_at)
+            VALUES (?, 'student', ?, ?, ?, FALSE, NOW())
+        ");
+
+        foreach ($students as $student) {
+            $notifStmt->execute([
+                $student['id'],
+                $notifTitle,
+                $notifMessage,
+                'announcement.php'
+            ]);
+        }
+
+        $_SESSION['success'] = "New Announcement '$title' has been created.";
         header("Location: internship-ui.php?success=1");
         exit();
     }
@@ -162,18 +187,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             $notifTitle = "Internship Interested Update";
             $notifMessage = "Your interest in {$bookmark['title']} at {$bookmark['company']} was rejected. Feedback: $feedback";
-
             $notifStmt = $pdo->prepare("
-            INSERT INTO notifications (user_id, user_type, title, message, is_read, created_at)
-            VALUES (?, 'student', ?, ?, FALSE, NOW())
-        ");
-
+            INSERT INTO notifications (user_id, user_type, title, message, link, is_read, created_at)
+            VALUES (?, 'student', ?, ?, ?, FALSE, NOW())
+            ");
             $notifStmt->execute([
                 $bookmark['student_id'],
                 $notifTitle,
-                $notifMessage
+                $notifMessage,
+                'applied-internship-program.php'
             ]);
 
+
+            $_SESSION['success'] = "Feedback to " . $bookmark['full_name'] . " has been sent.";
             $stmtDelete = $pdo->prepare("DELETE FROM internship_bookmarks WHERE id = ?");
             $stmtDelete->execute([$bookmark_id]);
 
@@ -182,7 +208,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmtActivity = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
             $stmtActivity->execute([
                 ':user_id' => $_SESSION['user_id'],
-                ':roles' => 'internship_admin',
+                ':roles' => $_SESSION['role'],
                 ':activity' => 'Sent feedback for student ' . $bookmark['student_id'] .
                     ' regarding internship ' . $bookmark['title'] . ' at ' . $bookmark['company']
             ]);
@@ -225,12 +251,34 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmtActivity = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
         $stmtActivity->execute([
             ':user_id' => $_SESSION['user_id'],
-            ':roles' => 'internship_admin',
+            ':roles' => $_SESSION['role'],
             ':activity' => 'Deleted the announcement: ' . $title
         ]);
+
+        $stmtStudents = $pdo->query("SELECT id FROM students");
+        $students = $stmtStudents->fetchAll(PDO::FETCH_ASSOC);
+
+        $notifTitle = "Announcement Delete";
+        $notifMessage = "The announcement {$_POST['title']} has been deleted.";
+        $notifStmt = $pdo->prepare("
+            INSERT INTO notifications (user_id, user_type, title, message, link, is_read, created_at)
+            VALUES (?, 'student', ?, ?, ?, FALSE, NOW())
+            ");
+
+        foreach ($students as $student) {
+            $notifStmt->execute([
+                $student['id'],
+                $notifTitle,
+                $notifMessage,
+                'announcement.php'
+            ]);
+        }
+
+        $_SESSION['success'] = "Announcement " . $_POST['title'] . " has been deleted.";
         header("location: internship-ui.php?removed=1");
         exit;
     }
+
     if (isset($_POST['edit_announcement'])) {
         $title = $_POST['title'] ?? '';
         $announcement_id = $_POST['announcement_id'];
@@ -243,13 +291,33 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $announcement_id
         ]);
 
+        $stmtStudents = $pdo->query("SELECT id FROM students");
+        $students = $stmtStudents->fetchAll(PDO::FETCH_ASSOC);
+
+        $notifTitle = "Announcement Update";
+        $notifMessage = "The announcement {$_POST['title']} has been updated.";
+        $notifStmt = $pdo->prepare("
+            INSERT INTO notifications (user_id, user_type, title, message, link, is_read, created_at)
+            VALUES (?, 'student', ?, ?, ?, FALSE, NOW())
+            ");
+
+        foreach ($students as $student) {
+            $notifStmt->execute([
+                $student['id'],
+                $notifTitle,
+                $notifMessage,
+                'announcement.php'
+            ]);
+        }
+
         $stmtActivity = $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (:user_id, :roles, :activity, NOW())");
         $stmtActivity->execute([
             ':user_id' => $_SESSION['user_id'],
-            ':roles' => 'internship_admin',
-            ':activity' => 'Deleted the announcement: ' . $title
+            ':roles' => $_SESSION['role'],
+            ':activity' => 'Edited the announcement: ' . $title
         ]);
 
+        $_SESSION['success'] = "Announcement " . $_POST['title'] . " has been updated succesfully!";
         header("location: internship-ui.php?updated=1");
         exit;
     }

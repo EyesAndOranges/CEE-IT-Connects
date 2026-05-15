@@ -17,6 +17,7 @@ if (!move_uploaded_file($tmp, $destination)) {
     die("Could not save CSV.");
 }
 
+
 header("Location: internship-ui.php");
 exit;
 ?>

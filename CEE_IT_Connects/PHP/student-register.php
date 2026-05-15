@@ -109,7 +109,7 @@
                     </button>
 
                     <div class="register-text mt-3">
-                        Already have an account? <a href="student-login.php" class="register-link">Sign in</a>
+                        Already have an account? <a href="login-ui.php" class="register-link">Sign in</a>
                     </div>
                 </form>
 
