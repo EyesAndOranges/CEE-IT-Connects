@@ -142,6 +142,7 @@ $page = 'messages'
             border-radius: 12px 12px 0px 0px;
             color: white;
             padding: 15px;
+            min-height: 110px;
             /* min-height: 120px;
             flex-direction: column;
             justify-content: space-between; */
@@ -153,6 +154,8 @@ $page = 'messages'
             padding: 10px;
             border-radius: 0 0 12px 12px;
             text-align: center;
+            border: 1px solid #bbb;
+            border-top: none;
         }
 
         .enter-btn {
@@ -274,7 +277,7 @@ $page = 'messages'
             align-items: center;
             gap: 8px;
             background: white;
-            border: 1px solid;
+            border: 1px solid #bbb;
             border-radius: 24px;
             padding: 7px 14px;
             flex: 1;
@@ -423,7 +426,7 @@ $page = 'messages'
                                                 onsubmit="return confirm('Archive this room? Students will no longer see it.')">
                                                 <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
                                                 <button type="submit" class="btn btn-sm btn-light" title="Archive room"
-                                                    style="font-size:11px; color: #616161; border: 1px solid #ccc;">
+                                                    style="font-size:11px; color: #616161; border: 1px solid #bbb;">
                                                     <i class="fa-solid fa-box-archive"></i>
                                                 </button>
                                             </form>
@@ -457,7 +460,7 @@ $page = 'messages'
                         <input type="text" id="searchInput" placeholder="Search student" oninput="filterTable()">
                     </div>
                     <select id="roomFilter" onchange="filterTable()"
-                        style="padding:7px 14px;border:1px solid;border-radius:24px;font-size:12px;">
+                        style="padding:7px 14px;border:1px solid #bbb;border-radius:24px;font-size:12px;">
                         <option value="">All Rooms</option>
                         <?php foreach ($rooms as $r): ?>
                             <option value="<?= htmlspecialchars($r['room_name']) ?>">
@@ -467,7 +470,7 @@ $page = 'messages'
                     </select>
                 </div>
 
-                <div style="background:white;border:1px solid #00000060;border-radius:8px;">
+                <div style="background:#fbfbfb;border:1px solid #bbb;border-radius:8px;">
                     <table>
                         <thead>
                             <tr>

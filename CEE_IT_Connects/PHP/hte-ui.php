@@ -78,8 +78,8 @@ $page = 'messages'
             background: #f5f6fa;
             margin: 0;
             padding-top: 70px;
-            height: 100vh;
-            overflow: hidden;
+            min-height: 100vh;   /* change height to min-height */
+            overflow-y: auto;
         }
 
         .section-panel {
@@ -172,13 +172,14 @@ $page = 'messages'
             margin-left: 260px;
             padding: 20px;
             background-color: #f0f2f7;
-            height: 100%;
+            min-height: calc(100vh - 70px);
         }
 
         .room-card {
             border-radius: 12px 12px 0px 0px;
             color: white;
             padding: 15px;
+            min-height: 110px;
         }
 
         .room-footer {
@@ -186,6 +187,8 @@ $page = 'messages'
             padding: 10px;
             border-radius: 0 0 12px 12px;
             text-align: center;
+            border: 1px solid #bbb;
+            border-top: none;
         }
 
         .enter-btn {
@@ -202,7 +205,7 @@ $page = 'messages'
             align-items: center;
             gap: 8px;
             background: white;
-            border: 1px solid;
+            border: 1px solid #bbb;
             border-radius: 24px;
             padding: 7px 14px;
             flex: 1;
@@ -226,6 +229,9 @@ $page = 'messages'
             align-items: center;
             justify-content: center;
             margin-right: 8px;
+            min-width: 34px;
+            min-height: 34px;
+            flex-shrink: 0;
         }
 
         .student-cell {
@@ -235,7 +241,7 @@ $page = 'messages'
 
         .student-card {
             background: white;
-            border: 1px solid #00000060;
+            border: 1px solid #bbb;
             border-radius: 8px;
             margin-bottom: 16px;
             overflow: hidden;
@@ -267,7 +273,7 @@ $page = 'messages'
         .log-row select,
         .log-row input[type="number"] {
             padding: 6px 10px;
-            border: 1px solid #ccc;
+            border: 1px solid #bbb;
             border-radius: 6px;
             font-size: 13px;
             outline: none;
@@ -301,6 +307,9 @@ $page = 'messages'
 
         .remarks-section {
             padding: 14px 18px;
+            /* overflow-y: scroll; */
+            /* scrollbar-width: none; */
+            background-color: #fbfbfb;
         }
 
         .remarks-label {
@@ -314,14 +323,14 @@ $page = 'messages'
 
         .remarks-section textarea {
             width: 100%;
-            border: 1px solid #ddd;
+            border: 1px solid #bbb;
             border-radius: 6px;
             padding: 10px 12px;
             font-size: 13px;
             resize: vertical;
             min-height: 80px;
             outline: none;
-            background: #fafafa;
+            background: #fbfbfb;
             box-sizing: border-box;
         }
 
@@ -334,7 +343,7 @@ $page = 'messages'
 
         .remarks-footer select {
             padding: 6px 10px;
-            border: 1px solid #ccc;
+            border: 1px solid #bbb;
             border-radius: 6px;
             font-size: 13px;
             outline: none;
@@ -381,7 +390,7 @@ $page = 'messages'
             align-items: center;
             gap: 8px;
             background: white;
-            border: 1px solid;
+            border: 1px solid #bbb;
             border-radius: 24px;
             padding: 7px 14px;
             flex: 1;
@@ -540,7 +549,7 @@ $page = 'messages'
                     <input type="text" id="searchInput" placeholder="Search student" oninput="filterTable()">
                 </div>
                 <select id="roomFilter" onchange="filterTable()"
-                    style="padding:7px 14px;border:1px solid;border-radius:24px;font-size:12px;">
+                    style="padding:7px 14px;border:1px solid #bbb;border-radius:24px;font-size:12px;">
                     <option value="">All Rooms</option>
                     <?php foreach ($rooms as $r): ?>
                         <option value="<?= htmlspecialchars($r['room_name']) ?>">
@@ -550,7 +559,7 @@ $page = 'messages'
                 </select>
             </div>
 
-            <div style="background:white;border:1px solid #00000060;border-radius:8px;overflow:hidden;">
+            <div style="background: #fbfbfb;border:1px solid #bbb;border-radius:8px;overflow:hidden;">
                 <table>
                     <thead>
                         <tr>
@@ -622,7 +631,7 @@ $page = 'messages'
                     <input type="text" id="searchInput" placeholder="Search student" oninput="filterCards()">
                 </div>
                 <select id="roomFilter" onchange="filterCards()"
-                    style="padding:7px 14px;border:1px solid;border-radius:24px;font-size:12px;">
+                    style="padding:7px 14px;border:1px solid #bbb;border-radius:24px;font-size:12px;">
                     <option value="">All Rooms</option>
                     <?php foreach ($rooms as $r): ?>
                         <option value="<?= htmlspecialchars($r['room_name']) ?>">
