@@ -26,7 +26,8 @@ function getUserType($role)
 }
 function getDashboardByRole($role)
 {
-    return match ($role) {
+    //return match ($role) {
+    return match (strtolower($role)) {
         'student' => 'message.php',
         'hte_adviser' => 'hte-ui.php',
         'internship_adviser' => 'ojt-rooms.php',

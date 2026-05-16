@@ -58,8 +58,8 @@ $statuses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <?php
 $colors = ['#d63ba5', '#1abc9c', '#3498db', '#9b59b6'];
 $color = $colors[array_rand($colors)];
-$page = 'messages'
-    ?>
+$page = 'messages';
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -68,7 +68,7 @@ $page = 'messages'
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Virtual Rooms</title>
+    <title>HTE Adviser | CEE IT Connects</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -76,17 +76,17 @@ $page = 'messages'
     <style>
         body {
             background: #f5f6fa;
-
-            /* prevent content shift when navbar appears */
             margin: 0;
             padding-top: 70px;
+            min-height: 100vh;   /* change height to min-height */
+            overflow-y: auto;
         }
 
-        .section {
+        .section-panel {
             display: none;
         }
 
-        .section.active {
+        .section-panel.active {
             display: block;
         }
 
@@ -95,74 +95,107 @@ $page = 'messages'
             width: 240px;
             background: #fff;
             position: fixed;
-            padding: 20px;
-            border-right: 1px solid #ddd;
+            /* padding: 20px; */
+            padding: 20px 0px 20px 20px;
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
 
         .sidebar a {
             display: block;
-            padding: 10px;
+            align-items: center;
+            padding: 10px 12px;
             color: #333;
             text-decoration: none;
-            border-radius: 8px;
-            margin-bottom: 5px;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .sidebar a:hover {
+            background: #f0f0f0;
         }
 
         .sidebar a.active {
-            background: #ffe5d9;
+            background: #ffdac8;
             color: #ff6b2c;
         }
 
+        .sidebar::-webkit-scrollbar {
+            display: none;
+        }
+
         .rooms-list {
+            font-size: 11px;
+            color: #585858;
             margin-top: 20px;
         }
 
         .room-item {
-            padding: 8px;
-            border-radius: 6px;
-            background: #f1f1f1;
-            margin-bottom: 5px;
+            padding: 8px 10px;
+            /* margin-bottom: 2px; */
+            border-radius: 10px;
+            /* background: #f1f1f1; */
+            font-size: 13px;
+            
         }
 
         .room-link {
             text-decoration: none;
+            display: block;
+            /* padding: 0; */
+            margin: 4px;
+            /* gap: 2px; */
         }
 
         .room-link .room-item:hover {
-            background: #e0e0e0;
             cursor: pointer;
         }
 
         /* ACTIVE ROOM */
         .active-room {
-            background: #ffe5d9;
+            background: #ffdac8;
             color: #ff6b2c;
             font-weight: bold;
             cursor: default;
+            /* background: #ff6b2c;
+            color: #fff;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: default; */
         }
 
         /* MAIN */
         .main {
             margin-left: 260px;
             padding: 20px;
+            background-color: #f0f2f7;
+            min-height: calc(100vh - 70px);
         }
 
         .room-card {
-            border-radius: 12px;
+            border-radius: 12px 12px 0px 0px;
             color: white;
             padding: 15px;
+            min-height: 110px;
         }
 
         .room-footer {
-            background: #eee;
+            background: #fff;
             padding: 10px;
             border-radius: 0 0 12px 12px;
             text-align: center;
+            border: 1px solid #bbb;
+            border-top: none;
         }
 
         .enter-btn {
             background: #f4a62a;
             border: none;
+            color: #fff;
+            font-weight: 600;
             padding: 5px 15px;
             border-radius: 8px;
         }
@@ -172,7 +205,7 @@ $page = 'messages'
             align-items: center;
             gap: 8px;
             background: white;
-            border: 1px solid;
+            border: 1px solid #bbb;
             border-radius: 24px;
             padding: 7px 14px;
             flex: 1;
@@ -196,6 +229,9 @@ $page = 'messages'
             align-items: center;
             justify-content: center;
             margin-right: 8px;
+            min-width: 34px;
+            min-height: 34px;
+            flex-shrink: 0;
         }
 
         .student-cell {
@@ -205,7 +241,7 @@ $page = 'messages'
 
         .student-card {
             background: white;
-            border: 1px solid #00000060;
+            border: 1px solid #bbb;
             border-radius: 8px;
             margin-bottom: 16px;
             overflow: hidden;
@@ -217,6 +253,21 @@ $page = 'messages'
             gap: 14px;
             padding: 14px 18px;
             border-bottom: 1px solid #e0e0e0;
+        }
+
+        /*susu*/
+        .log-row-top {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .log-row-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
         }
 
         .student-info {
@@ -237,7 +288,7 @@ $page = 'messages'
         .log-row select,
         .log-row input[type="number"] {
             padding: 6px 10px;
-            border: 1px solid #ccc;
+            border: 1px solid #bbb;
             border-radius: 6px;
             font-size: 13px;
             outline: none;
@@ -271,6 +322,9 @@ $page = 'messages'
 
         .remarks-section {
             padding: 14px 18px;
+            /* overflow-y: scroll; */
+            /* scrollbar-width: none; */
+            background-color: #fbfbfb;
         }
 
         .remarks-label {
@@ -284,14 +338,14 @@ $page = 'messages'
 
         .remarks-section textarea {
             width: 100%;
-            border: 1px solid #ddd;
+            border: 1px solid #bbb;
             border-radius: 6px;
             padding: 10px 12px;
             font-size: 13px;
             resize: vertical;
             min-height: 80px;
             outline: none;
-            background: #fafafa;
+            background: #fbfbfb;
             box-sizing: border-box;
         }
 
@@ -304,7 +358,7 @@ $page = 'messages'
 
         .remarks-footer select {
             padding: 6px 10px;
-            border: 1px solid #ccc;
+            border: 1px solid #bbb;
             border-radius: 6px;
             font-size: 13px;
             outline: none;
@@ -351,7 +405,7 @@ $page = 'messages'
             align-items: center;
             gap: 8px;
             background: white;
-            border: 1px solid;
+            border: 1px solid #bbb;
             border-radius: 24px;
             padding: 7px 14px;
             flex: 1;
@@ -412,19 +466,220 @@ $page = 'messages'
             border-radius: 4px;
             background: #ff6b2c;
         }
+
+        /*susu*/
+        .room-initial { display: none; }
+        .room-name-text { display: inline; }
+        
+        /*===MEDIA QUERY===*/
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed !important;
+                top: 70px !important;
+                left: 0 !important;
+                bottom: 0 !important;
+                width: 60px !important;
+                height: calc(100vh - 70px) !important;
+                padding: 10px 0 !important;
+                border-radius: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                overflow-x: hidden !important;
+                z-index: 100;
+            }
+
+            .sidebar .sidebar-text,
+            .rooms-list h6,
+            .rooms-list hr {
+                display: none !important;
+            }
+
+            .sidebar > a {
+                width: 44px !important;
+                height: 44px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 12px !important;
+                margin: 0 auto 8px auto !important;
+                font-size: 1.2rem !important;
+                padding: 0 !important;
+            }
+
+            .sidebar > a i {
+                margin: 0 !important;
+            }
+
+            .rooms-list {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                margin-top: 0 !important;
+                width: 100% !important;
+                max-height: unset !important;
+                overflow-y: auto;
+                overflow-x: hidden !important;
+                scrollbar-width: none;
+                gap: 8px;
+            }
+
+            .room-link {
+                display: flex !important;
+                justify-content: center !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .room-item {
+                width: 44px !important;
+                height: 44px !important;
+                min-width: 44px !important;
+                min-height: 44px !important;
+                border-radius: 12px !important;
+                background: #e8e8e8 !important;
+                color: #555 !important;
+                font-weight: bold !important;
+                font-size: 1.1rem !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: hidden !important;
+            }
+
+            .room-item.active-room {
+                background: #ffdac8 !important;
+                color: #ff6b2c !important;
+                margin: 0 auto;
+            }
+
+            .room-name-text { display: none !important; }
+            .room-initial { display: flex !important; }
+
+            .main {
+                margin-left: 70px !important;
+                padding: 15px !important;
+            }
+
+            /* Room cards — clamp title to 2 lines */
+            .room-card h5 {
+                display: -webkit-box !important;
+                -webkit-line-clamp: 2 !important;
+                line-clamp: 2 !important;
+                -webkit-box-orient: vertical !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+
+            .room-card {
+                min-height: 110px !important;
+                max-height: 110px !important;
+                overflow: hidden !important;
+            }
+
+            /* Table horizontal scroll */
+            #status .search-box {
+                max-width: 100% !important;
+            }
+
+            .avatar {
+                width: 34px !important;
+                height: 34px !important;
+                min-width: 34px !important;
+                min-height: 34px !important;
+                border-radius: 50% !important;
+                flex-shrink: 0 !important;
+            }
+
+            .chat-container {
+                position: fixed !important;
+                top: 70px !important;
+                left: 60px !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                height: calc(100vh - 70px) !important;
+                border-radius: 0 !important;
+                border: none !important;
+            }
+
+            .chat-container .chat-messages {
+                flex: 1 !important;
+            }
+
+            .log-row {
+                flex-wrap: wrap !important;
+                gap: 10px !important;
+                padding: 12px !important;
+            }
+
+            /* Student info takes full width on its own row */
+            .log-row .student-info {
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
+            }
+
+            /* Avatar stays circular and doesn't shrink */
+            .log-row .avatar {
+                flex-shrink: 0 !important;
+                align-self: center !important;
+            }
+
+            /* Status select and hours input go to their own row */
+            .log-row select,
+            .log-row input[type="number"] {
+                flex: 1 !important;
+                min-width: 80px !important;
+            }
+
+            /* Make the top part (avatar + name) take full row */
+            .log-row-top {
+                width: 100% !important;
+            }
+
+            /* Controls (select + input) on second row */
+            .log-row-controls {
+                width: 100% !important;
+            }
+
+            .log-row-controls select, .log-row-controls[type="number"] {
+                flex: 1;
+            }
+
+            /* Remarks footer wraps on mobile */
+            .remarks-footer {
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+            }
+
+            .remarks-footer select {
+                width: 100% !important;
+            }
+
+            .remarks-footer label {
+                flex: 1 !important;
+            }
+
+            .btn-submit {
+                margin-left: auto !important;
+            }
+        }
     </style>
 </head>
 
 <body>
-
     <?php include 'navbar.php'; ?>
     <!-- SIDEBAR -->
     <div class="sidebar">
-        <a href="#" onclick="showSection('rooms')" class="active"><i class="fa-solid fa-house"></i> Home</a>
-        <a href="#" onclick="showSection('status')"><i class="fa-solid fa-calendar-check"></i> Status</a>
-        <a href="#" onclick="showSection('remarks')"><i class="fa-solid fa-star"></i> Remarks</a>
+        <!-- CHANGES -->
+        <a href="#" onclick="showSection('rooms')" class="active"><i class="fa-solid fa-house me-1"></i><span class="sidebar-text">Virtual Rooms</span></a>
+        <a href="#" onclick="showSection('status')"><i class="fa-solid fa-calendar-check me-2"></i><span class="sidebar-text">Status</span></a>
+        <a href="#" onclick="showSection('remarks')"><i class="fa-solid fa-star me-1"></i><span class="sidebar-text">Remarks</span></a>
 
-        <div class="rooms-list">
+        <div class="rooms-list" style="overflow-y: auto; overflow-x: hidden; max-height: 400px; scrollbar-width: none;">
+            <hr><br>
             <h6>ROOMS</h6>
 
             <?php foreach ($rooms as $room): ?>
@@ -433,7 +688,8 @@ $page = 'messages'
 
                     <!-- CURRENT ROOM (NOT CLICKABLE) -->
                     <div class="room-item active-room">
-                        <?= $room['room_name'] ?>
+                        <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
+                        <span class="room-name-text"><?= htmlspecialchars($room['room_name']) ?></span>
                     </div>
 
                 <?php else: ?>
@@ -441,7 +697,8 @@ $page = 'messages'
                     <!-- CLICKABLE ROOM -->
                     <a href="?room_id=<?= $room['id'] ?>" class="room-link">
                         <div class="room-item">
-                            <?= $room['room_name'] ?>
+                            <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
+                            <span class="room-name-text"><?= htmlspecialchars($room['room_name']) ?></span>
                         </div>
                     </a>
 
@@ -454,7 +711,7 @@ $page = 'messages'
     <!-- MAIN CONTENT -->
     <div class="main">
         <!-- Room Section -->
-        <div id="rooms" class="section active">
+        <div id="rooms" class="section-panel active">
             <?php if ($current_room_id): ?>
 
                 <?php include 'chat-room-content.php'; ?>
@@ -462,6 +719,7 @@ $page = 'messages'
             <?php else: ?>
 
                 <!-- DEFAULT DASHBOARD VIEW -->
+                
                 <div class="d-flex justify-content-between align-items-center">
                     <h3><strong>Virtual Rooms</strong></h3>
                     <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
@@ -469,13 +727,13 @@ $page = 'messages'
                     </button>
                 </div>
 
-                <div class="row mt-4">
+                <div class="row mt-1 g-4">
                     <?php foreach ($rooms as $room): ?>
                         <div class="col-md-4">
-                            <div class="card shadow-sm">
+                            <div class="card shadow-sm border-0" style="border-radius: 12px;">
 
                                 <div class="room-card" style="background: <?= $color ?>">
-                                    <h5 style="text-color <? $color ?>">
+                                    <h5 style="color <?= $color ?>">
                                         <?= $room['room_name'] ?>
                                     </h5>
                                     <small>
@@ -499,7 +757,7 @@ $page = 'messages'
         </div>
 
 
-        <div id="status" class="section">
+        <div id="status" class="section-panel">
             <h4><strong>Monitor OJT progress and HTE remarks</strong></h4><br>
 
             <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;">
@@ -508,7 +766,7 @@ $page = 'messages'
                     <input type="text" id="searchInput" placeholder="Search student" oninput="filterTable()">
                 </div>
                 <select id="roomFilter" onchange="filterTable()"
-                    style="padding:7px 14px;border:1px solid;border-radius:24px;font-size:12px;">
+                    style="padding:7px 14px;border:1px solid #bbb;border-radius:24px;font-size:12px;">
                     <option value="">All Rooms</option>
                     <?php foreach ($rooms as $r): ?>
                         <option value="<?= htmlspecialchars($r['room_name']) ?>">
@@ -518,7 +776,7 @@ $page = 'messages'
                 </select>
             </div>
 
-            <div style="background:white;border:1px solid #00000060;border-radius:8px;overflow:hidden;">
+            <div style="background: #fbfbfb;border:1px solid #bbb;border-radius:8px;overflow-x:auto;">
                 <table>
                     <thead>
                         <tr>
@@ -532,7 +790,7 @@ $page = 'messages'
                     </thead>
                     <tbody id="all-students-tbody">
                         <?php foreach ($statuses as $status): ?>
-                            <tr data-room="<?php htmlspecialchars($status['room_name']) ?>">
+                            <tr data-room="<?= htmlspecialchars($status['room_name']) ?>">
                                 <td>
                                     <div class="student-cell">
                                         <div class="avatar" style="background: #ff2c8f;"><strong>R</strong></div>
@@ -581,7 +839,7 @@ $page = 'messages'
             </div>
         </div>
 
-        <div id="remarks" class="section">
+        <div id="remarks" class="section-panel">
             <h4><strong>Monitor OJT progress and HTE remarks</strong></h4><br>
 
             <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;">
@@ -590,7 +848,7 @@ $page = 'messages'
                     <input type="text" id="searchInput" placeholder="Search student" oninput="filterCards()">
                 </div>
                 <select id="roomFilter" onchange="filterCards()"
-                    style="padding:7px 14px;border:1px solid;border-radius:24px;font-size:12px;">
+                    style="padding:7px 14px;border:1px solid #bbb;border-radius:24px;font-size:12px;">
                     <option value="">All Rooms</option>
                     <?php foreach ($rooms as $r): ?>
                         <option value="<?= htmlspecialchars($r['room_name']) ?>">
@@ -610,24 +868,23 @@ $page = 'messages'
                         <div class="student-card">
 
                             <div class="log-row">
-
-                                <div class="avatar" style="background:#ff2c8f;">
-                                    <strong><?= strtoupper(substr($student['full_name'], 0, 1)) ?></strong>
+                                <div class="log-row-top">
+                                    <div class="avatar" style="background:#ff2c8f;">
+                                        <strong><?= strtoupper(substr($student['full_name'], 0, 1)) ?></strong>
+                                    </div>
+                                    <div class="student-info">
+                                        <strong><?= $student['full_name'] ?></strong>
+                                        <span><?= $student['company'] ?></span>
+                                    </div>
                                 </div>
-
-                                <div class="student-info">
-                                    <strong><?= $student['full_name'] ?></strong>
-                                    <span><?= $student['company'] ?></span>
+                                <div class="log-row-controls">
+                                    <select name="status" required>
+                                        <option value="Present">Present</option>
+                                        <option value="Absent">Absent</option>
+                                        <option value="Late">Late</option>
+                                    </select>
+                                    <input type="number" name="hours" placeholder="hrs" min="0" max="24" required>
                                 </div>
-
-                                <select name="status" required>
-                                    <option value="Present">Present</option>
-                                    <option value="Absent">Absent</option>
-                                    <option value="Late">Late</option>
-                                </select>
-
-                                <input type="number" name="hours" placeholder="hrs" min="0" max="24" required>
-
                             </div>
 
                             <div class="remarks-section">
@@ -663,25 +920,25 @@ $page = 'messages'
                 <?php endforeach; ?>
             </div>
 
-
             <div class="student-card" data-room="Room 2C" data-name="mark anthony dela cruz">
                 <div class="log-row">
-                    <div class="avatar" style="background:#2c6fff;"><strong>M</strong></div>
-                    <div class="student-info">
-                        <strong>Mark Anthony Dela Cruz</strong>
-                        <span>TechCorp PH</span>
+                    <div class="log-row-top">
+                        <div class="avatar" style="background:#2c6fff;"><strong>M</strong></div>
+                        <div class="student-info">
+                            <strong>Mark Anthony Dela Cruz</strong>
+                            <span>TechCorp PH</span>
+                        </div>
                     </div>
-                    <select>
-                        <option>Present</option>
-                        <option>Absent</option>
-                        <option>Late</option>
-                    </select>
-                    <input type="number" placeholder="hrs" min="0" max="24">
-                    <span class="total-hrs">268 hrs</span>
-                    <button class="btn-log">Log</button>
+                    <div class="log-row-controls">
+                        <select>
+                            <option>Present</option>
+                            <option>Absent</option>
+                            <option>Late</option>
+                        </select>
+                        <input type="number" placeholder="hrs" min="0" max="24">
+                    </div>
                 </div>
                 <div class="remarks-section">
-                    <div class="remarks-label">Remarks</div>
                     <textarea placeholder="Enter remarks..."></textarea>
                     <div class="remarks-footer">
                         <select>
@@ -694,12 +951,11 @@ $page = 'messages'
                         <label>
                             <input type="checkbox"> Mark complete
                         </label>
-                        <button class="btn-submit">Submit</button>
+                        <button class="btn-submit">Save</button>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
     </div>
     <div class="modal fade" id="joinRoomModal" tabindex="-1">
         <div class="modal-dialog">
@@ -742,7 +998,7 @@ $page = 'messages'
     function showSection(sectionId) {
 
         // hide all sections
-        document.querySelectorAll('.section').forEach(sec => {
+        document.querySelectorAll('.section-panel').forEach(sec => {
             sec.classList.remove('active');
         });
 
@@ -754,7 +1010,7 @@ $page = 'messages'
             link.classList.remove('active');
         });
 
-        event.target.classList.add('active');
+        event.target.closest('a').classList.add('active');
     }
 </script>
 

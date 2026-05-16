@@ -16,12 +16,12 @@ $stmt->execute([$_SESSION['user_id']]);
 
 $rooms = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
-
 <?php
 $colors = ['#d63ba5', '#1abc9c', '#3498db', '#9b59b6'];
 $color = $colors[array_rand($colors)];
 $page = 'messages'
-    ?>
+?>
+   
 
 <!DOCTYPE html>
 <html lang="en">
@@ -30,64 +30,104 @@ $page = 'messages'
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Virtual Rooms</title>
+    <title>OJT Adviser | CEE IT Connects</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
         body {
-            background: #f5f6fa;
+            background-color: #f0f2f7;
             margin: 0;
             padding-top: 70px;
+            /* height: 100%; */
+            /* overflow: hidden; */
+            /* overflow-y: auto; */
+            min-height: 100vh;
         }
 
         /* SIDEBAR */
         .sidebar {
+            height: calc(100vh - 70px);
             width: 240px;
             background: #fff;
             position: fixed;
-            padding: 20px;
-            border-right: 1px solid #ddd;
+            /* box-sizing: border-box; */
+            padding: 20px 0px 20px 20px;
+            border-radius: 20px;
+            top: 70px;
+            left: 0;
+            /*bottom: 0; */
+            /* padding: 20px; */
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            display: none;
         }
 
         .sidebar a {
             display: block;
-            padding: 10px;
+            align-items: center;
+            padding: 10px 12px;
             color: #333;
             text-decoration: none;
-            border-radius: 8px;
-            margin-bottom: 5px;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .sidebar a:hover {
+            background: #f0f0f0;
         }
 
         .sidebar a.active {
-            background: #ffe5d9;
+            background: #ffdac8;
             color: #ff6b2c;
         }
 
         .rooms-list {
+            font-size: 12px;
+            color: #585858;
             margin-top: 20px;
+            /* display: flex;
+            flex-direction: column;
+            gap: 4px; */
+            /* margin-left: -20px;   
+            margin-right: -20px;  
+            padding-left: 20px;   
+            padding-right: 20px; */
         }
 
         .room-item {
-            padding: 8px;
-            border-radius: 6px;
-            background: #f1f1f1;
-            margin-bottom: 5px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            font-size: 13px;
+            box-sizing: border-box;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
         }
 
         .room-link {
             text-decoration: none;
+            display: block;
+            margin: 4px;
+            /* padding: 0; */
+            width: 100%; 
         }
 
         .room-link .room-item:hover {
-            background: #e0e0e0;
             cursor: pointer;
         }
 
         /* ACTIVE ROOM */
         .active-room {
-            background: #ffe5d9;
+            background: #ffdac8;
             color: #ff6b2c;
             font-weight: bold;
             cursor: default;
@@ -95,28 +135,52 @@ $page = 'messages'
 
         /* MAIN */
         .main {
+            background-color: #f0f2f7;
             margin-left: 260px;
             padding: 20px;
+            min-height: calc(100vh - 70px); 
         }
 
         .room-card {
-            border-radius: 12px;
+            border-radius: 12px 12px 0px 0px;
             color: white;
             padding: 15px;
+            min-height: 110px;
+            /* min-height: 120px;
+            flex-direction: column;
+            justify-content: space-between; */
         }
 
+
         .room-footer {
-            background: #eee;
+            background: #fff;
             padding: 10px;
             border-radius: 0 0 12px 12px;
             text-align: center;
+            border: 1px solid #bbb;
+            border-top: none;
         }
 
         .enter-btn {
             background: #f4a62a;
             border: none;
+            color: #fff;
+            font-weight: 600;
             padding: 5px 15px;
             border-radius: 8px;
+        }
+
+        .btn-create {
+            background: #33448f;
+            color: #fff;
+            font-weight: 600;
+            padding: 8px 20px;
+            border-radius: 8px;
+        }
+
+        .btn-create:hover {
+            background: #272f54;
+            color: #fff;
         }
 
         /* SECTION PANELS */
@@ -128,7 +192,7 @@ $page = 'messages'
             display: block;
         }
 
-        .panel-card {
+        /* .panel-card {
             background: #fff;
             border-radius: 12px;
             padding: 24px;
@@ -140,7 +204,7 @@ $page = 'messages'
             font-weight: 700;
             margin-bottom: 16px;
             color: #333;
-        }
+        } */
 
         .badge-on-track {
             background: #d4edda;
@@ -216,7 +280,7 @@ $page = 'messages'
             align-items: center;
             gap: 8px;
             background: white;
-            border: 1px solid;
+            border: 1px solid #bbb;
             border-radius: 24px;
             padding: 7px 14px;
             flex: 1;
@@ -277,6 +341,156 @@ $page = 'messages'
             border-radius: 4px;
             background: #ff6b2c;
         }
+        /*susu*/
+        .room-initial { display: none; }
+        .room-name-text { display: inline; }
+
+        /*===(MEDIA QUERY)===*/
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed !important;
+                top: 70px !important;
+                left: 0 !important;
+                bottom: 0 !important;
+                width: 60px !important;
+                height: calc(100vh - 70px) !important;
+                padding: 10px 0 !important;
+                border-radius: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                overflow-x: hidden !important;
+                z-index: 100;
+            }
+
+            .sidebar > div {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                width: 100% !important;
+            }
+
+            /* Hide all text */
+            .sidebar .sidebar-text,
+            .rooms-list h6,
+            .rooms-list hr {
+                display: none !important;
+            }
+
+            /* Icon nav links */
+            .sidebar > div > a {
+                width: 44px !important;
+                height: 44px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 12px !important;
+                font-size: 1.2rem !important;
+                padding: 0 !important;
+            }
+
+            .sidebar > div > a i {
+                margin: 0 !important;
+            }
+
+            /* Rooms list */
+            .rooms-list {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                margin-top: 0 !important;
+                width: 100% !important;
+                max-height: unset !important;
+                overflow: hidden !important;
+            }
+
+            .room-link {
+                display: flex !important;
+                justify-content: center !important;
+                width: 100% !important;
+                margin: 0 0 8px 0 !important;
+                padding: 0 !important;
+            }
+
+            /* Room bubble — show ONLY the initial letter */
+            .room-item {
+                width: 44px !important;
+                height: 44px !important;
+                min-width: 44px !important;
+                min-height: 44px !important;
+                border-radius: 12px !important;
+                background: #e8e8e8 !important;
+                color: #555 !important;
+                font-weight: bold !important;
+                font-size: 1.2rem !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: hidden !important;
+            }
+
+            .room-item.active-room {
+                background: #ffdac8 !important;
+                color: #ff6b2c !important;
+            }
+
+            .room-item.text-muted {
+                background: #f0f0f0 !important;
+                color: #bbb !important;
+            }
+
+            .room-name-text { display: none !important; }
+
+            .room-initial { display: flex !important; }
+
+            /* Push main content past the sidebar */
+            .main {
+                margin-left: 65px !important;
+                padding: 15px !important;
+            }
+
+            .room-card h5 {
+                display: -webkit-box !important;
+                -webkit-line-clamp: 2 !important;
+                line-clamp: 2 !important;
+                -webkit-box-orient: vertical !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+
+            /* Fix card height so all cards are equal */
+            .room-card {
+                min-height: 130px !important;
+                max-height: 130px !important;
+                overflow: hidden !important;
+            }
+
+            .avatar {
+                width: 34px;
+                height: 34px;
+                min-width: 34px;
+                min-height: 34px;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+
+            .chat-container {
+                position: fixed !important;
+                top: 70px !important;
+                left: 60px !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                height: calc(100vh - 70px) !important;
+                border-radius: 0 !important;
+                border: none !important;
+            }
+
+            .chat-container .chat-messages {
+                flex: 1 !important;
+            }
+        }
     </style>
 </head>
 
@@ -285,37 +499,41 @@ $page = 'messages'
     <?php include 'navbar.php'; ?>
     <!-- SIDEBAR -->
     <div class="sidebar">
-        <a href="#" onclick="showSection('home')" class="active" id="nav-home"><i class="fa-solid fa-house"></i>
-            Home</a>
-        <a href="#" onclick="showSection('status')" id="nav-status"><i class="fa-solid fa-calendar-check"></i>
-            Status</a>
-        <a href="#" onclick="showSection('requirements')" id="nav-requirements"><i class="fa-solid fa-list"></i>
-            Requirements</a>
-        <div class="rooms-list">
+        <div style="display:flex; flex-direction:column; width:100%;">
+        <a href="#" onclick="event.preventDefault(); showSection('home', event)" class="active" id="nav-home"><i class="fa-solid fa-house me-1"></i>
+            <span class="sidebar-text">Virtual Rooms</span>
+        </a>
+        <a href="#" onclick="event.preventDefault(); showSection('status', event)" id="nav-status"><i class="fa-solid fa-calendar-check me-2"></i>
+            <span class="sidebar-text">Status</span>
+        </a>
+        <!-- <a href="#" onclick="event.preventDefault(); showSection('requirements', event)" id="nav-requirements"><i class="fa-solid fa-list"></i>
+            Requirements</a> -->
+        <div class="rooms-list" style="overflow-y: auto; overflow-x: hidden; max-height: 400px; scrollbar-width: none;">
+            <hr><br>
             <h6>ROOMS</h6>
 
             <?php foreach ($rooms as $room): ?>
                 <?php if (!$isAdviser && $room['is_archived'])
                     continue; ?>
 
+                
                 <?php if ($current_room_id == $room['id']): ?>
-                    <div class="room-item active-room">
-                        <?= htmlspecialchars($room['room_name']) ?>
-                        <?php if ($room['is_archived']): ?>
-                            <span style="font-size:10px;"> (Archived)</span>
-                        <?php endif; ?>
-                    </div>
+                    <a href="#" onclick="return false;" class="room-link">
+                        <div class="room-item active-room">
+                            <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
+                            <span class="room-name-text"><?= htmlspecialchars($room['room_name']) ?></span>
+                        </div>
+                    </a>
                 <?php else: ?>
                     <a href="?room_id=<?= $room['id'] ?>" class="room-link">
                         <div class="room-item <?= $room['is_archived'] ? 'text-muted' : '' ?>">
-                            <?= htmlspecialchars($room['room_name']) ?>
-                            <?php if ($room['is_archived']): ?>
-                                <span style="font-size:10px;"> (Archived)</span>
-                            <?php endif; ?>
+                            <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
+                            <span class="room-name-text"><?= htmlspecialchars($room['room_name']) ?></span>
                         </div>
                     </a>
                 <?php endif; ?>
             <?php endforeach; ?>
+        </div>
         </div>
     </div>
 
@@ -331,15 +549,16 @@ $page = 'messages'
             <div class="section-panel active" id="section-home">
                 <div class="d-flex justify-content-between align-items-center">
                     <h3><strong>Virtual Rooms</strong></h3>
-                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
+                    <button class="btn-create" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
                         + Create a Room
                     </button>
                 </div>
 
-                <div class="row mt-4">
+                <div class="row mt-1 g-4">
                     <?php foreach ($rooms as $room): ?>
-                        <div class="col-md-4">
-                            <div class="card shadow-sm <?= $room['is_archived'] ? 'opacity-50' : '' ?>">
+                        <!-- PENDING -->
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <div class="card shadow-sm  <?= $room['is_archived'] ? 'opacity-50' : '' ?>" style="border-radius:12px;">
 
                                 <div class="room-card" style="background: <?= $color ?>">
                                     <div class="d-flex justify-content-between align-items-start">
@@ -353,7 +572,7 @@ $page = 'messages'
                                                 onsubmit="return confirm('Archive this room? Students will no longer see it.')">
                                                 <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
                                                 <button type="submit" class="btn btn-sm btn-light" title="Archive room"
-                                                    style="font-size:11px; padding: 2px 8px;">
+                                                    style="font-size:11px; color: #616161; border: 1px solid #bbb;">
                                                     <i class="fa-solid fa-box-archive"></i>
                                                 </button>
                                             </form>
@@ -387,7 +606,7 @@ $page = 'messages'
                         <input type="text" id="searchInput" placeholder="Search student" oninput="filterTable()">
                     </div>
                     <select id="roomFilter" onchange="filterTable()"
-                        style="padding:7px 14px;border:1px solid;border-radius:24px;font-size:12px;">
+                        style="padding:7px 14px;border:1px solid #bbb;border-radius:24px;font-size:12px;">
                         <option value="">All Rooms</option>
                         <?php foreach ($rooms as $r): ?>
                             <option value="<?= htmlspecialchars($r['room_name']) ?>">
@@ -397,7 +616,7 @@ $page = 'messages'
                     </select>
                 </div>
 
-                <div style="background:white;border:1px solid #00000060;border-radius:8px;overflow:hidden;">
+                <div style="background:#fbfbfb;border:1px solid #bbb;border-radius:8px; overflow-x: auto;">
                     <table>
                         <thead>
                             <tr>
@@ -505,7 +724,13 @@ $page = 'messages'
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function showSection(name) {
+        function showSection(name, e) {
+            if (e) e.preventDefault();
+            const target = document.getElementById('section-' + name);
+            if (!target) {
+                window.location = 'ojt-rooms.php?section=' + name;
+                return;
+            };
             document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
             document.getElementById('section-' + name).classList.add('active');

@@ -91,7 +91,7 @@ function timeAgo($datetime)
 
         /* LOGO */
         .nav-logo {
-            height: 50px;
+            height: 60px;
             width: auto;
         }
 
@@ -278,7 +278,7 @@ function timeAgo($datetime)
         <!-- Logo + Brand -->
         <a class="navbar-brand d-flex align-items-center" href="index.php">
             <img src="../Sources/CEE IT Connects Logo.png" class="nav-logo">
-            <span class="brand-text ms-2">CEE IT CONNECTS</span>
+            <span class="brand-text ms-1">CEE IT CONNECTS</span>
         </a>
 
         <!-- Center Menu -->
