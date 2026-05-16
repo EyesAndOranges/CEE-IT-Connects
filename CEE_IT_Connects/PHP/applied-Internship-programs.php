@@ -78,7 +78,7 @@ $studentProgram = $student['program'] ?? '';
     <style>
         .listing-wrapper {
             background: #f4f4f4;
-            padding: 40px 0;
+            padding: 50px 0 40px;
         }
 
         .filter-box {
@@ -111,16 +111,30 @@ $studentProgram = $student['program'] ?? '';
             color: #777;
         }
 
-        .btn-read {
-            background: #ff6a00;
-            color: #fff;
+        .btn.btn-read {
+            color: #FFB62F !important;
+            border-color: #FFB62F;
             font-weight: 600;
+            min-width: 110px;
         }
 
-        .btn-apply {
-            background: #272f54;
-            color: #fff;
+        .btn.btn-read:hover {
+            background: #FFE7BA;
+            color: #FFB62F !important;
+            border-color: #FFB62F;
+        }
+
+        .btn.btn-apply {
+            color: #FFB62F !important;
+            border-color: #FFB62F;
             font-weight: 600;
+            min-width: 110px;
+        }
+
+        .btn.btn-apply:hover {
+            background: #FFE7BA;
+            color: #FFB62F !important;
+            border-color: #FFB62F;
         }
 
         .btn-clear {
@@ -226,6 +240,151 @@ $studentProgram = $student['program'] ?? '';
             background: #1a2040;
             color: #fff;
         }
+
+        .mobile-filter-overlay { display: none; }
+
+        @media (max-width: 768px) {
+            .listing-wrapper {
+                padding: 15px 0 20px;
+            }
+            
+            /* Header row */
+            .internship-mobile-header {
+                display: flex !important;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 12px;
+            }
+
+            .internship-mobile-header h4 {
+                margin: 0 !important;
+                white-space: nowrap;
+            }
+
+            .internship-mobile-header input {
+                flex: 1;
+            }
+
+            /* Filter icon button */
+            .mobile-filter-icon-btn {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                background: white;
+                border: 1px solid #bbb;
+                border-radius: 8px;
+                width: 42px;
+                height: 42px;
+                cursor: pointer;
+                flex-shrink: 0;
+                font-size: 1.1rem;
+                color: #333;
+            }
+
+            /* Dark overlay behind modal */
+            .mobile-filter-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.4);
+                z-index: 1050;
+                align-items: flex-end;
+            }
+
+            .mobile-filter-overlay.open {
+                display: flex !important;
+            }
+
+            /* Bottom sheet */
+            .mobile-filter-sheet {
+                background: white;
+                width: 100%;
+                border-radius: 20px 20px 0 0;
+                padding: 24px 20px 32px;
+                max-height: 80vh;
+                overflow-y: auto;
+                animation: slideUp 0.3s ease;
+            }
+
+            @keyframes slideUp {
+                from { transform: translateY(100%); }
+                to   { transform: translateY(0); }
+            }
+
+            .mobile-filter-sheet-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+            }
+
+            .mobile-filter-sheet-header h5 {
+                font-weight: 700;
+                margin: 0;
+                font-size: 1.1rem;
+            }
+
+            .mobile-filter-close {
+                background: none;
+                border: none;
+                font-size: 1.2rem;
+                cursor: pointer;
+                color: #333;
+            }
+
+            /* Two-column layout for Deadline + Internship Type */
+            .mobile-filter-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+                margin-bottom: 20px;
+            }
+
+            .mobile-filter-group strong {
+                display: block;
+                font-size: 14px;
+                margin-bottom: 8px;
+            }
+
+            .mobile-filter-group .form-check {
+                margin-bottom: 6px;
+                font-size: 14px;
+            }
+
+            .mobile-filter-group-full {
+                margin-bottom: 16px;
+            }
+
+            .mobile-filter-group-full strong {
+                display: block;
+                font-size: 14px;
+                margin-bottom: 8px;
+            }
+
+            .col-lg-3 {
+                display: none;
+            }
+
+             /* Make listing cards full width on mobile */
+             .col-lg-9 {
+                width: 100%;
+                flex: 0 0 100%;
+                max-width: 100%;
+             }
+             .desktop-header {
+                display: none;
+             }
+
+             .col-lg-9 > small.text-muted:first-of-type {
+                display: none;
+             }
+        }
+
+        /* Hide mobile elements on desktop */
+        .internship-mobile-header,
+        .mobile-filter-icon-btn {
+            display: none;
+        }
     </style>
 </head>
 
@@ -234,10 +393,10 @@ $studentProgram = $student['program'] ?? '';
     <?php include 'navbar.php'; ?>
 
     <section class="listing-wrapper">
-        <div class="container-fluid px-5">
+        <div class="container-fluid px-5 pt-3">
 
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="fw-bold">Intership</h4>
+            <div class="d-flex justify-content-between align-items-center mb-3 desktop-header">
+                <h4 class="fw-bold">Internship</h4>
 
 
                 <!-- Put a textfield here dumbass -->
@@ -384,14 +543,30 @@ $studentProgram = $student['program'] ?? '';
                                         </option>
                                     </select>
                                 </div>
-                            </div>
+                            </div><br>
+                            <button type="button" class="btn btn-sm btn-outline-secondary w-100 mb-3" onclick="resetFilters()">
+                                <i class="fa-solid fa-rotate-left me-1"></i> Reset Filters
+                            </button>
                         </div>
                     </form>
                 </div>
 
                 <div class="col-lg-9">
-                    <small class="text-muted">
-                        Showing <?php echo count($internships); ?> internship listings
+                <small class="text-muted">
+                    Showing <?php echo count($internships) ?> internship listings
+                </small>
+                    <!--susu-->
+                    <!-- Mobile header: title + search + filter icon -->
+                    <div class="internship-mobile-header">
+                        <input type="text" id="search-internship-mobile" class="form-control"
+                            placeholder="Search by name, email, company...">
+                        <button class="mobile-filter-icon-btn" onclick="openMobileFilter()">
+                            <i class="fa-solid fa-filter"></i>
+                        </button>
+                    </div>
+
+                    <small class="text-muted d-block d-lg-none mb-2">
+                        Showing <?= count($internships) ?> internship listings
                     </small>
 
                     <?php foreach ($internships as $internship): ?>
@@ -441,7 +616,7 @@ $studentProgram = $student['program'] ?? '';
                                 <button class="btn btn-read" onclick="toggleFiles(<?= $internship['id'] ?>)">
                                     Read More
                                 </button>
-                                <form method="POST" action="applied-internship-programs-db.php">
+                                <form method="POST" action="applied-internship-programs-db.php" style="margin: 0;">
                                     <input type="hidden" name="internship_id" value="<?= $internship['id'] ?>">
                                     <button type="submit" class="btn btn-apply">Interested</button>
                                 </form>
@@ -503,6 +678,77 @@ $studentProgram = $student['program'] ?? '';
                             </div>
                         </div>
                     <?php endforeach; ?>
+
+                    <!-- Mobile Filter Modal -->
+                    <div class="mobile-filter-overlay" id="mobileFilterOverlay" onclick="closeMobileFilterOnOverlay(event)">
+                        <div class="mobile-filter-sheet">
+                            <div class="mobile-filter-sheet-header">
+                                <h5>Filters</h5>
+                                <button class="mobile-filter-close" onclick="closeMobileFilter()">&#x2715;</button>
+                            </div>
+
+                            <!-- Two columns: Deadline + Internship Type -->
+                            <div class="mobile-filter-row">
+                                <div class="mobile-filter-group">
+                                    <strong>Deadline</strong>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_deadline" value="week">
+                                        <label class="form-check-label">Due this week</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_deadline" value="month">
+                                        <label class="form-check-label">Due this month</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_deadline" value="future">
+                                        <label class="form-check-label">Upcoming</label>
+                                    </div>
+                                </div>
+
+                                <div class="mobile-filter-group">
+                                    <strong>Internship Type</strong>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_internship_type" value="All">
+                                        <label class="form-check-label">All internship types</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_internship_type" value="paid">
+                                        <label class="form-check-label">With stipend</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_internship_type" value="unpaid">
+                                        <label class="form-check-label">Without stipend</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Company Classification full width -->
+                            <div class="mobile-filter-group-full">
+                                <strong>Company Classification</strong>
+                                <select class="form-select" id="m_company_classification">
+                                    <option value="" selected disabled>Select an option</option>
+                                    <option value="private">Private Sector</option>
+                                    <option value="public">Public Sector (Government)</option>
+                                    <option value="institution">Academic & Research Institutions</option>
+                                    <option value="NGO">Nonprofit & Civil Society</option>
+                                    <option value="multilateral_org">International & Multilateral Organizations</option>
+                                    <option value="media">Creative & Media Sector</option>
+                                    <option value="technology">Technology & Innovation Sector</option>
+                                    <option value="healthcare">Healthcare & Social Services</option>
+                                    <option value="industrial">Industrial & Manufacturing</option>
+                                    <option value="financial">Financial & Business Services</option>
+                                    <option value="tourism">Hospitality & Tourism</option>
+                                    <option value="freelance">Freelance / Independent & Gig-Based</option>
+                                    <option value="religious">Religious & Faith-Based Organizations</option>
+                                    <option value="hybrid">Hybrid / Public-Private Partnerships</option>
+                                </select>
+                            </div><br>
+                            <button type="button" onclick="resetFilters()" 
+                                style="background:none; border:none; font-size:15px; color:red; font-weight:600; cursor:pointer;">
+                                Clear all
+                            </button>
+                        </div>
+                    </div>
 
                 </div>
 
@@ -579,6 +825,75 @@ $studentProgram = $student['program'] ?? '';
                 row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
             });
         });
+
+        //susu
+        function openMobileFilter() {
+            document.getElementById('mobileFilterOverlay').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMobileFilter() {
+            document.getElementById('mobileFilterOverlay').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function closeMobileFilterOnOverlay(e) {
+            if (e.target === document.getElementById('mobileFilterOverlay')) {
+                closeMobileFilter();
+            }
+        }
+
+        // Wire mobile filter controls to applyFilters
+        document.getElementById('search-internship-mobile')?.addEventListener('input', function() {
+            document.getElementById('search-internship').value = this.value;
+            applyFilters();
+        });
+
+        document.querySelectorAll('input[name="m_deadline"]').forEach(r => r.addEventListener('change', function() {
+            // sync to desktop radio
+            const desk = document.querySelector(`input[name="deadline"][value="${this.value}"]`);
+            if (desk) desk.checked = true;
+            applyFilters();
+        }));
+
+        document.querySelectorAll('input[name="m_internship_type"]').forEach(r => r.addEventListener('change', function() {
+            const desk = document.querySelector(`input[name="internship_type"][value="${this.value}"]`);
+            if (desk) desk.checked = true;
+            applyFilters();
+        }));
+
+        document.getElementById('m_company_classification')?.addEventListener('change', function() {
+            const desk = document.querySelector('select[name="company_classification"]');
+            if (desk) desk.value = this.value;
+            applyFilters();
+        });
+
+        function resetFilters() {
+            // Clear search
+            document.getElementById('search-internship').value = '';
+            const mobileSearch = document.getElementById('search-internship-mobile');
+            if (mobileSearch) mobileSearch.value = '';
+
+            // Uncheck all deadline radios
+            document.querySelectorAll('input[name="deadline"]').forEach(r => r.checked = false);
+            document.querySelectorAll('input[name="m_deadline"]').forEach(r => r.checked = false);
+
+            // Uncheck all internship type radios
+            document.querySelectorAll('input[name="internship_type"]').forEach(r => r.checked = false);
+            document.querySelectorAll('input[name="m_internship_type"]').forEach(r => r.checked = false);
+
+            // Reset company classification
+            const desk = document.querySelector('select[name="company_classification"]');
+            if (desk) desk.selectedIndex = 0;
+            const mobile = document.getElementById('m_company_classification');
+            if (mobile) mobile.selectedIndex = 0;
+
+            // Show all cards
+            document.querySelectorAll('.listing-card').forEach(card => {
+                card.style.display = '';
+            });
+        }
+
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../JS/index-script.js"></script>
