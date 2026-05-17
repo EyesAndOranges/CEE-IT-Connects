@@ -452,15 +452,15 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .btn-dl {
             padding: 6px 14px;
             border-radius: 6px;
-            border: none;
-            background: var(--orange);
-            color: #fff;
+            border: 1.5px solid var(--text);
+            /* background: var(--navy); */
+            color: var(--navy);
             font-size: .8rem;
             font-weight: 600;
             text-decoration: none;
             transition: background .2s;
         }
-        .btn-dl:hover { background: #d94c10; color: #fff; }
+        .btn-dl:hover { background: var(--navy); color: #fff; }
 
         /* ── empty state ── */
         .empty-state {
@@ -474,6 +474,153 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
         @keyframes fadeSlide {
             from { opacity: 0; transform: translateY(-6px); }
             to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .mobile-filter-overlay { display: none; }
+
+        @media (max-width: 768px) {
+            .listing-wrapper {
+                padding: 15px 0 20px;
+            }
+            
+            /* Header row */
+            .internship-mobile-header {
+                display: flex !important;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 12px;
+                width: 100%;
+            }
+
+            .internship-mobile-header h4 {
+                margin: 0 !important;
+                white-space: nowrap;
+            }
+
+            .internship-mobile-header input {
+                flex: 1;
+                background: var(--cream);
+            }
+
+            /* Filter icon button */
+            .mobile-filter-icon-btn {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                background: white;
+                border: 1px solid #bbb;
+                border-radius: 8px;
+                width: 42px;
+                height: 42px;
+                cursor: pointer;
+                flex-shrink: 0;
+                font-size: 1.1rem;
+                color: #333;
+            }
+
+            /* Dark overlay behind modal */
+            .mobile-filter-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.4);
+                z-index: 1050;
+                align-items: flex-end;
+            }
+
+            .mobile-filter-overlay.open {
+                display: flex !important;
+            }
+
+            /* Bottom sheet */
+            .mobile-filter-sheet {
+                background: white;
+                width: 100%;
+                border-radius: 20px 20px 0 0;
+                padding: 24px 20px 32px;
+                max-height: 80vh;
+                overflow-y: auto;
+                animation: slideUp 0.3s ease;
+            }
+
+            @keyframes slideUp {
+                from { transform: translateY(100%); }
+                to   { transform: translateY(0); }
+            }
+
+            .mobile-filter-sheet-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+            }
+
+            .mobile-filter-sheet-header h5 {
+                font-weight: 700;
+                margin: 0;
+                font-size: 1.1rem;
+            }
+
+            .mobile-filter-close {
+                background: none;
+                border: none;
+                font-size: 1.2rem;
+                cursor: pointer;
+                color: #333;
+            }
+
+            /* Two-column layout for Deadline + Internship Type */
+            .mobile-filter-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+                margin-bottom: 20px;
+            }
+
+            .mobile-filter-group strong {
+                display: block;
+                font-size: 14px;
+                margin-bottom: 8px;
+            }
+
+            .mobile-filter-group .form-check {
+                margin-bottom: 6px;
+                font-size: 14px;
+            }
+
+            .mobile-filter-group-full {
+                margin-bottom: 16px;
+            }
+
+            .mobile-filter-group-full strong {
+                display: block;
+                font-size: 14px;
+                margin-bottom: 8px;
+            }
+
+            .col-lg-3 {
+                display: none;
+            }
+
+             /* Make listing cards full width on mobile */
+             .col-lg-9 {
+                width: 100%;
+                flex: 0 0 100%;
+                max-width: 100%;
+             }
+             .desktop-header {
+                display: none;
+             }
+
+             .col-lg-9 > small.text-muted:first-of-type {
+                display: none;
+             }
+        }
+
+        /* Hide mobile elements on desktop */
+        .internship-mobile-header,
+        .mobile-filter-icon-btn {
+            display: none;
         }
     </style>
 </head>
@@ -593,6 +740,19 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 <!-- ── Listings ── -->
                 <div class="col-lg-9">
+                    <!-- Mobile header: title + search + filter icon -->
+                    <div class="internship-mobile-header">
+                        <div style="position: relative; flex: 1; min-width: 0;">
+                            <i class="fa fa-search" style="position: absolute; left:12px; top: 50%; transform: translateY(-50%); color: #aaa; z-index: 1;"></i>
+                            <input type="text" id="search-internship-mobile" class="form-control"
+                                placeholder="Search listings…"
+                                style="padding-left: 36px; width: 100%;">
+                        </div>
+                            <button class="mobile-filter-icon-btn" onclick="openMobileFilter()">
+                                <i class="fa-solid fa-filter"></i>
+                            </button>
+                    </div><br>
+
                     <div class="results-bar">
                         <span class="results-count">
                             Showing <strong id="visible-count"><?= count($internships) ?></strong>
@@ -614,13 +774,13 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         data-classification="<?= htmlspecialchars($internship['company_classification'] ?? '') ?>">
 
                         <div class="card-top">
-                            <h5 class="card-title"><?= htmlspecialchars($internship['title']) ?></h5>
+                            <h5 class="card-title"><?= htmlspecialchars($internship['company']) ?></h5>
                         </div>
 
                         <div class="card-meta">
                             <span class="card-meta-item">
-                                <i class="fa fa-building"></i>
-                                <?= htmlspecialchars($internship['company']) ?>
+                                <i class="fa fa-briefcase"></i>
+                                <?= htmlspecialchars($internship['title']) ?>
                             </span>
                             <span class="card-meta-item">
                                 <i class="fa fa-map-marker-alt"></i>
@@ -644,9 +804,14 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <button class="btn-readmore" onclick="togglePanel('details', <?= $internship['id'] ?>, this)">
                                 <i class="fa fa-circle-info"></i> Read More
                             </button>
-                            <button class="btn-interested" onclick="togglePanel('files', <?= $internship['id'] ?>, this)">
+                            <!-- <button class="btn-interested" onclick="togglePanel('files', [value thingy], this)">
                                 <i class="fa fa-file-arrow-down"></i> Interested
-                            </button>
+                            </button> -->
+
+                            <form method="POST" action="applied-internship-programs-db.php" style="margin: 0;">
+                                <input type="hidden" name="internship_id" value="<?= $internship['id'] ?>">
+                                <button type="submit" class="btn-interested">Interested</button>
+                            </form>
                         </div>
 
                         <!-- ── Read More: Company Deets ── -->
@@ -736,6 +901,47 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <?php endif; ?>
 
                             </div>
+
+                        <div>
+<hr>
+                            <p class="files-panel-title">Application Documents</p>
+
+                            <div class="file-row">
+                                <span class="file-name">
+                                    Memorandum of Understanding (MOU)
+                                </span>
+                                <div class="file-btns">
+                                    <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=<?= $_SESSION['user_id'] ?>&action=mou"
+                                        class="btn-preview" target="_blank">Preview</a>
+                                    <a href="download-mou.php?id=<?= $internship['id'] ?>&action=mou"
+                                        class="btn-dl">Download PDF</a>
+                                </div>
+                            </div>
+
+                            <div class="file-row">
+                                <span class="file-name">
+                                    Recommendation Letter
+                                </span>
+                                <div class="file-btns">
+                                    <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=<?= $_SESSION['user_id'] ?>&action=rl"
+                                        class="btn-preview" target="_blank">Preview</a>
+                                    <a href="download-mou.php?id=<?= $internship['id'] ?>&action=rl"
+                                        class="btn-dl">Download PDF</a>
+                                </div>
+                            </div>
+
+                            <div class="file-row">
+                                <span class="file-name">
+                                    Waiver
+                                </span>
+                                <div class="file-btns">
+                                    <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=<?= $_SESSION['user_id'] ?>&action=waiver"
+                                        class="btn-preview" target="_blank">Preview</a>
+                                    <a href="download-mou.php?id=<?= $internship['id'] ?>&action=waiver"
+                                        class="btn-dl">Download PDF</a>
+                                </div>
+                            </div>
+                        </div>
                         </div>
 
                         <!-- ── Interested: Download Files ── -->
@@ -782,7 +988,75 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                     </div>
                     <?php endforeach; ?>
+                    <!-- Mobile Filter Modal -->
+                    <div class="mobile-filter-overlay" id="mobileFilterOverlay" onclick="closeMobileFilterOnOverlay(event)">
+                        <div class="mobile-filter-sheet">
+                            <div class="mobile-filter-sheet-header">
+                                <h5>Filters</h5>
+                                <button class="mobile-filter-close" onclick="closeMobileFilter()">&#x2715;</button>
+                            </div>
 
+                            <!-- Two columns: Deadline + Internship Type -->
+                            <div class="mobile-filter-row">
+                                <div class="mobile-filter-group">
+                                    <strong>Deadline</strong>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_deadline" value="week">
+                                        <label class="form-check-label">Due this week</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_deadline" value="month">
+                                        <label class="form-check-label">Due this month</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_deadline" value="future">
+                                        <label class="form-check-label">Upcoming</label>
+                                    </div>
+                                </div>
+
+                                <div class="mobile-filter-group">
+                                    <strong>Internship Type</strong>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_internship_type" value="All">
+                                        <label class="form-check-label">All internship types</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_internship_type" value="paid">
+                                        <label class="form-check-label">With stipend</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_internship_type" value="unpaid">
+                                        <label class="form-check-label">Without stipend</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Company Classification full width -->
+                            <div class="mobile-filter-group-full">
+                                <strong>Company Classification</strong>
+                                <select class="form-select" id="m_company_classification">
+                                    <option value="" selected disabled>Select an option</option>
+                                    <option value="private">Private Sector</option>
+                                    <option value="public">Public Sector (Government)</option>
+                                    <option value="institution">Academic & Research Institutions</option>
+                                    <option value="NGO">Nonprofit & Civil Society</option>
+                                    <option value="multilateral_org">International & Multilateral Organizations</option>
+                                    <option value="media">Creative & Media Sector</option>
+                                    <option value="technology">Technology & Innovation Sector</option>
+                                    <option value="healthcare">Healthcare & Social Services</option>
+                                    <option value="industrial">Industrial & Manufacturing</option>
+                                    <option value="financial">Financial & Business Services</option>
+                                    <option value="tourism">Hospitality & Tourism</option>
+                                    <option value="freelance">Freelance / Independent & Gig-Based</option>
+                                    <option value="religious">Religious & Faith-Based Organizations</option>
+                                    <option value="hybrid">Hybrid / Public-Private Partnerships</option>
+                                </select>
+                            </div><br>
+                            <a href="applied-Internship-programs.php" class="btn-clear-filters">
+                                <i class="fa fa-rotate-left" style="margin-right:6px;font-size:.8rem;"></i>Clear Filters
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -879,6 +1153,73 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
         document.querySelectorAll('input[name="program"]').forEach(r => {
             r.addEventListener('change', () => document.getElementById('filter-form').submit());
         });
+
+        function openMobileFilter() {
+            document.getElementById('mobileFilterOverlay').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMobileFilter() {
+            document.getElementById('mobileFilterOverlay').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function closeMobileFilterOnOverlay(e) {
+            if (e.target === document.getElementById('mobileFilterOverlay')) {
+                closeMobileFilter();
+            }
+        }
+
+        // Wire mobile filter controls to applyFilters
+        document.getElementById('search-internship-mobile')?.addEventListener('input', function() {
+            document.getElementById('search-internship').value = this.value;
+            applyFilters();
+        });
+
+        document.querySelectorAll('input[name="m_deadline"]').forEach(r => r.addEventListener('change', function() {
+            // sync to desktop radio
+            const desk = document.querySelector(`input[name="deadline"][value="${this.value}"]`);
+            if (desk) desk.checked = true;
+            applyFilters();
+        }));
+
+        document.querySelectorAll('input[name="m_internship_type"]').forEach(r => r.addEventListener('change', function() {
+            const desk = document.querySelector(`input[name="internship_type"][value="${this.value}"]`);
+            if (desk) desk.checked = true;
+            applyFilters();
+        }));
+
+        document.getElementById('m_company_classification')?.addEventListener('change', function() {
+            const desk = document.querySelector('select[name="company_classification"]');
+            if (desk) desk.value = this.value;
+            applyFilters();
+        });
+
+        function resetFilters() {
+            // Clear search
+            document.getElementById('search-internship').value = '';
+            const mobileSearch = document.getElementById('search-internship-mobile');
+            if (mobileSearch) mobileSearch.value = '';
+
+            // Uncheck all deadline radios
+            document.querySelectorAll('input[name="deadline"]').forEach(r => r.checked = false);
+            document.querySelectorAll('input[name="m_deadline"]').forEach(r => r.checked = false);
+
+            // Uncheck all internship type radios
+            document.querySelectorAll('input[name="internship_type"]').forEach(r => r.checked = false);
+            document.querySelectorAll('input[name="m_internship_type"]').forEach(r => r.checked = false);
+
+            // Reset company classification
+            const desk = document.querySelector('select[name="company_classification"]');
+            if (desk) desk.selectedIndex = 0;
+            const mobile = document.getElementById('m_company_classification');
+            if (mobile) mobile.selectedIndex = 0;
+
+            // Show all cards
+            document.querySelectorAll('.listing-card').forEach(card => {
+                card.style.display = '';
+            });
+        }
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
