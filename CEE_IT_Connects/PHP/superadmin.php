@@ -956,6 +956,83 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
 
+                <!-- ACTIVITY FEED PREVIEW -->
+                <div class="card border-0 rounded-4 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
+                        <i class="bi bi-activity" style="color:#272f54;"></i>
+                        <h6 class="fw-bold mb-0" style="color:#272f54;">Recent Activity</h6>
+                        <span class="badge ms-auto rounded-pill" 
+                            style="background:#f0f4ff;color:#272f54;font-size:11px;">Latest 5</span>
+                    </div>
+                    <div class="card-body px-4 pb-4 pt-2">
+                        <?php if (empty($activityLogs)): ?>
+                            <p class="text-muted small mb-0">No recent activity.</p>
+                        <?php else: ?>
+                            <div class="d-flex flex-column">
+                                <?php 
+                                $recentLogs = array_slice($activityLogs, 0, 5);
+                                foreach ($recentLogs as $i => $log): 
+                                    $roleColors = [
+                                        'superadmin'        => ['bg' => '#eef1ff', 'color' => '#272f54', 'icon' => 'bi-shield-fill'],
+                                        'internship_admin'  => ['bg' => '#fff8e1', 'color' => '#7a5200', 'icon' => 'bi-person-fill-gear'],
+                                        'student'           => ['bg' => '#e8f5e9', 'color' => '#1b5e20', 'icon' => 'bi-person-fill'],
+                                        'adviser'           => ['bg' => '#fdecea', 'color' => '#7f1d1d', 'icon' => 'bi-person-badge-fill'],
+                                    ];
+                                    $rc = $roleColors[strtolower($log['roles'])] ?? 
+                                        ['bg' => '#f0f0f0', 'color' => '#444', 'icon' => 'bi-person-fill'];
+
+                                    // Format date
+                                    $date = new DateTime($log['activity_date']);
+                                    $now  = new DateTime();
+                                    $diff = $now->diff($date);
+                                    if ($diff->days == 0) {
+                                        if ($diff->h == 0)
+                                            $timeAgo = $diff->i . ' min ago';
+                                        else
+                                            $timeAgo = $diff->h . ' hr ago';
+                                    } elseif ($diff->days == 1) {
+                                        $timeAgo = 'Yesterday';
+                                    } else {
+                                        $timeAgo = $diff->days . ' days ago';
+                                    }
+                                ?>
+                                <div class="d-flex align-items-center gap-3 py-3 
+                                    <?= $i < count($recentLogs) - 1 ? 'border-bottom' : '' ?>">
+                                    
+                                    <!-- Icon -->
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                        style="width:38px;height:38px;background:<?= $rc['bg'] ?>;">
+                                        <i class="bi <?= $rc['icon'] ?>" style="color:<?= $rc['color'] ?>;font-size:16px;"></i>
+                                    </div>
+
+                                    <!-- Info -->
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <p class="fw-semibold mb-0 text-truncate" style="color:#272f54;font-size:14px;">
+                                            <?= htmlspecialchars($log['name']) ?>
+                                        </p>
+                                        <p class="text-muted mb-0 text-truncate" style="font-size:12px;">
+                                            <?= htmlspecialchars($log['activity']) ?>
+                                        </p>
+                                    </div>
+
+                                    <!-- Role + Time -->
+                                    <div class="text-end flex-shrink-0">
+                                        <span class="badge rounded-pill px-2 mb-1 d-block"
+                                            style="background:<?= $rc['bg'] ?>;color:<?= $rc['color'] ?>;font-size:10px;font-weight:600;">
+                                            <?= htmlspecialchars(ucfirst($log['roles'])) ?>
+                                        </span>
+                                        <p class="text-muted mb-0" style="font-size:11px;">
+                                            <?= $timeAgo ?>
+                                        </p>
+                                    </div>
+
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
                 <!-- Registration Toggle -->
                 <div id="register-toggle" class="mt-4">
                     <div class="sysAdm-header">
