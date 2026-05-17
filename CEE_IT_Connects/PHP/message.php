@@ -142,6 +142,8 @@ $page = 'messages';
             /* prevent content shift when navbar appears */
             margin: 0;
             padding-top: 70px;
+            height: 100vh;
+            overflow: hidden;
         }
 
         /* SIDEBAR */
@@ -151,15 +153,25 @@ $page = 'messages';
             position: fixed;
             padding: 20px;
             border-right: 1px solid #ddd;
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
 
         .sidebar a {
             display: block;
-            padding: 10px;
+            align-items: center;
+            padding: 10px 12px;
             color: #333;
             text-decoration: none;
-            border-radius: 8px;
-            margin-bottom: 5px;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .sidebar a:hover {
+            background: #f0f0f0;
         }
 
         .sidebar a.active {
@@ -168,22 +180,24 @@ $page = 'messages';
         }
 
         .rooms-list {
+            font-size: 11px;
+            color: #585858;
             margin-top: 20px;
         }
 
         .room-item {
-            padding: 8px;
-            border-radius: 6px;
-            background: #f1f1f1;
-            margin-bottom: 5px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            font-size: 13px;
         }
 
         .room-link {
             text-decoration: none;
+            display: block;
+            margin: 4px;
         }
 
         .room-link .room-item:hover {
-            background: #e0e0e0;
             cursor: pointer;
         }
 
@@ -199,16 +213,18 @@ $page = 'messages';
         .main {
             margin-left: 260px;
             padding: 20px;
+            background-color: #fff;
+            height: 100%;
         }
 
         .room-card {
-            border-radius: 12px;
+            border-radius: 12px 12px 0px 0px;
             color: white;
             padding: 15px;
         }
 
         .room-footer {
-            background: #eee;
+            background: #fff;
             padding: 10px;
             border-radius: 0 0 12px 12px;
             text-align: center;
@@ -217,6 +233,8 @@ $page = 'messages';
         .enter-btn {
             background: #f4a62a;
             border: none;
+            color: #fff;
+            font-weight: 600;
             padding: 5px 15px;
             border-radius: 8px;
         }
@@ -697,13 +715,8 @@ $page = 'messages';
             <i class="fa-solid fa-comments"></i> <span class="sidebar-text">Chats</span>
         </a>
 
-        <a href="?section=connect<?php if ($current_room_id)
-            echo "&room_id=$current_room_id"; ?>" class="sidebar-link
-            <?= $current_section === 'connect' ? 'active' : '' ?>">
-            <i class="fa-solid fa-user-group"></i> <span class="sidebar-text">Connect</span>
-        </a>
-
         <div class="rooms-list">
+            <hr><br>
             <h6>ROOMS</h6>
 
             <?php foreach ($rooms as $room): ?>
@@ -751,8 +764,8 @@ $page = 'messages';
 
                 <div class="row mt-4">
                     <?php foreach ($rooms as $room): ?>
-                        <div class="col-md-4">
-                            <div class="card shadow-sm">
+                        <div class="col-md-4 mb-3">
+                            <div class="card shadow-sm" style="border-radius: 12px; border: 1px solid #ccc;">
 
                                 <div class="room-card" style="background: <?= $color ?>">
                                     <div>
@@ -835,27 +848,25 @@ $page = 'messages';
                             </div>
                             <div>
                                 <?php foreach ($chatUsers as $chat): ?>
-                                    <?php
-                                    $other_id = $chat['chat_user_id'];
-                                    $other_type = $chat['chat_user_type'];
-                                    $name = getUserName($pdo, $other_id, $other_type);
+                                <?php
+                                $other_id = $chat['chat_user_id'];
+                                $other_type = $chat['chat_user_type'];
+
+                                $name = getUserName($pdo, $other_id, $other_type);
                                 ?>
                                 <a href="?chat_id=<?= $other_id ?>&chat_type=<?= $other_type ?>&section=chats"
-                                    class="chat-user-link d-block text-decoration-none text-dark mb-2"
-                                    data-id="<?= $other_id ?>"
-                                    data-type="<?= $other_type ?>"
-                                    data-name="<?= htmlspecialchars($name) ?>">
-                                        <div class="chat-user-item d-flex align-items-center p-3 border-bottom
-                                            <?= ($current_chat_id == $other_id) ? 'bg-light' : '' ?>">
-                                            <div class="avatar-circle me-3"></div>
-                                            <div>
-                                                <div class="fw-bold"><?= htmlspecialchars($name) ?></div>
-                                                <small class="text-muted">Click to open chat</small>
-                                            </div>
+                                    class="d-block text-decoration-none text-dark mb-2">
+                                    <div class="chat-user-item d-flex align-items-center p-3 border-bottom 
+                                        <?= ($current_chat_id == $other_id) ? 'bg-light' : '' ?>">
+
+                                        <div class=" avatar-circle me-3"></div>
+                                        <div>
+                                            <div class="fw-bold"><?= htmlspecialchars($name) ?></div>
+                                            <small class="text-muted">Click to open chat</small>
                                         </div>
-                                    </a>
-                                <?php endforeach; ?>
-                            </div>
+                                    </div>
+                                </a>
+                            <?php endforeach; ?>
                         </div>
                     </div>
 
@@ -886,18 +897,18 @@ $page = 'messages';
                             </strong>
                         </div>
 
-                        <div class="message-content" id="messageContent">
-                            <?php if ($current_chat_id): ?>
-                                <?php foreach ($messages as $msg): ?>
-                                    <?php $isMe = $msg['sender_id'] == $_SESSION['user_id']; ?>
-                                    <div class="bubble <?= $isMe ? 'outgoing' : 'incoming' ?>">
-                                        <small><?= getUserName($pdo, $msg['sender_id'], $msg['sender_type']) ?></small><br>
-                                        <?= htmlspecialchars($msg['message']) ?>
-                                    </div>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <div class="p-5 text-center text-muted">Select a chat to start messaging</div>
-                            <?php endif; ?>
+                        <div class="message-content">
+                            <?php foreach ($messages as $msg): ?>
+                                <?php
+                                $isMe = $msg['sender_id'] == $_SESSION['user_id'];
+                                ?>
+                                <div class="bubble <?= $isMe ? 'outgoing' : 'incoming' ?>">
+                                    <small>
+                                        <?= getUserName($pdo, $msg['sender_id'], $msg['sender_type']) ?>
+                                    </small><br>
+                                    <?= htmlspecialchars($msg['message']) ?>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
 
                         <!-- Send form -->
@@ -923,14 +934,21 @@ $page = 'messages';
                         <div class="big-avatar"></div>
 
                         <?php if ($current_chat_id): ?>
-                            <?php $profile = getUserProfile($pdo, $current_chat_id, $current_chat_type); ?>
-                            <h5 class="fw-bold"><?= htmlspecialchars($profile['full_name']) ?></h5>
+                            <?php
+                            $profile = getUserProfile($pdo, $current_chat_id, $current_chat_type);
+                            ?>
+
+                            <h5 class="fw-bold">
+                                <?= htmlspecialchars($profile['full_name']) ?>
+                            </h5>
+
                             <div class="w-100 text-start mt-3" style="font-size: 0.85rem;">
                                 <div class="mb-3">
                                     <i class="fa-solid fa-envelope me-2 text-muted"></i>
                                     <?= htmlspecialchars($profile['email'] ?? 'No email') ?>
                                 </div>
                             </div>
+
                         <?php else: ?>
                             <h5 class="fw-bold">No chat selected</h5>
                         <?php endif; ?>
@@ -941,7 +959,7 @@ $page = 'messages';
                             <div class="tab-indicator" id="tabIndicator"></div>
                         </div>
 
-                        <div class="tab-content-area">
+                        <div cla ss="tab-content-area">
                             <div id="mediaPane" class="content-pane active-pane">
                                 <div class="media-grid">
                                     <div class="media-box"></div>
@@ -949,11 +967,12 @@ $page = 'messages';
                                     <div class="media-box" style="background:#999;"></div>
                                 </div>
                             </div>
+
                             <div id="filesPane" class="content-pane">
-                                <div class="mt-2" style="width:100%;">
-                                    <div class="py-2 border-bottom small d-flex align-items-center gap-2">
+                                <div cla ss="mt-2" style="width: 100%; align-self: stretch">
+                                    <di class="py-2 border-bottom small d-flex align-items-center gap-2">
                                         <i class="fa-solid fa-file-pdf text-danger"></i> Internship_Form.pdf
-                                    </div>
+                                    </di v>
                                     <div class="py-2 border-bottom small d-flex align-items-center gap-2">
                                         <i class="fa-solid fa-file-word text-primary"></i> Resume_Draft.docx
                                     </div>
@@ -962,15 +981,7 @@ $page = 'messages';
                         </div>
                     </div>
                 </div>
-
-            </div><!-- end .chat-slide-track -->
-        </div><!-- end .chat-container -->
-    </div>
-</div>
-    <div id="connect" class="section <?= $current_section === 'connect' ? 'active' : '' ?>">
-        <div class="main">
-            <h3><strong>Connect</strong></h3>
-            <p>Connect content goes here...</p>
+            </div>
         </div>
     </div>
 
@@ -982,6 +993,78 @@ $page = 'messages';
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    function showSection(event, sectionId, el) {
+        if (event) event.preventDefault();
+
+        document.querySelectorAll('.section').forEach(sec => {
+            sec.classList.remove('active');
+        });
+
+        document.getElementById(sectionId)?.classList.  ('active');
+
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            link.classList.remove('active');
+        });
+
+        if (el) el.classList.add('active');
+    }
+
+    function switchTab(type) {
+        const indicator = document.getElementById('tabIndicator');
+        const mediaPane = document.getElementById('mediaPane');
+        const filesPane = document.getElementById('filesPane');
+        const tabs = document.querySelectorAll('.tab-item');
+
+        if (type === 'media') {
+            // Move indicator to left
+            indicator.style.transform = 'translateX(0%)';
+
+            // Update active classes
+            tabs[0].classList.add('active-tab');
+            tabs[1].classList.remove('active-tab');
+
+            // Show media, hide files
+            mediaPane.classList.add('active-pane');
+            filesPane.classList.remove('active-pane');
+        } else {
+            // Move indicator to right (50% because there are 2 tabs)
+            indicator.style.transform = 'translateX(100%)';
+
+            // Update active classes
+            tabs[1].classList.add('active-tab');
+            tabs[0].classList.remove('active-tab');
+
+            // Show files, hide media
+            filesPane.classList.add('active-pane');
+            mediaPane.classList.remove('active-pane');
+        }
+    }
+    function getUserProfile($pdo, $id, $type) {
+        switch (strtolower($type)) {
+
+            case 'student':
+                $stmt = $pdo -> prepare("SELECT full_name, email FROM students WHERE id=?");
+                break;
+
+            case 'adviser':
+                $stmt = $pdo -> prepare("SELECT full_name, email FROM advisers WHERE id=?");
+                break;
+
+            case 'admin':
+                $stmt = $pdo -> prepare("SELECT name AS full_name, email FROM admins WHERE id=?");
+                break;
+
+            default:
+                return [
+                    'full_name' => 'Unknown',
+                    'email' => 'Unknown'
+                ];
+        }
+
+        $stmt -> execute([$id]);
+        return $stmt -> fetch(PDO:: FETCH_ASSOC);
+    }
+
     //susu
     // ── MOBILE CHAT SLIDE NAVIGATION ──
     const track = document.getElementById('chatSlideTrack'); // declared ONCE
