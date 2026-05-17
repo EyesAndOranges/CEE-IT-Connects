@@ -1,22 +1,5 @@
 <?php $page = 'announcements';
-require 'db.php';
-require 'auth.php';
-
-$stmt = $pdo->query("SELECT * FROM announcements ORDER BY created_at DESC");
-
-$announcements = [
-    'news' => [],
-    'updates' => [],
-    'FAQs' => []
-];
-
-while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-    if (!isset($announcements[$row['category']])) {
-        $announcements[$row['category']] = [];
-    }
-    $announcements[$row['category']][] = $row;
-}
-?>
+require 'auth.php'; ?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -32,93 +15,201 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 
     <style>
         body {
-            background: #f4f4f4;
+            background: #f0f2f5;
         }
 
-        .border-primary:hover {
-            --bs-btn-hover-bg: #c5d9f8;
-            transform: scale(1.09);
-        }
-
-        /* Page height control */
         .announcement-wrapper {
-            height: calc(100vh - 70px);
-            padding: 25px;
+            min-height: calc(100vh - 70px);
+            padding: 28px 25px;
         }
 
-        /* Scrollable content */
-        .announcement-scroll {
-            height: 100%;
-            overflow-y: auto;
-            padding-right: 10px;
-        }
-
-        /* Section cards */
-        .announcement-section {
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .section-title {
-            font-weight: 800;
-            color: #272f54;
-            margin-bottom: 15px;
-        }
-
-        /* News cards */
-        .news-card {
-            border: 1px solid #eee;
-            border-radius: 6px;
-            padding: 15px;
-            margin-bottom: 10px;
-        }
-
-        .news-card h6 {
-            color: #ff6a00;
+        .section-label {
+            font-size: 11px;
             font-weight: 700;
+            color: #56585c;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            margin: 24px 0 8px 0;
         }
 
-        /* Update cards with image */
-        .update-card {
-            display: flex;
-            gap: 15px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 15px;
-            margin-bottom: 15px;
+        .section-label:first-of-type { margin-top: 0; }
+
+        /* PREP BANNER */
+        .prep-banner {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
         }
 
-        .update-card img {
-            width: 120px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 4px;
+        .prep-col {
+            background: #1e2647;
+            padding: 22px 20px;
+            border-right: 1px solid rgba(255,255,255,0.08);
         }
 
-        /* Internship tips icons */
-        .tip-box {
-            text-align: center;
-            padding: 15px;
-            border: 1px solid #eee;
+        .prep-col:last-child { border-right: none; }
+
+        .prep-letter {
+            font-size: 48px;
+            font-weight: 900;
+            color: #FFB62F;
+            line-height: 1;
+            margin: 0 0 10px 0;
+        }
+
+        .prep-tip-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            margin: 0 0 5px 0;
+        }
+
+        .prep-tip-desc {
+            font-size: 12px;
+            color: rgba(255,255,255,0.45);
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        /* UPDATE CARDS */
+        .ann-card {
+            background: #fff;
+            border: 1px solid #e8eaf0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .update-card-new {
+            padding: 15px 18px;
+            border-bottom: 1px solid #f3f4f7;
+            border-left: 4px solid transparent;
+            transition: background 0.15s;
+        }
+
+        .update-card-new:last-child { border-bottom: none; }
+        .update-card-new:nth-child(1) { border-left-color: #E4572E; }
+        .update-card-new:nth-child(2) { border-left-color: #FFB62F; }
+        .update-card-new:hover { background: #fafbfc; }
+
+        .update-card-source {
+            font-size: 11px;
+            font-weight: 700;
+            color: #E4572E;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin: 0 0 4px 0;
+        }
+
+        .update-card-source span {
+            font-weight: 400;
+            color: #b0b8cc;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .update-card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1a1f36;
+            margin: 0 0 5px 0;
+            line-height: 1.3;
+        }
+
+        .update-card-desc {
+            font-size: 13px;
+            color: #6b7280;
+            margin: 0 0 10px 0;
+            line-height: 1.55;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .update-card-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+            border: 1px solid #e0e4ed;
             border-radius: 6px;
+            padding: 4px 12px;
+            text-decoration: none;
+            transition: border-color 0.15s, color 0.15s;
         }
 
-        .tip-box i {
-            font-size: 28px;
-            color: #ff6a00;
-            margin-bottom: 8px;
+        .update-card-link:hover {
+            border-color: #E4572E;
+            color: #E4572E;
         }
 
         /* FAQ */
         .faq-item {
-            background: #ff6a00;
-            color: #fff;
-            padding: 10px 15px;
-            border-radius: 4px;
-            margin-bottom: 8px;
+            border-bottom: 1px solid #f3f4f7;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .faq-item:last-child { border-bottom: none; }
+
+        .faq-question {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 13px 18px;
+            transition: background 0.15s;
+        }
+
+        .faq-item:hover .faq-question { background: #fafbfc; }
+
+        .faq-item.open .faq-question {
+            background: #e8f1ff;
+        }
+
+        .faq-q-text {
+            font-size: 14px;
             font-weight: 600;
+            color: #1a1f36;
+            margin: 0;
+            transition: color 0.2s;
+        }
+
+        .faq-item.open .faq-q-text { color: #2563eb; }
+
+        .faq-chevron {
+            font-size: 12px;
+            color: #b0b8cc;
+            transition: transform 0.25s ease, color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .faq-item.open .faq-chevron {
+            transform: rotate(180deg);
+            color: #2563eb;
+        }
+
+        .faq-item.open { border-left-color: #2563eb; }
+
+        .faq-answer {
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.65;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.25s ease;
+            padding: 0 18px;
+            background: #f5f8ff;
+        }
+
+        .faq-item.open .faq-answer {
+            max-height: 150px;
+            padding: 10px 18px 14px 18px;
         }
     </style>
 </head>
@@ -128,133 +219,96 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     <?php include 'navbar.php'; ?>
 
     <section class="announcement-wrapper">
-        <div class="container-fluid h-100">
+        <div class="container-fluid">
 
-            <h4 class="fw-bold mb-3">Announcements</h4>
-
-            <div class="announcement-scroll">
-
-                <!-- NEWS -->
-                <div class="announcement-section">
-                    <h5 class="section-title">News</h5>
-                    <?php foreach ($announcements['news'] as $news): ?>
-                        <div class="news-card">
-                            <h6><?php echo htmlspecialchars($news['title']); ?></h6>
-                            <p class="short-message" id="shortMessage<?php echo $news['id']; ?>"><?php
-                               $message = htmlspecialchars($news['message']);
-                               echo strlen($message) > 10 ? substr($message, 0, 10) . '...' : $message;
-                               ?></p>
-
-                            <div class="collapse" id="fullMessage<?php echo $news['id']; ?>">
-                                <p><?php echo $message ?></p>
-                            </div>
-                            <!-- <p class="mb-1"><?php //echo htmlspecialchars($news['message']) ?></p> -->
-                            <small class="text-muted">Posted <?php echo date(
-                                'F j, y',
-                                strtotime($news['created_at'])
-                            ) ?></small>
-                            <div class="d-flex justify-content-end mt-2">
-                                <button class="btn border-primary" id="toggleButton<?php echo $news['id'] ?>"
-                                    onclick="toggleMessage(<?php echo $news['id'] ?>)">
-                                    <?php echo strlen($message) > 10 ? 'Read More' : 'Read Less'; ?>
-                                </button>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
+            <!-- INTERNSHIP TIPS — PREP Banner -->
+            <p class="section-label">Internship Tips</p>
+            <div class="prep-banner">
+                <div class="prep-col">
+                    <p class="prep-letter">P</p>
+                    <p class="prep-tip-title">Prepare your documents early</p>
+                    <p class="prep-tip-desc">Don't wait for deadlines. Have your resume, endorsement letter, and forms ready ahead of time.</p>
                 </div>
-
-                <!-- UPDATES -->
-                <div class=" announcement-section">
-                    <h5 class="section-title">Updates</h5>
-                    <?php foreach ($announcements['updates'] as $update): ?>
-                        <div class="update-card">
-                            <img src="../Sources/suhay husay.png">
-                            <div>
-                                <h6 class="fw-bold"><?php echo htmlspecialchars($update['title']) ?></h6>
-                                <p class="mb-1"><?php echo htmlspecialchars($update['message']) ?></p>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
+                <div class="prep-col">
+                    <p class="prep-letter">R</p>
+                    <p class="prep-tip-title">Research about the company</p>
+                    <p class="prep-tip-desc">Know what the company does before your interview. It shows initiative and professionalism.</p>
                 </div>
-
-                <!-- INTERNSHIP TIPS -->
-                <div class="announcement-section">
-                    <h5 class="section-title">Internship Tips</h5>
-
-                    <!-- <div class="row g-3">
-            <div class="col-md-3 col-6">
-                <div class="tip-box">
-                    <i class="fa-solid fa-clock"></i>
-                    <p class="mb-0">Submit On Time</p>
+                <div class="prep-col">
+                    <p class="prep-letter">E</p>
+                    <p class="prep-tip-title">Email professionally</p>
+                    <p class="prep-tip-desc">Use proper text and a formal tone when communicating with companies.</p>
+                </div>
+                <div class="prep-col">
+                    <p class="prep-letter">P</p>
+                    <p class="prep-tip-title">Punctuality is everything</p>
+                    <p class="prep-tip-desc">Being on time reflects your work ethic and attitude.</p>
                 </div>
             </div>
-            <div class="col-md-3 col-6">
-                <div class="tip-box">
-                    <i class="fa-solid fa-user-tie"></i>
-                    <p class="mb-0">Professional Resume</p>
+
+            <!-- UPDATES -->
+            <p class="section-label">Updates</p>
+            <div class="ann-card">
+                <div class="update-card-new">
+                    <p class="update-card-source">Bukas &nbsp;·&nbsp; <span>May 3, 2026 · 6:00 PM</span></p>
+                    <p class="update-card-title">How to Prepare for your Internship</p>
+                    <p class="update-card-desc">From applications to the actual work, internships give you a glimpse of what it's like to have a full-time job. They help you learn more about the industry you want to work in and train you with different skills.</p>
+                    <a href="https://bukas.ph/blog/how-to-prepare-for-your-internship/" class="update-card-link" target="_blank"><i class="fas fa-external-link-alt"></i> View Original Source</a>
+                </div>
+                <div class="update-card-new">
+                    <p class="update-card-source">prosple &nbsp;·&nbsp; <span>March 26, 2026 · 9:07 AM</span></p>
+                    <p class="update-card-title">Tips to Ace your Internship</p>
+                    <p class="update-card-desc">Ready to make the most out of your internship? Check out these tips to ace your internship journey and set yourself up for success!</p>
+                    <a href="https://ph.prosple.com/on-the-job/tips-to-ace-your-internship" class="update-card-link" target="_blank"><i class="fas fa-external-link-alt"></i> View Original Source</a>
                 </div>
             </div>
-            <div class="col-md-3 col-6">
-                <div class="tip-box">
-                    <i class="fa-solid fa-laptop"></i>
-                    <p class="mb-0">Prepare Documents</p>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="tip-box">
-                    <i class="fa-solid fa-users"></i>
-                    <p class="mb-0">Attend Briefings</p>
-                </div>
-            </div> 
-        </div> -->
-                </div>
 
-                <!-- FAQ -->
-                <div class="announcement-section">
-                    <h5 class="section-title">FAQs</h5>
-
-                    <div class="accordion" id="faqAccordion">
-                        <?php foreach ($announcements['FAQs'] as $faq): ?>
-                            <div class="accordion-item mb-2">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed fw-semibold" type="button"
-                                        data-bs-toggle="collapse" data-bs-target="#faq">
-                                        <?php echo htmlspecialchars($faq['title']) ?>
-                                    </button>
-                                </h2>
-                                <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                                    <div class="accordion-body">
-                                        <?php echo htmlspecialchars($faq['message']) ?>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
+            <!-- FAQ -->
+            <p class="section-label">FAQs</p>
+            <div class="ann-card">
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <p class="faq-q-text">Who can apply for internships?</p>
+                        <i class="fas fa-chevron-down faq-chevron"></i>
                     </div>
+                    <p class="faq-answer">All enrolled CEE IT students who have met the required academic and departmental requirements may apply for internship opportunities.</p>
                 </div>
-
-
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <p class="faq-q-text">What documents are required?</p>
+                        <i class="fas fa-chevron-down faq-chevron"></i>
+                    </div>
+                    <p class="faq-answer">Students are required to submit a resume, application form, endorsement letter, and other documents specified by the partner institution.</p>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <p class="faq-q-text">How long is the internship period?</p>
+                        <i class="fas fa-chevron-down faq-chevron"></i>
+                    </div>
+                    <p class="faq-answer">Internship duration depends on the program requirements and typically ranges from 300 to 600 hours.</p>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <p class="faq-q-text">Can I apply to multiple companies?</p>
+                        <i class="fas fa-chevron-down faq-chevron"></i>
+                    </div>
+                    <p class="faq-answer">Yes. Students may apply to multiple internship listings, but acceptance is subject to approval and availability.</p>
+                </div>
             </div>
+
         </div>
     </section>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../JS/index-script.js"></script>
-
     <script>
-        function toggleMessage(id) {
-            const shortMsg = document.getElementById(`shortMessage${id}`);
-            const fullMsg = document.getElementById(`fullMessage${id}`);
-            const button = document.getElementById(`toggleButton${id}`);
-
-            if (fullMsg.classList.contains('show')) {
-                shortMsg.style.display = 'block';
-                button.innerHTML = 'Read More'
-            } else {
-                shortMsg.style.display = 'none';
-                button.innerHTML = 'Read Less'
-            }
-
-            fullMsg.classList.toggle('show');
-        }
+        document.querySelectorAll('.faq-item').forEach(item => {
+            item.querySelector('.faq-question').addEventListener('click', () => {
+                const isOpen = item.classList.contains('open');
+                document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+                if (!isOpen) item.classList.add('open');
+            });
+        });
     </script>
 </body>
 
