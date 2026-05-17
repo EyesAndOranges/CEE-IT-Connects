@@ -359,7 +359,6 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
                 overflow-y: auto !important;
             }
 
-            /* Summary cards stack vertically */
             .summary-container { 
                 display: grid !important;
                 grid-template-columns: repeat(3, 1fr) !important;
@@ -372,7 +371,7 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
                 padding: 12px !important;
                 border-radius: 10px !important;
                 display: flex !important;
-                flex-direction: column !important;        /* number+label on left, icon on right */
+                flex-direction: column !important;
                 align-items: flex-start !important;
                 gap: 4px !important;
                 position:relative !important;
@@ -408,14 +407,12 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
                 opacity: 1 !important;
             }
 
-            /* ── 3. SEARCH & FILTER — 1 row ── */
             .table-controls {
                 display: flex !important;
                 flex-direction: column !important;
                 gap: 8px !important;
             }
 
-            /* Filters row — keep in one line */
             .filters {
                 display: flex !important;
                 flex-direction: row !important;
@@ -431,7 +428,6 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
                 font-size: 11px !important;
             }
 
-            /* Search + button in one row */
             .table-controls > div:last-child {
                 order: 1 !important;
                 display: flex !important;
@@ -459,34 +455,28 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
                 padding: 8px 36px 8px 12px !important;
             }
 
-            /* Add Internship Post button */
             .btn-button {
                 white-space: nowrap !important;
                 font-size: 11px !important;
                 padding: 8px 10px !important;
             }
 
-            /* ── 4. TOOLTIP Z-INDEX FIX ── */
             .sidebar {
                 z-index: 99999 !important;
             }
 
-            /* Cards full width on mobile */
             .col-lg-7, .col-lg-5 {
                 width: 100% !important;
                 max-width: 100% !important;
                 flex: 0 0 100% !important;
             }
 
-            /* Form grid single column */
             .form-grid { grid-template-columns: 1fr !important; }
             .form-grid [style*="grid-column:span 2"] {
                 grid-column: span 1 !important;
             }
 
-            /* Tables scroll horizontally */
-            .table-container { overflow-x: auto !important; }
-            
+            .table-container { overflow-x: auto !important; }            
         }
     </style>
 </head>
