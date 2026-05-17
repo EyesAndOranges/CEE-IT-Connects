@@ -22,15 +22,66 @@ $posts = $stmt->fetchAll();
 
 // ROOM MEMBERS
 $stmt = $pdo->prepare("
-    SELECT s.full_name
-    FROM room_members rm
-    JOIN students s ON rm.user_id = s.id
-    WHERE rm.room_id = ?
+    SELECT rm.user_id, rm.user_type, 
+       COALESCE(s.full_name, a.full_name, ad.name) AS full_name
+FROM room_members rm
+LEFT JOIN students s ON rm.user_type = 'student' AND rm.user_id = s.id
+LEFT JOIN advisers a ON rm.user_type = 'adviser' AND rm.user_id = a.id
+LEFT JOIN admins ad ON rm.user_type = 'admin' AND rm.user_id = ad.id
+WHERE rm.room_id = ?
 ");
 $stmt->execute([$room_id]);
 $members = $stmt->fetchAll();
 
 $tab = $_GET['tab'] ?? 'updates';
+
+$stmt = $pdo->query("
+    SELECT id, full_name, email, 'student' AS role, 'students' AS source FROM students
+    UNION ALL
+    SELECT id, full_name, email, 'adviser' AS role, 'advisers' AS source FROM advisers  
+");
+
+$users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+
+$stmt = $pdo->prepare("
+    SELECT user_id, user_type FROM room_members WHERE room_id = ?
+");
+$stmt->execute([$room_id]);
+$alreadyexisting = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$alreadyExistingMap = [];
+foreach ($alreadyexisting as $e) {
+    $alreadyExistingMap[$e['user_type'] . '_' . $e['user_id']] = true;
+}
+
+$stmt = $pdo->prepare("
+    SELECT 
+        s.id,
+        s.full_name,
+        r.room_name,
+        i.company,
+        COALESCE(SUM(l.hours_worked), 0) AS total_hours,
+        MAX(m.remarks) AS latest_remarks
+    FROM students s
+    JOIN room_members rm ON s.id = rm.user_id
+    JOIN rooms r ON rm.room_id = r.id
+    LEFT JOIN student_internships si ON s.id = si.student_id
+    LEFT JOIN internships i ON si.internship_id = i.id
+    LEFT JOIN ojt_logs l ON s.id = l.student_id
+    LEFT JOIN (
+        SELECT DISTINCT ON (student_id)
+        student_id, remarks
+        FROM ojt_remarks
+        ORDER BY student_id, updated_at DESC
+    ) m ON s.id = m.student_id
+    WHERE r.id = ?
+    GROUP BY s.id, s.full_name, r.room_name, i.company
+");
+$stmt->execute([$room_id]);
+$statuses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$backLink = getDashboardByRole($_SESSION['role']);
 ?>
 
 <head>
@@ -39,19 +90,28 @@ $tab = $_GET['tab'] ?? 'updates';
             text-decoration: none;
             padding-bottom: 5px;
         }
-        .tab-link:hover { color: #dc3545; }
-        .active-tab { border-bottom: 2px solid #dc3545; }
+
+        .tab-link:hover {
+            color: #dc3545;
+        }
+
+        .active-tab {
+            border-bottom: 2px solid #dc3545;
+        }
 
         .modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,.45);
+            background: rgba(0, 0, 0, .45);
             z-index: 1050;
             align-items: center;
             justify-content: center;
         }
-        .modal-overlay.show { display: flex; }
+
+        .modal-overlay.show {
+            display: flex;
+        }
 
         .modal-box {
             background: #fff;
@@ -61,16 +121,29 @@ $tab = $_GET['tab'] ?? 'updates';
             overflow: hidden;
             animation: modalIn .2s ease;
         }
+
         @keyframes modalIn {
-            from { transform: translateY(20px); opacity: 0; }
-            to   { transform: translateY(0);    opacity: 1; }
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
 
         .modal-header {
             padding: 14px 18px;
             display: flex;
         }
-        .modal-header h6 { margin: 0; font-weight: 700; font-size: 14px; }
+
+        .modal-header h6 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 14px;
+        }
 
         .modal-close {
             background: none;
@@ -81,7 +154,9 @@ $tab = $_GET['tab'] ?? 'updates';
             line-height: 1;
         }
 
-        .modal-body { padding: 18px; }
+        .modal-body {
+            padding: 18px;
+        }
 
         .modal-footer {
             padding: 10px 18px;
@@ -91,7 +166,11 @@ $tab = $_GET['tab'] ?? 'updates';
             gap: 8px;
         }
 
-        .search-input-wrap { position: relative; margin-bottom: 12px; }
+        .search-input-wrap {
+            position: relative;
+            margin-bottom: 12px;
+        }
+
         .search-input-wrap i {
             position: absolute;
             left: 10px;
@@ -99,6 +178,7 @@ $tab = $_GET['tab'] ?? 'updates';
             transform: translateY(-50%);
             color: #aaa;
         }
+
         .search-input-wrap input {
             width: 100%;
             padding: 8px 12px 8px 32px;
@@ -108,9 +188,30 @@ $tab = $_GET['tab'] ?? 'updates';
             outline: none;
             box-sizing: border-box;
         }
-        .search-input-wrap input:focus { border-color: #d63ba5; }
 
-        .participant-list { max-height: 240px; overflow-y: auto; }
+        .search-input-wrap input:focus {
+            border-color: #d63ba5;
+        }
+
+        .progress-bar-bg {
+            width: 250px;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            transition: width .3s ease;
+            border-radius: 4px;
+            background: #ff6b2c;
+        }
+
+        .participant-list {
+            max-height: 240px;
+            overflow-y: auto;
+        }
 
         .participant-item {
             display: flex;
@@ -120,7 +221,11 @@ $tab = $_GET['tab'] ?? 'updates';
             border-radius: 8px;
             cursor: pointer;
         }
-        .participant-item:hover { background: #fdf0f9; }
+
+        .participant-item:hover {
+            background: #fdf0f9;
+        }
+
         .participant-item input[type="checkbox"] {
             accent-color: #d63ba5;
             width: 16px;
@@ -140,8 +245,17 @@ $tab = $_GET['tab'] ?? 'updates';
             color: #d63ba5;
             font-size: 14px;
         }
-        .participant-info strong { display: block; font-size: 16px; line-height: 1.2; }
-        .participant-info small  { color: #888; font-size: 14px; }
+
+        .participant-info strong {
+            display: block;
+            font-size: 16px;
+            line-height: 1.2;
+        }
+
+        .participant-info small {
+            color: #888;
+            font-size: 14px;
+        }
 
         /* add btn states */
         .btn-add-confirm {
@@ -154,12 +268,16 @@ $tab = $_GET['tab'] ?? 'updates';
             background: #f0c6e8;
             color: #c278aa;
         }
+
         .btn-add-confirm.has-selection {
             background: #d63ba5;
             color: #fff;
             cursor: pointer;
         }
-        .btn-add-confirm.has-selection:hover { background: #bc2e8e; }
+
+        .btn-add-confirm.has-selection:hover {
+            background: #bc2e8e;
+        }
 
         /* ── MEMBER CARD ── */
         .member-card {
@@ -172,6 +290,7 @@ $tab = $_GET['tab'] ?? 'updates';
             margin-bottom: 8px;
             background: #fff;
         }
+
         .member-avatar {
             width: 38px;
             height: 38px;
@@ -185,8 +304,16 @@ $tab = $_GET['tab'] ?? 'updates';
             font-size: 14px;
             flex-shrink: 0;
         }
-        .member-info strong { display: block; font-size: 16px; }
-        .member-info small  { color: #888; font-size: 14px; }
+
+        .member-info strong {
+            display: block;
+            font-size: 16px;
+        }
+
+        .member-info small {
+            color: #888;
+            font-size: 14px;
+        }
 
         .badge-role {
             margin-left: auto;
@@ -195,8 +322,16 @@ $tab = $_GET['tab'] ?? 'updates';
             font-size: 12px;
             font-weight: 600;
         }
-        .badge-student { color: #c2278e; font-size: 14px;}
-        .badge-hte     { color: #2756c2; font-size: 14px; }
+
+        .badge-student {
+            color: #c2278e;
+            font-size: 14px;
+        }
+
+        .badge-hte {
+            color: #2756c2;
+            font-size: 14px;
+        }
 
         .chat-container {
             display: flex;
@@ -217,8 +352,15 @@ $tab = $_GET['tab'] ?? 'updates';
             gap: 14px;
         }
 
-        .msg-row { display: flex; align-items: flex-end; gap: 8px; }
-        .msg-row.me { flex-direction: row-reverse; }
+        .msg-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .msg-row.me {
+            flex-direction: row-reverse;
+        }
 
         .msg-avatar {
             width: 30px;
@@ -234,7 +376,9 @@ $tab = $_GET['tab'] ?? 'updates';
             flex-shrink: 0;
         }
 
-        .msg-bubble-wrap { max-width: 68%; }
+        .msg-bubble-wrap {
+            max-width: 68%;
+        }
 
         .msg-sender {
             font-size: .72rem;
@@ -243,7 +387,12 @@ $tab = $_GET['tab'] ?? 'updates';
             margin-bottom: 3px;
             padding-left: 2px;
         }
-        .me .msg-sender { text-align: right; padding-right: 2px; padding-left: 0; }
+
+        .me .msg-sender {
+            text-align: right;
+            padding-right: 2px;
+            padding-left: 0;
+        }
 
         .msg-bubble {
             padding: 9px 13px;
@@ -252,20 +401,32 @@ $tab = $_GET['tab'] ?? 'updates';
             line-height: 1.45;
             word-break: break-word;
         }
+
         .msg-row:not(.me) .msg-bubble {
             background: #fff;
             border: 1px solid #ecdaea;
             border-bottom-left-radius: 4px;
             color: #222;
         }
+
         .msg-row.me .msg-bubble {
             background: #d63ba5;
             color: #fff;
             border-bottom-right-radius: 4px;
         }
 
-        .msg-time { font-size: 12px; color: #bbb; margin-top: 3px; padding-left: 2px; }
-        .me .msg-time { text-align: right; padding-right: 2px; padding-left: 0; }
+        .msg-time {
+            font-size: 12px;
+            color: #bbb;
+            margin-top: 3px;
+            padding-left: 2px;
+        }
+
+        .me .msg-time {
+            text-align: right;
+            padding-right: 2px;
+            padding-left: 0;
+        }
 
         .msg-file {
             display: flex;
@@ -279,14 +440,23 @@ $tab = $_GET['tab'] ?? 'updates';
             font-size: 12px;
             border-bottom-left-radius: 4px;
         }
+
         .msg-row.me .msg-file {
             background: #bc2e8e;
             color: #fff;
             border-bottom-left-radius: 12px;
             border-bottom-right-radius: 4px;
         }
-        .msg-file-info strong { display: block; font-size: 12px; }
-                .msg-file-info span   { font-size: 12px; opacity: .7; }
+
+        .msg-file-info strong {
+            display: block;
+            font-size: 12px;
+        }
+
+        .msg-file-info span {
+            font-size: 12px;
+            opacity: .7;
+        }
 
         .chat-day-divider {
             text-align: center;
@@ -295,6 +465,7 @@ $tab = $_GET['tab'] ?? 'updates';
             position: relative;
             margin: 4px 0;
         }
+
         .chat-day-divider::before,
         .chat-day-divider::after {
             content: '';
@@ -304,8 +475,14 @@ $tab = $_GET['tab'] ?? 'updates';
             height: 1px;
             background: #eee;
         }
-        .chat-day-divider::before { left: 0; }
-        .chat-day-divider::after  { right: 0; }
+
+        .chat-day-divider::before {
+            left: 0;
+        }
+
+        .chat-day-divider::after {
+            right: 0;
+        }
 
         .chat-input-bar {
             border-top: 1px solid #eee;
@@ -319,6 +496,7 @@ $tab = $_GET['tab'] ?? 'updates';
             gap: 6px;
             margin-bottom: 8px;
         }
+
         .file-chip {
             display: flex;
             align-items: center;
@@ -330,6 +508,7 @@ $tab = $_GET['tab'] ?? 'updates';
             font-size: 12px;
             color: #b5237f;
         }
+
         .file-chip button {
             background: none;
             border: none;
@@ -340,7 +519,11 @@ $tab = $_GET['tab'] ?? 'updates';
             font-size: 12px;
         }
 
-        .chat-input-row { display: flex; align-items: flex-end; gap: 8px; }
+        .chat-input-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
 
         .chat-input-row textarea {
             flex: 1;
@@ -353,7 +536,10 @@ $tab = $_GET['tab'] ?? 'updates';
             overflow-y: auto;
             font-family: inherit;
         }
-        .chat-input-row textarea:focus { border-color: #d63ba5; }
+
+        .chat-input-row textarea:focus {
+            border-color: #d63ba5;
+        }
 
         .chat-attach-btn,
         .chat-send-btn {
@@ -367,24 +553,73 @@ $tab = $_GET['tab'] ?? 'updates';
             justify-content: center;
             font-size: 14px;
         }
-        .chat-attach-btn { background: #f5e6f2; color: #d63ba5; }
-        .chat-attach-btn:hover { background: #ecd3e8; }
-        .chat-send-btn { background: #d63ba5; color: #fff; }
-        .chat-send-btn:hover { background: #bc2e8e; }
-        .chat-send-btn:disabled { background: #e5b8d8; cursor: not-allowed; }
+
+        .chat-attach-btn {
+            background: #f5e6f2;
+            color: #d63ba5;
+        }
+
+        .chat-attach-btn:hover {
+            background: #ecd3e8;
+        }
+
+        .chat-send-btn {
+            background: #d63ba5;
+            color: #fff;
+        }
+
+        .chat-send-btn:hover {
+            background: #bc2e8e;
+        }
+
+        .chat-send-btn:disabled {
+            background: #e5b8d8;
+            cursor: not-allowed;
+        }
     </style>
 </head>
-
+<!-- <?php print_r($_SESSION); ?> -->
 <div class="d-flex justify-content-end mb-2">
-    <a href="message.php" class="text-danger fw-semibold" style="text-decoration:none;">
+    <a href="<?= $backLink ?>" class="text-danger fw-semibold" style="text-decoration:none;">
         <i class="fa-solid fa-arrow-left"></i> Back to rooms
     </a>
 </div>
 
 <!-- HEADER -->
-<div class="p-3 text-white rounded" style="background:#d63ba5;">
-    <h5 class="mb-0"><?= htmlspecialchars($room['room_name']) ?></h5>
-    <small><?= htmlspecialchars($room['full_name']) ?> | <?= htmlspecialchars($room['role']) ?></small>
+<div class="p-3 text-white rounded d-flex justify-content-between align-items-center" style="background:#d63ba5;">
+
+    <!-- LEFT SIDE -->
+    <div>
+        <h5 class="mb-0"><?= htmlspecialchars($room['room_name']) ?></h5>
+        <small>
+            <?= htmlspecialchars($room['full_name']) ?>
+            |
+            <?= htmlspecialchars($room['role']) ?>
+        </small>
+    </div>
+
+    <!-- RIGHT SIDE -->
+    <?php
+    $status = $statuses[0] ?? null;
+
+    if ($status):
+        $progressWidth = min(
+            round(($status['total_hours'] / 486) * 100, 2),
+            100
+        );
+        ?>
+        <div class="text-end">
+            <div class="progress-bar-bg mb-1">
+                <div class="progress-bar-fill" style="width: <?= $progressWidth ?>%;">
+                </div>
+            </div>
+
+            <small>
+                <?= $status['total_hours'] ?> / 486 hours
+            </small>
+        </div>
+    <?php endif; ?>
+
 </div>
 
 <!-- TABS -->
@@ -412,8 +647,7 @@ $tab = $_GET['tab'] ?? 'updates';
             <span class="text-muted" style="font-size:14px;" id="memberCount">
                 <?= count($members) ?> participant(s)
             </span>
-            <button class="btn btn-sm text-white fw-semibold"
-                style="background:#d63ba5;border-radius:8px;font-size:14px;"
+            <button class="btn btn-sm text-white fw-semibold" style="background:#d63ba5;border-radius:8px;font-size:14px;"
                 onclick="openModal()">
                 <i class="fa-solid fa-user-plus me-1"></i> Add Participant
             </button>
@@ -444,7 +678,8 @@ $tab = $_GET['tab'] ?? 'updates';
                     <div class="msg-avatar">OA</div>
                     <div class="msg-bubble-wrap">
                         <div class="msg-sender">OJT Adviser Name</div>
-                        <div class="msg-bubble">Good morning everyone! Please check the announcements tab for the orientation details.</div>
+                        <div class="msg-bubble">Good morning everyone! Please check the announcements tab for the
+                            orientation details.</div>
                         <div class="msg-time">9:02 AM</div>
                     </div>
                 </div>
@@ -472,12 +707,12 @@ $tab = $_GET['tab'] ?? 'updates';
                 <div class="file-preview-strip" id="filePreviewStrip" style="display:none;"></div>
                 <div class="chat-input-row">
                     <input type="file" id="fileInput" multiple style="display:none;" onchange="handleFiles(this.files)">
-                    <button class="chat-attach-btn" title="Attach file" onclick="document.getElementById('fileInput').click()">
+                    <button class="chat-attach-btn" title="Attach file"
+                        onclick="document.getElementById('fileInput').click()">
                         <i class="fa-solid fa-paperclip"></i>
                     </button>
                     <textarea id="chatTextarea" rows="1" placeholder="Type a message…"
-                        oninput="autoResize(this); toggleSend()"
-                        onkeydown="handleEnter(event)"></textarea>
+                        oninput="autoResize(this); toggleSend()" onkeydown="handleEnter(event)"></textarea>
                     <button class="chat-send-btn" id="sendBtn" disabled onclick="sendMessage()">
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
@@ -486,9 +721,41 @@ $tab = $_GET['tab'] ?? 'updates';
 
         </div>
 
-    <?php else: ?>
 
-        <?php foreach ($posts as $post): ?>
+        <?php else: ?>
+    <?php if ($_SESSION['role'] === 'internship_adviser'): ?>
+    <div class="card mb-3 border-0 shadow-sm">
+        <div class="card-body">
+            <form action="chat-room-content-db.php" method="POST">
+                <!-- tells the backend WHICH room this post belongs to -->
+                <input type="hidden" name="room_id" value="<?= $room_id ?>">
+                <!-- triggers the post_announcement block in chat-room-content-db.php -->
+                <input type="hidden" name="post_announcement" value="1">
+
+                <textarea
+                    name="content"
+                    class="form-control mb-2"
+                    rows="3"
+                    placeholder="Write an announcement for this room…"
+                    required
+                    style="resize:none; border-color:#f0c6e8; font-size:14px;"
+                ></textarea>
+
+                <div class="d-flex justify-content-end">
+                    <button
+                        type="submit"
+                        class="btn btn-sm fw-semibold text-white"
+                        style="background:#d63ba5; border-radius:8px; font-size:14px;"
+                    >
+                        <i class="fa-solid fa-bullhorn me-1"></i> Post Announcement
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php foreach ($posts as $post): ?>  <!-- your existing loop, untouched -->
             <div class="card mb-3">
                 <div class="card-body">
                     <div class="d-flex align-items-center mb-2">
@@ -511,13 +778,13 @@ $tab = $_GET['tab'] ?? 'updates';
 </div>
 
 
-<div class="modal-overlay" id="addParticipantModal"
-    onclick="if(event.target===this) closeModal()">
+<!-- ADD PARTICIPANT MODAL -->
+<div class="modal-overlay" id="addParticipantModal" onclick="if(event.target===this) closeModal()">
     <div class="modal-box">
 
         <div class="modal-header">
             <h6><i class="fa-solid fa-user-plus me-2"></i>Add Participant</h6>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <button class="modal-close" name="add_participant" onclick="closeModal()">&times;</button>
         </div>
 
         <div class="modal-body">
@@ -528,14 +795,27 @@ $tab = $_GET['tab'] ?? 'updates';
             </div>
 
             <div class="participant-list" id="participantList">
-                <div class="participant-item" data-name="Ana Reyes" onclick="toggleCheck(this)">
-                    <input type="checkbox">
-                    <div class="participant-avatar">AR</div>
-                    <div class="participant-info">
-                        <strong>Ana Reyes</strong>
-                        <small>ana.reyes@student.edu · Student</small>
+                <?php foreach ($users as $user): ?>
+                    <?php $key = $user['role'] . '_' . $user['id']; ?>
+                    <?php if (isset($alreadyExistingMap[$key]))
+                        continue; ?>
+                    <div class="participant-item" data-id="<?= htmlspecialchars($user['id']) ?>"
+                        data-type="<?= $user['role'] ?>" data-name="<?= htmlspecialchars($user['full_name']) ?>"
+                        onclick="toggleCheck(this)">
+                        <input type="checkbox">
+                        <div class="participant-avatar"><?= strtoupper(substr($user['full_name'], 0, 2)) ?></div>
+                        <div class="participant-info">
+                            <strong>
+                                <?= htmlspecialchars($user['full_name']) ?>
+                            </strong>
+                            <small>
+                                <?= htmlspecialchars($user['email']) ?> ·
+                                <?= htmlspecialchars($user['role']) ?>
+                            </small>
+                        </div>
                     </div>
-                </div>
+                <?php endforeach; ?>
+                <!--
                 <div class="participant-item" data-name="Ben Torres" onclick="toggleCheck(this)">
                     <input type="checkbox">
                     <div class="participant-avatar">BT</div>
@@ -584,6 +864,7 @@ $tab = $_GET['tab'] ?? 'updates';
                         <small>p.tan@globalfirm.com · HTE Adviser</small>
                     </div>
                 </div>
+                -->
             </div>
         </div>
 
@@ -633,37 +914,36 @@ $tab = $_GET['tab'] ?? 'updates';
         const btn = document.getElementById('addSelectedBtn');
         if (!btn.classList.contains('has-selection')) return;
 
-        const list    = document.getElementById('memberList');
-        const counter = document.getElementById('memberCount');
+        const selected = [];
 
         document.querySelectorAll('.participant-item').forEach(item => {
             const cb = item.querySelector('input[type="checkbox"]');
-            if (!cb.checked) return;
-
-            const name     = item.dataset.name;
-            const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
-            const roleText = item.querySelector('small').textContent.split('·')[1]?.trim() || 'Student';
-            const isHTE    = roleText.toLowerCase().includes('hte');
-            const email    = item.querySelector('small').textContent.split('·')[0].trim();
-
-            const card = document.createElement('div');
-            card.className = 'member-card';
-            card.innerHTML = `
-                <div class="member-avatar" style="${isHTE ? 'background:#d0deff;color:#2756c2;' : ''}">${escHtml(initials)}</div>
-                <div class="member-info">
-                    <strong>${escHtml(name)}</strong>
-                    <small>${escHtml(email)}</small>
-                </div>
-                <span class="badge-role ${isHTE ? 'badge-hte' : 'badge-student'}">${escHtml(roleText)}</span>
-            `;
-            list.appendChild(card);
-
-            // remove from modal so they can't be added twice
-            item.remove();
+            if (cb.checked) {
+                selected.push({
+                    id: item.dataset.id,
+                    type: item.dataset.type
+                });
+            }
         });
 
-        counter.textContent = list.querySelectorAll('.member-card').length + ' participant(s)';
-        closeModal();
+        if (selected.length === 0) return;
+
+        fetch('chat-room-content-db.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                room_id: <?= $room_id ?>,
+                users: JSON.stringify(selected)
+            })
+        })
+            .then(res => res.text())
+            .then(res => {
+                if (res === "success") {
+                    location.reload(); // refresh members list
+                } else {
+                    alert("Failed to add members");
+                }
+            });
     }
 
 
@@ -674,7 +954,7 @@ $tab = $_GET['tab'] ?? 'updates';
     }
 
     function toggleSend() {
-        const ta    = document.getElementById('chatTextarea');
+        const ta = document.getElementById('chatTextarea');
         const strip = document.getElementById('filePreviewStrip');
         document.getElementById('sendBtn').disabled =
             ta.value.trim() === '' && strip.children.length === 0;
@@ -695,8 +975,8 @@ $tab = $_GET['tab'] ?? 'updates';
 
     function renderFileChip(file) {
         const strip = document.getElementById('filePreviewStrip');
-        const chip  = document.createElement('div');
-        chip.className  = 'file-chip';
+        const chip = document.createElement('div');
+        chip.className = 'file-chip';
         chip.dataset.name = file.name;
         chip.innerHTML = `
             <i class="fa-solid fa-paperclip"></i>
@@ -708,7 +988,7 @@ $tab = $_GET['tab'] ?? 'updates';
 
     function removeChip(btn) {
         const chip = btn.closest('.file-chip');
-        const idx  = attachedFiles.findIndex(f => f.name === chip.dataset.name);
+        const idx = attachedFiles.findIndex(f => f.name === chip.dataset.name);
         if (idx > -1) attachedFiles.splice(idx, 1);
         chip.remove();
         const strip = document.getElementById('filePreviewStrip');
@@ -717,12 +997,12 @@ $tab = $_GET['tab'] ?? 'updates';
     }
 
     function sendMessage() {
-        const ta   = document.getElementById('chatTextarea');
+        const ta = document.getElementById('chatTextarea');
         const text = ta.value.trim();
         if (!text && attachedFiles.length === 0) return;
 
         const msgs = document.getElementById('chatMessages');
-        const now  = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         if (text) {
             msgs.innerHTML += `
@@ -765,17 +1045,17 @@ $tab = $_GET['tab'] ?? 'updates';
     }
 
     function escHtml(str) {
-        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     function fileIcon(name) {
         const ext = name.split('.').pop().toLowerCase();
         const map = {
-            pdf:  'fa-solid fa-file-pdf',
-            doc:  'fa-solid fa-file-word',        docx: 'fa-solid fa-file-word',
-            xls:  'fa-solid fa-file-excel',       xlsx: 'fa-solid fa-file-excel',
-            png:  'fa-solid fa-file-image',        jpg:  'fa-solid fa-file-image',
-            jpeg: 'fa-solid fa-file-image',        gif:  'fa-solid fa-file-image',
+            pdf: 'fa-solid fa-file-pdf',
+            doc: 'fa-solid fa-file-word', docx: 'fa-solid fa-file-word',
+            xls: 'fa-solid fa-file-excel', xlsx: 'fa-solid fa-file-excel',
+            png: 'fa-solid fa-file-image', jpg: 'fa-solid fa-file-image',
+            jpeg: 'fa-solid fa-file-image', gif: 'fa-solid fa-file-image',
         };
         return map[ext] || 'fa-solid fa-file';
     }
