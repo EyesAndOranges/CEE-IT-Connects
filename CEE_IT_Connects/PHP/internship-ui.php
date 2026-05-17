@@ -265,6 +265,229 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
         .submit-btn:hover {
             opacity: 0.9;
         }
+
+        @media (max-width: 768px) {
+            body { overflow: auto !important; }
+
+            .page-body { display: flex !important; }
+
+            aside.sidebar, .sidebar {
+                width: 60px !important;
+                padding: 10px 0 70px 0 !important;
+                overflow: visible !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                z-index: 1050 !important;
+                position: fixed !important;
+                top: 70px !important;
+                left: 0 !important;
+                height: calc(100vh - 70px) !important;
+            }
+
+            aside.sidebar h3 { display: none !important; }
+
+            .sidebar a {
+                width: 44px !important;
+                height: 44px !important;
+                min-width: 44px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 12px !important;
+                margin: 0 0 8px 0 !important;
+                padding: 0 !important;
+                position: relative;
+                gap: 0 !important;
+                font-size: 0 !important;
+                color: white !important;
+            }
+
+            .sidebar a:hover { 
+                background: rgba(255, 255, 255, 0.1) !important; 
+                color: white !important; 
+            }
+
+            .sidebar a:hover i { 
+                color: #E4572E !important; 
+            }
+
+            .sidebar a.active {
+                background: #FFB62F !important;
+                color: #272f54 !important;
+            }
+
+            .sidebar a i {
+                font-size: 18px !important;
+                line-height: 1 !important;
+                margin: 0 !important;
+                color: inherit !important;
+                display: block !important;
+                opacity: 1 !important;
+            }
+
+            .sidebar a.active i {
+                color: var(--accent) !important;
+            }
+
+            /* Tooltip */
+            .sidebar a::after {
+                content: attr(data-tooltip);
+                position: absolute;
+                left: 54px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: #1a1a2e;
+                color: #fff !important;
+                font-size: 12px !important;
+                font-weight: 500;
+                padding: 5px 10px;
+                border-radius: 6px;
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s ease;
+                z-index: 99999 !important;
+            }
+
+            aside.sidebar a:hover::after { opacity: 1; }
+
+            .main-content {
+                margin-left: 60px !important;
+                padding: 15px !important;
+                height: auto !important;
+                overflow-y: auto !important;
+            }
+
+            /* Summary cards stack vertically */
+            .summary-container { 
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 8px !important;
+                margin-bottom: 20px !important;
+
+            }
+
+            .summary-card {
+                padding: 12px !important;
+                border-radius: 10px !important;
+                display: flex !important;
+                flex-direction: column !important;        /* number+label on left, icon on right */
+                align-items: flex-start !important;
+                gap: 4px !important;
+                position:relative !important;
+                overflow: visible !important;
+            }
+
+            .card-content {
+                display: flex !important;
+                flex-direction: column !important;
+                width: 100% !important;
+            }
+           
+            .card-content .label { 
+                order: 1 !important;
+                font-size: 8px !important;
+                margin-bottom: 4px !important;
+                word-break: break-word !important;
+                line-height: 1.2 !important;
+            }
+
+            .card-content .count { 
+                order: 2 !important;
+                font-size: 1.4rem !important;
+            }
+
+            .gold-icon {
+                position:absolute !important;
+                top: 12px !important;
+                right: 12px !important;
+                font-size: 1.1rem !important;
+                z-index: 1 !important;
+                display: block !important;
+                opacity: 1 !important;
+            }
+
+            /* ── 3. SEARCH & FILTER — 1 row ── */
+            .table-controls {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 8px !important;
+            }
+
+            /* Filters row — keep in one line */
+            .filters {
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                gap: 6px !important;
+                width: 100% !important;
+            }
+
+            .filter-select {
+                flex: 1 !important;
+                min-width: 0 !important;
+                padding: 8px !important;
+                font-size: 11px !important;
+            }
+
+            /* Search + button in one row */
+            .table-controls > div:last-child {
+                order: 1 !important;
+                display: flex !important;
+                flex-direction: row !important;
+                gap: 8px !important;
+                width: 100% !important;
+            }
+
+            .table-controls > .filters {
+                order: 2 !important;
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                gap: 6px !important;
+                width: 100% !important;
+            }
+
+            .search-box {
+                flex: 1 !important;
+            }
+
+            .search-box input {
+                width: 100% !important;
+                font-size: 13px !important;
+                padding: 8px 36px 8px 12px !important;
+            }
+
+            /* Add Internship Post button */
+            .btn-button {
+                white-space: nowrap !important;
+                font-size: 11px !important;
+                padding: 8px 10px !important;
+            }
+
+            /* ── 4. TOOLTIP Z-INDEX FIX ── */
+            .sidebar {
+                z-index: 99999 !important;
+            }
+
+            /* Cards full width on mobile */
+            .col-lg-7, .col-lg-5 {
+                width: 100% !important;
+                max-width: 100% !important;
+                flex: 0 0 100% !important;
+            }
+
+            /* Form grid single column */
+            .form-grid { grid-template-columns: 1fr !important; }
+            .form-grid [style*="grid-column:span 2"] {
+                grid-column: span 1 !important;
+            }
+
+            /* Tables scroll horizontally */
+            .table-container { overflow-x: auto !important; }
+            
+        }
     </style>
 </head>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -284,7 +507,7 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
             link.classList.remove('active');
         });
 
-        event.target.classList.add('active');
+        event.currentTarget.classList.add('active');
     }
 </script>
 
@@ -325,35 +548,35 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="page-body">
         <!-- SIDEBAR -->
         <aside class="sidebar" style="padding-bottom: 70px;">
-            <a href="#" class="active" onclick="showSection('dashboard')">
+            <a href="#" class="active" onclick="showSection('dashboard')" data-tooltip="Dashboard">
                 <i class="bi bi-person-fill-lock"></i>
                 Dashboard
             </a>
-            <a href="#" onclick="showSection('postings')">
+            <a href="#" onclick="showSection('postings')" data-tooltip="Internship Postings">
                 <i class="bi bi-pencil-fill"></i>
                 Postings
             </a>
-            <a href="#" onclick="showSection('applicants')">
+            <a href="#" onclick="showSection('applicants')" data-tooltip="Applicants">
                 <i class="bi bi-people-fill"></i>
                 Applicants
             </a>
-            <a href="#" onclick="showSection('documents')">
+            <a href="#" onclick="showSection('documents')" data-tooltip="Documents">
                 <i class="bi bi-file-earmark-text-fill"></i>
                 Documents
             </a>
-            <a href="#" onclick="showSection('interested')">
+            <a href="#" onclick="showSection('interested')" data-tooltip="Interested Students">
                 <i class="bi bi-bookmarks-fill"></i>
                 Interested
             </a>
-            <a href="#" onclick="showSection('announcements')">
+            <a href="#" onclick="showSection('announcements')" data-tooltip="Announcements">
                 <i class="bi bi-bell-fill"></i>
                 Announcements
             </a>
-            <a href="#" onclick="showSection('manage_announcement')">
+            <a href="#" onclick="showSection('manage_announcement')" data-tooltip="Manage Announcement">
                 <i class="bi bi-bookmark"></i>
                 Manage Announcement
             </a>
-            <a href="#" onclick="showSection('student_register')">
+            <a href="#" onclick="showSection('student_register')" data-tooltip="Student Register">
                 <i class="bi bi-file-earmark-person"></i>
                 Student Register
             </a>

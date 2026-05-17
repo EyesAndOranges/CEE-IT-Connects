@@ -78,6 +78,10 @@ body {
     position: sticky;
     top: 70px;
     height: calc(100vh - 70px);
+
+    overflow-y: scroll;
+    scrollbar-width: none;
+    padding-bottom: 40px;
 }
 
 /* SIDEBAR ITEMS */
@@ -242,6 +246,7 @@ body {
     border-radius: 12px;
     padding: 20px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    overflow-x: auto;
 }
 
 .table-title {font-size: 1.2rem; color: #555; margin-bottom: 15px;}
@@ -275,8 +280,8 @@ body {
     border-collapse: collapse;
 }
 
-.custom-table td { padding: 0 15px; border-bottom: 1px solid #f0f2f7; }
-.custom-table th { padding: 15px 15px; border-bottom: 2px solid #f0f2f7; }
+.custom-table td { padding: 0 15px; border-bottom: 1px solid #f0f2f7; white-space: nowrap; }
+.custom-table th { padding: 15px 15px; border-bottom: 2px solid #f0f2f7; white-space: nowrap; }
 
 .custom-table th:last-child, 
 .custom-table td:last-child {
