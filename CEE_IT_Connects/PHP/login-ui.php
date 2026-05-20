@@ -2,6 +2,8 @@
 $role = $_GET['role'] ?? 'student';
 $statePath = __DIR__ . '/register_toggle.txt';
 $registerVisible = file_exists($statePath) ? trim(file_get_contents($statePath)) : 'show';
+
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -17,6 +19,11 @@ $registerVisible = file_exists($statePath) ? trim(file_get_contents($statePath))
 </head>
 
 <body>
+
+    <?php if (!empty($_SESSION['error'])): ?>
+        <div class="alert alert-danger"><?= $_SESSION['error'] ?></div>
+        <?php unset($_SESSION['error']); ?>
+    <?php endif; ?>
 
     <!-- LOADING SCREEN -->
     <div id="loading-screen">

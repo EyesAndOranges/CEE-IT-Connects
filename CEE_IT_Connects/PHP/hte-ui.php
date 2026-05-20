@@ -73,6 +73,7 @@ $page = 'messages';
             margin: 0;
             padding-top: 70px;
             min-height: 100vh;
+        overflow-y: auto;
         }
 
         /* ── SECTION PANELS ── */
@@ -89,8 +90,7 @@ $page = 'messages';
             width: 240px;
             background: #fff;
             position: fixed;
-            padding: 20px 0 20px 20px;
-            border-radius: 20px;
+            padding: 20px 0px 20px 20px;
             overflow-y: auto;
             scrollbar-width: none;
             -ms-overflow-style: none;
@@ -164,6 +164,7 @@ $page = 'messages';
             border-radius: 12px 12px 0 0;
             color: white;
             padding: 15px;
+            min-height: 110px;
         }
 
         .room-footer {
@@ -171,6 +172,8 @@ $page = 'messages';
             padding: 10px;
             border-radius: 0 0 12px 12px;
             text-align: center;
+            border: 1px solid #bbb;
+            border-top: none;
         }
 
         .enter-btn {
@@ -188,7 +191,7 @@ $page = 'messages';
             align-items: center;
             gap: 8px;
             background: white;
-            border: 1px solid;
+            border: 1px solid #bbb;
             border-radius: 24px;
             padding: 7px 14px;
             flex: 1;
@@ -232,6 +235,9 @@ $page = 'messages';
             align-items: center;
             justify-content: center;
             margin-right: 8px;
+            min-width: 34px;
+            min-height: 34px;
+            flex-shrink: 0;
         }
 
         .student-cell {
@@ -256,7 +262,7 @@ $page = 'messages';
         /* ── STUDENT CARDS (Remarks) ── */
         .student-card {
             background: white;
-            border: 1px solid #00000060;
+            border: 1px solid #bbb;
             border-radius: 8px;
             margin-bottom: 16px;
             overflow: hidden;
@@ -268,6 +274,21 @@ $page = 'messages';
             gap: 14px;
             padding: 14px 18px;
             border-bottom: 1px solid #e0e0e0;
+        }
+
+        /*susu*/
+        .log-row-top {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .log-row-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
         }
 
         .student-info {
@@ -288,7 +309,7 @@ $page = 'messages';
         .log-row select,
         .log-row input[type="number"] {
             padding: 6px 10px;
-            border: 1px solid #ccc;
+            border: 1px solid #bbb;
             border-radius: 6px;
             font-size: 13px;
             outline: none;
@@ -323,6 +344,7 @@ $page = 'messages';
         /* ── REMARKS SECTION ── */
         .remarks-section {
             padding: 14px 18px;
+            background-color: #fbfbfb;
         }
 
         .remarks-label {
@@ -336,14 +358,14 @@ $page = 'messages';
 
         .remarks-section textarea {
             width: 100%;
-            border: 1px solid #ddd;
+            border: 1px solid #bbb;
             border-radius: 6px;
             padding: 10px 12px;
             font-size: 13px;
             resize: vertical;
             min-height: 80px;
             outline: none;
-            background: #fafafa;
+            background: #fbfbfb;
             box-sizing: border-box;
         }
 
@@ -356,7 +378,7 @@ $page = 'messages';
 
         .remarks-footer select {
             padding: 6px 10px;
-            border: 1px solid #ccc;
+            border: 1px solid #bbb;
             border-radius: 6px;
             font-size: 13px;
             outline: none;
@@ -399,15 +421,203 @@ $page = 'messages';
             margin-bottom: 16px;
         }
 
-        /* ── RESPONSIVE ── */
-        @media (max-width: 992px) {
-            .main {
-                margin-left: 0;
+        /*susu*/
+        .room-initial { display: none; }
+        .room-name-text { display: inline; }
+
+        /*===MEDIA QUERY===*/
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed !important;
+                top: 70px !important;
+                left: 0 !important;
+                bottom: 0 !important;
+                width: 60px !important;
+                height: calc(100vh - 70px) !important;
+                padding: 10px 0 !important;
+                border-radius: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                overflow-x: hidden !important;
+                z-index: 100;
             }
 
-            .sidebar {
-                position: relative;
-                width: 100%;
+            .sidebar .sidebar-text,
+            .rooms-list h6,
+            .rooms-list hr {
+                display: none !important;
+            }
+
+            .sidebar > a {
+                width: 44px !important;
+                height: 44px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 12px !important;
+                margin: 0 auto 8px auto !important;
+                font-size: 1.2rem !important;
+                padding: 0 !important;
+            }
+
+            .sidebar > a i {
+                margin: 0 !important;
+            }
+
+            .rooms-list {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                margin-top: 0 !important;
+                width: 100% !important;
+                max-height: unset !important;
+                overflow-y: auto;
+                overflow-x: hidden !important;
+                scrollbar-width: none;
+                gap: 8px;
+            }
+
+            .room-link {
+                display: flex !important;
+                justify-content: center !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .room-item {
+                width: 44px !important;
+                height: 44px !important;
+                min-width: 44px !important;
+                min-height: 44px !important;
+                border-radius: 12px !important;
+                background: #e8e8e8 !important;
+                color: #555 !important;
+                font-weight: bold !important;
+                font-size: 1.1rem !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: hidden !important;
+            }
+
+            .room-item.active-room {
+                background: #ffdac8 !important;
+                color: #ff6b2c !important;
+                margin: 0 auto;
+            }
+
+            .room-name-text { display: none !important; }
+            .room-initial { display: flex !important; }
+
+            .main {
+                margin-left: 70px !important;
+                padding: 15px !important;
+            }
+
+            /* Room cards — clamp title to 2 lines */
+            .room-card h5 {
+                display: -webkit-box !important;
+                -webkit-line-clamp: 2 !important;
+                line-clamp: 2 !important;
+                -webkit-box-orient: vertical !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+
+            .room-card {
+                min-height: 110px !important;
+                max-height: 110px !important;
+                overflow: hidden !important;
+            }
+
+            /* Table horizontal scroll */
+            #status .search-box {
+                max-width: 100% !important;
+            }
+
+            .avatar {
+                width: 34px !important;
+                height: 34px !important;
+                min-width: 34px !important;
+                min-height: 34px !important;
+                border-radius: 50% !important;
+                flex-shrink: 0 !important;
+            }
+
+            .chat-container {
+                position: fixed !important;
+                top: 70px !important;
+                left: 60px !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                height: calc(100vh - 70px) !important;
+                border-radius: 0 !important;
+                border: none !important;
+            }
+
+            .chat-container .chat-messages {
+                flex: 1 !important;
+            }
+
+            .log-row {
+                flex-wrap: wrap !important;
+                gap: 10px !important;
+                padding: 12px !important;
+            }
+
+            /* Student info takes full width on its own row */
+            .log-row .student-info {
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
+            }
+
+            /* Avatar stays circular and doesn't shrink */
+            .log-row .avatar {
+                flex-shrink: 0 !important;
+                align-self: center !important;
+            }
+
+            /* Status select and hours input go to their own row */
+            .log-row select,
+            .log-row input[type="number"] {
+                flex: 1 !important;
+                min-width: 80px !important;
+            }
+
+            /* Make the top part (avatar + name) take full row */
+            .log-row-top {
+                width: 100% !important;
+            }
+
+            /* Controls (select + input) on second row */
+            .log-row-controls {
+                width: 100% !important;
+            }
+
+            .log-row-controls select, .log-row-controls[type="number"] {
+                flex: 1;
+            }
+
+            /* Remarks footer wraps on mobile */
+            .remarks-footer {
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+            }
+
+            .remarks-footer select {
+                width: 100% !important;
+            }
+
+            .remarks-footer label {
+                flex: 1 !important;
+            }
+
+            .btn-submit {
+                margin-left: auto !important;
             }
         }
     </style>
@@ -419,13 +629,13 @@ $page = 'messages';
     <!-- SIDEBAR -->
     <div class="sidebar">
         <a href="#" onclick="showSection('rooms', event)" class="active" id="nav-rooms">
-            <i class="fa-solid fa-house me-1"></i> Virtual Rooms
+            <i class="fa-solid fa-house me-1"></i><span class="sidebar-text"> Virtual Rooms</span>
         </a>
         <a href="#" onclick="showSection('status', event)" id="nav-status">
-            <i class="fa-solid fa-calendar-check me-2"></i> Status
+            <i class="fa-solid fa-calendar-check me-2"></i><span class="sidebar-text">Status</span>
         </a>
         <a href="#" onclick="showSection('remarks', event)" id="nav-remarks">
-            <i class="fa-solid fa-star me-1"></i> Remarks
+            <i class="fa-solid fa-star me-1"></i><span class="sidebar-text">Remarks</span>
         </a>
 
         <div class="rooms-list" style="overflow-y:auto; max-height:400px; scrollbar-width:none;">
@@ -433,19 +643,21 @@ $page = 'messages';
             <h6>ROOMS</h6>
 
             <?php foreach ($rooms as $room): ?>
-                <?php if ($current_room_id == $room['id']): ?>
-                    <!-- CURRENT ROOM (NOT CLICKABLE) -->
-                    <div class="room-item active-room">
-                        <?= htmlspecialchars($room['room_name']) ?>
-                    </div>
-                <?php else: ?>
-                    <!-- CLICKABLE ROOM -->
-                    <a href="?room_id=<?= $room['id'] ?>" class="room-link">
-                        <div class="room-item">
-                            <?= htmlspecialchars($room['room_name']) ?>
-                        </div>
-                    </a>
-                <?php endif; ?>
+                    <?php if ($current_room_id == $room['id']): ?>
+                            <!-- CURRENT ROOM (NOT CLICKABLE) -->
+                            <div class="room-item active-room">
+                                <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
+                                <span class="room-name-text"><?= htmlspecialchars($room['room_name']) ?></span>
+                            </div>
+                    <?php else: ?>
+                            <!-- CLICKABLE ROOM -->
+                            <a href="?room_id=<?= $room['id'] ?>" class="room-link">
+                                <div class="room-item">
+                                    <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
+                                    <span class="room-name-text"><?= htmlspecialchars($room['room_name']) ?></span>
+                                </div>
+                            </a>
+                    <?php endif; ?>
             <?php endforeach; ?>
         </div>
     </div>
@@ -457,41 +669,41 @@ $page = 'messages';
         <div id="rooms" class="section-panel active">
             <?php if ($current_room_id): ?>
 
-                <?php include 'chat-room-content.php'; ?>
+                    <?php include 'chat-room-content.php'; ?>
 
             <?php else: ?>
 
-                <div class="d-flex justify-content-between align-items-center">
-                    <h3><strong>Virtual Rooms</strong></h3>
-                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
-                        + Join a Room
-                    </button>
-                </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3><strong>Virtual Rooms</strong></h3>
+                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
+                            + Join a Room
+                        </button>
+                    </div>
 
-                <div class="row mt-1 g-4">
-                    <?php foreach ($rooms as $room): ?>
-                        <div class="col-12 col-sm-6 col-lg-4">
-                            <div class="card shadow-sm border-0" style="border-radius:12px;">
+                    <div class="row mt-1 g-4">
+                        <?php foreach ($rooms as $room): ?>
+                                <div class="col-12 col-sm-6 col-lg-4">
+                                    <div class="card shadow-sm border-0" style="border-radius:12px;">
 
-                                <div class="room-card" style="background: <?= $color ?>">
-                                    <h5><?= htmlspecialchars($room['room_name']) ?></h5>
-                                    <small>
-                                        <?= htmlspecialchars($room['full_name']) ?>
-                                        (<?= htmlspecialchars($room['role']) ?>)
-                                    </small>
+                                        <div class="room-card" style="background: <?= $color ?>">
+                                            <h5><?= htmlspecialchars($room['room_name']) ?></h5>
+                                            <small>
+                                                <?= htmlspecialchars($room['full_name']) ?>
+                                                (<?= htmlspecialchars($room['role']) ?>)
+                                            </small>
+                                        </div>
+
+                                        <div class="room-footer">
+                                            <form method="GET">
+                                                <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
+                                                <button class="enter-btn">Enter Room</button>
+                                            </form>
+                                        </div>
+
+                                    </div>
                                 </div>
-
-                                <div class="room-footer">
-                                    <form method="GET">
-                                        <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
-                                        <button class="enter-btn">Enter Room</button>
-                                    </form>
-                                </div>
-
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
+                        <?php endforeach; ?>
+                    </div>
 
             <?php endif; ?>
         </div>
@@ -506,17 +718,17 @@ $page = 'messages';
                     <input type="text" id="statusSearchInput" placeholder="Search student" oninput="filterTable()">
                 </div>
                 <select id="statusRoomFilter" onchange="filterTable()"
-                    style="padding:7px 14px; border:1px solid; border-radius:24px; font-size:12px;">
+                    style="padding:7px 14px; border:1px solid #bbb; border-radius:24px; font-size:12px;">
                     <option value="">All Rooms</option>
                     <?php foreach ($rooms as $r): ?>
-                        <option value="<?= htmlspecialchars($r['room_name']) ?>">
-                            <?= htmlspecialchars($r['room_name']) ?>
-                        </option>
+                            <option value="<?= htmlspecialchars($r['room_name']) ?>">
+                                <?= htmlspecialchars($r['room_name']) ?>
+                            </option>
                     <?php endforeach; ?>
                 </select>
             </div>
 
-            <div style="background:white; border:1px solid #00000060; border-radius:8px; overflow:hidden;">
+            <div style="background:#fbfbfb; border:1px solid #bbb; border-radius:8px; overflow-x:auto;">
                 <table>
                     <thead>
                         <tr>
@@ -530,29 +742,29 @@ $page = 'messages';
                     </thead>
                     <tbody id="all-students-tbody">
                         <?php foreach ($statuses as $status): ?>
-                            <tr data-room="<?= htmlspecialchars($status['room_name']) ?>">
-                                <td>
-                                    <div class="student-cell">
-                                        <div class="avatar" style="background:#ff2c8f;">
-                                            <strong><?= strtoupper(substr($status['full_name'], 0, 1)) ?></strong>
+                                <tr data-room="<?= htmlspecialchars($status['room_name']) ?>">
+                                    <td>
+                                        <div class="student-cell">
+                                            <div class="avatar" style="background:#ff2c8f;">
+                                                <strong><?= strtoupper(substr($status['full_name'], 0, 1)) ?></strong>
+                                            </div>
+                                            <h6><?= htmlspecialchars($status['full_name']) ?></h6>
                                         </div>
-                                        <h6><?= htmlspecialchars($status['full_name']) ?></h6>
-                                    </div>
-                                </td>
-                                <td><?= htmlspecialchars($status['room_name']) ?></td>
-                                <td><?= htmlspecialchars($status['company']) ?></td>
-                                <td><strong><?= $status['total_hours'] ?></strong> / 486</td>
-                                <td>
-                                    <?php $progressWidth = round(($status['total_hours'] / 486) * 100, 2) ?>
-                                    <div style="display:flex; align-items:center; gap:8px;">
-                                        <div class="progress-bar-bg">
-                                            <div class="progress-bar-fill" style="width:<?= $progressWidth ?>%"></div>
+                                    </td>
+                                    <td><?= htmlspecialchars($status['room_name']) ?></td>
+                                    <td><?= htmlspecialchars($status['company']) ?></td>
+                                    <td><strong><?= $status['total_hours'] ?></strong> / 486</td>
+                                    <td>
+                                        <?php $progressWidth = round(($status['total_hours'] / 486) * 100, 2) ?>
+                                        <div style="display:flex; align-items:center; gap:8px;">
+                                            <div class="progress-bar-bg">
+                                                <div class="progress-bar-fill" style="width:<?= $progressWidth ?>%"></div>
+                                            </div>
+                                            <span><?= $progressWidth ?>%</span>
                                         </div>
-                                        <span><?= $progressWidth ?>%</span>
-                                    </div>
-                                </td>
-                                <td><?= htmlspecialchars($status['latest_remarks'] ?? 'No remarks') ?></td>
-                            </tr>
+                                    </td>
+                                    <td><?= htmlspecialchars($status['latest_remarks'] ?? 'No remarks') ?></td>
+                                </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -569,79 +781,86 @@ $page = 'messages';
                     <input type="text" id="remarksSearchInput" placeholder="Search student" oninput="filterCards()">
                 </div>
                 <select id="remarksRoomFilter" onchange="filterCards()"
-                    style="padding:7px 14px; border:1px solid; border-radius:24px; font-size:12px;">
+                    style="padding:7px 14px; border:1px solid #bbb; border-radius:24px; font-size:12px;">
                     <option value="">All Rooms</option>
                     <?php foreach ($rooms as $r): ?>
-                        <option value="<?= htmlspecialchars($r['room_name']) ?>">
-                            <?= htmlspecialchars($r['room_name']) ?>
-                        </option>
+                            <option value="<?= htmlspecialchars($r['room_name']) ?>">
+                                <?= htmlspecialchars($r['room_name']) ?>
+                            </option>
                     <?php endforeach; ?>
                 </select>
             </div>
 
             <div id="student-list">
                 <?php foreach ($students as $student): ?>
-                    <form method="POST" action="hte-db.php">
+                        <form method="POST" action="hte-db.php">
 
-                        <input type="hidden" name="student_id" value="<?= $student['id'] ?>">
-                        <input type="hidden" name="internship_id" value="<?= $student['internship_id'] ?>">
+                            <input type="hidden" name="student_id" value="<?= $student['id'] ?>">
+                            <input type="hidden" name="internship_id" value="<?= $student['internship_id'] ?>">
 
-                        <div class="student-card">
-                            <div class="log-row">
-                                <div class="avatar" style="background:#ff2c8f;">
-                                    <strong><?= strtoupper(substr($student['full_name'], 0, 1)) ?></strong>
+                            <div class="student-card">
+                                <div class="log-row">
+                                    <div class="log-row-top">
+                                        <div class="avatar" style="background:#ff2c8f;">
+                                            <strong><?= strtoupper(substr($student['full_name'], 0, 1)) ?></strong>
+                                        </div>
+                                        <div class="student-info">
+                                            <strong><?= htmlspecialchars($student['full_name']) ?></strong>
+                                            <span><?= htmlspecialchars($student['company']) ?></span>
+                                        </div>
+                                    </div>
+                                    <div class="log-row-controls">
+                                        <select name="status" required>
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                            <option value="Late">Late</option>
+                                        </select>
+                                        <input type="number" name="hours" placeholder="hrs" min="0" max="24" required>
+                                    </div>
                                 </div>
-                                <div class="student-info">
-                                    <strong><?= htmlspecialchars($student['full_name']) ?></strong>
-                                    <span><?= htmlspecialchars($student['company']) ?></span>
+
+                                <div class="remarks-section">
+                                    <div class="remarks-label">Remarks</div>
+                                    <textarea name="remarks" placeholder="Enter remarks..." required></textarea>
+                                    <div class="remarks-footer">
+                                        <select name="rating" required>
+                                            <option>Outstanding</option>
+                                            <option>Very Satisfactory</option>
+                                            <option>Satisfactory</option>
+                                            <option>Fairly Satisfactory</option>
+                                            <option>Did Not Meet Expectations</option>
+                                        </select>
+                                        <label>
+                                            <input type="checkbox" name="completed"> Mark complete
+                                        </label>
+                                        <!-- ONLY ONE BUTTON -->
+                                        <button type="submit" name="save_all" class="btn-submit">Save</button>
+                                    </div>
                                 </div>
-                                <select name="status" required>
-                                    <option value="Present">Present</option>
-                                    <option value="Absent">Absent</option>
-                                    <option value="Late">Late</option>
-                                </select>
-                                <input type="number" name="hours" placeholder="hrs" min="0" max="24" required>
                             </div>
 
-                            <div class="remarks-section">
-                                <div class="remarks-label">Remarks</div>
-                                <textarea name="remarks" placeholder="Enter remarks..." required></textarea>
-                                <div class="remarks-footer">
-                                    <select name="rating" required>
-                                        <option>Outstanding</option>
-                                        <option>Very Satisfactory</option>
-                                        <option>Satisfactory</option>
-                                        <option>Fairly Satisfactory</option>
-                                        <option>Did Not Meet Expectations</option>
-                                    </select>
-                                    <label>
-                                        <input type="checkbox" name="completed"> Mark complete
-                                    </label>
-                                    <button type="submit" name="save_all" class="btn-submit">Save</button>
-                                </div>
-                            </div>
-                        </div>
-
-                    </form>
+                        </form>
                 <?php endforeach; ?>
             </div>
 
             <!-- Static demo card -->
             <div class="student-card" data-room="Room 2C" data-name="mark anthony dela cruz">
                 <div class="log-row">
-                    <div class="avatar" style="background:#2c6fff;"><strong>M</strong></div>
-                    <div class="student-info">
-                        <strong>Mark Anthony Dela Cruz</strong>
-                        <span>TechCorp PH</span>
+                    <div class="log-row-top">
+                        <div class="avatar" style="background:#2c6fff;"><strong>M</strong></div>
+                        <div class="student-info">
+                            <strong>Mark Anthony Dela Cruz</strong>
+                            <span>TechCorp PH</span>
+                        </div>
                     </div>
-                    <select>
-                        <option>Present</option>
-                        <option>Absent</option>
-                        <option>Late</option>
-                    </select>
-                    <input type="number" placeholder="hrs" min="0" max="24">
-                    <span class="total-hrs">268 hrs</span>
-                    <button class="btn-log">Log</button>
+                    <div class="log-row-controls">
+                        <select>
+                            <option>Present</option>
+                            <option>Absent</option>
+                            <option>Late</option>
+                        </select>
+                        <input type="number" placeholder="hrs" min="0" max="24">
+                    </div>
                 </div>
                 <div class="remarks-section">
                     <div class="remarks-label">Remarks</div>

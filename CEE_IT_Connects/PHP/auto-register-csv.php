@@ -1,23 +1,38 @@
 <?php
 session_start();
-include 'auto-register.php';
-if (!isset($_FILES['students_csv'])) {
-    die("No file uploaded.");
+
+$sourceDir = __DIR__ . '/../Sources/';
+
+if (!isset($_FILES['students_csv']) || $_FILES['students_csv']['error'] !== UPLOAD_ERR_OK) {
+    $_SESSION['error'] = "No file uploaded or upload error.";
+    header("Location: internship-ui.php");
+    exit();
 }
 
-$tmp = $_FILES['students_csv']['tmp_name'];
-
-if ($_FILES['students_csv']['error'] !== UPLOAD_ERR_OK) {
-    die("Upload failed.");
+$ext = strtolower(pathinfo($_FILES['students_csv']['name'], PATHINFO_EXTENSION));
+if ($ext !== 'csv') {
+    $_SESSION['error'] = "Only CSV files are allowed.";
+    header("Location: internship-ui.php");
+    exit();
 }
 
-$destination = __DIR__ . '/../Sources/students.csv';
+$uploadedFilename = basename($_FILES['students_csv']['name']);
+$targetPath = $sourceDir . $uploadedFilename;
 
-if (!move_uploaded_file($tmp, $destination)) {
-    die("Could not save CSV.");
+// Delete old CSVs 
+foreach (glob($sourceDir . '*.csv') as $oldCsv) {
+    unlink($oldCsv);
 }
 
+if (!move_uploaded_file($_FILES['students_csv']['tmp_name'], $targetPath)) {
+    $_SESSION['error'] = "Failed to save the file. Check folder permissions.";
+    header("Location: internship-ui.php");
+    exit();
+}
 
+// Save active filename
+file_put_contents($sourceDir . 'active_csv.txt', $uploadedFilename);
+
+$_SESSION['success'] = "CSV '{$uploadedFilename}' uploaded successfully.";
 header("Location: internship-ui.php");
-exit;
-?>
+exit();

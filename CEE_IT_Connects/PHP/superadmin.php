@@ -769,14 +769,14 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <input type="email"    name="email"    placeholder="Email Address" required>
                     <input type="password" name="password" placeholder="Password"      required>
 
-                    <select name="title" required>
+                    <!-- <select name="title" required>
                         <option value="" disabled selected>Select Title</option>
                         <option value="Adviser">Adviser</option>
                         <option value="Professor">Professor</option>
                         <option value="Engineer">Engineer</option>
                         <option value="Doctor">Doctor</option>
                         <option value="Instructor">Instructor</option>
-                    </select>
+                    </select> -->
 
                     <select name="role" id="adviserRole" required>
                         <option value="" disabled selected>Select Role</option>
@@ -866,7 +866,7 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                         <?= $admin['role'] !== 'superadmin' && $admin['role'] !== 'internship_admin' ? 'selected' : '' ?>>
                                                         None
                                                     </option>
-                                                    <option value="superadmin"       <?= $admin['role'] == 'superadmin' ? 'selected' : '' ?>>Superadmin</option>
+                                                    <option value="superadmin"       <?= $admin['role'] == 'superadmin' ? 'selected' : '' ?>>System admin</option>
                                                     <option value="internship_admin" <?= $admin['role'] == 'internship_admin' ? 'selected' : '' ?>>Internship Admin</option>
                                                 </select>
                                             </td>
@@ -887,6 +887,10 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <div class="sysAdm-header">
                     <h2>System Monitoring</h2>
                     <p>Recent user activities and actions.</p>
+                    <div class="search-box">
+                        <input type="text" id="search-monitor" oninput="filterMonitor()" placeholder="Search...">
+                        <i class="bi bi-search"></i>
+                    </div>
                 </div>
                 <table class="sysAdm-table">
                     <thead>
@@ -897,7 +901,7 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <th>Date</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="monitor-tbody">
                         <?php foreach ($activityLogs as $log): ?>
                                     <tr>
                                         <td><?= htmlspecialchars($log['name']) ?></td>
@@ -1045,6 +1049,14 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             });
 
             doc.save('dashboard_summary.pdf');
+        }
+        function filterMonitor() {
+            const search = document.getElementById('search-monitor').value.toLowerCase();
+
+            document.querySelectorAll('#monitor-tbody tr').forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(search) ? '' : 'none';
+            });
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

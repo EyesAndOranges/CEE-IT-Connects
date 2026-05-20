@@ -6,13 +6,18 @@ $current_room_id = $_GET['room_id'] ?? null;
 
 $isAdviser = isset($_SESSION['role']) && $_SESSION['role'] === 'internship_adviser';
 $stmt = $pdo->prepare("
-    SELECT r.*, a.full_name, a.title, a.role
+    SELECT DISTINCT r.*, a.full_name, a.title, a.role
     FROM rooms r
     LEFT JOIN advisers a ON r.adviser_id = a.id
-    JOIN room_members rm ON r.id = rm.room_id
-    WHERE rm.user_id = ? " . (!$isAdviser ? "AND r.is_archived = FALSE" : "") . "
+    LEFT JOIN room_members rm ON r.id = rm.room_id
+    WHERE (
+        r.adviser_id = ?
+        OR rm.user_id = ?
+    )
+    " . (!$isAdviser ? "AND r.is_archived = FALSE" : "") . "
+    ORDER BY r.id DESC
 ");
-$stmt->execute([$_SESSION['user_id']]);
+$stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
 
 $rooms = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
@@ -323,6 +328,36 @@ $page = 'messages';
 
     <?php include 'navbar.php'; ?>
 
+    <?php if (isset($_SESSION['success'])): ?>
+        <div class="alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
+            style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
+            <i class="fa fa-circle-check me-1"></i>
+            <?= $_SESSION['success'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['success']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['warning'])): ?>
+        <div class="alert alert-warning alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
+            style="z-index:9999; min-width:400px;" role="alert" id="flashAlert">
+            <i class="fa fa-triangle-exclamation me-1"></i>
+            <?= $_SESSION['warning'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['warning']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['error'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
+            style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
+            <i class="fa fa-circle-xmark me-1"></i>
+            <?= $_SESSION['error'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['error']); ?>
+    <?php endif; ?>
+
     <!-- SIDEBAR -->
     <div class="sidebar">
         <div style="display:flex; flex-direction:column; width:100%;">
@@ -370,6 +405,7 @@ $page = 'messages';
 
     <!-- MAIN CONTENT -->
     <div class="main">
+        <?//php var_dump($_SESSION) ?>
         <?php if ($current_room_id): ?>
 
             <?php include 'chat-room-content.php'; ?>
@@ -380,9 +416,14 @@ $page = 'messages';
             <div class="section-panel active" id="section-home">
                 <div class="d-flex justify-content-between align-items-center">
                     <h3><strong>Virtual Rooms</strong></h3>
-                    <button class="btn-create" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
-                        + Create a Room
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button class="btn-create" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
+                            + Create a Room
+                        </button>
+                        <button class="btn-create" data-bs-toggle="modal" data-bs-target="#csvUploadModal">
+                            <i class="fa fa-file-csv me-1"></i> Import CSV
+                        </button>
+                    </div>
                 </div>
 
                 <div class="row mt-1 g-4">
@@ -403,6 +444,7 @@ $page = 'messages';
                                         <?php if ($isAdviser && !$room['is_archived']): ?>
                                             <form method="POST" action="archive-room.php"
                                                 onsubmit="return confirm('Archive this room? Students will no longer see it.')">
+                                                <input type="hidden" name="delete">
                                                 <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
                                                 <button type="submit" class="btn btn-sm btn-light" title="Archive room"
                                                     style="font-size:11px; color:#616161; border:1px solid #ccc;">
@@ -411,6 +453,15 @@ $page = 'messages';
                                             </form>
                                         <?php elseif ($isAdviser && $room['is_archived']): ?>
                                             <span class="badge bg-secondary" style="font-size:10px;">Archived</span>
+                                            <form method="POST" action="archive-room.php"
+                                                onsubmit="return confirm('Restore this room?')">
+                                                <input type="hidden" name="restore">
+                                                <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
+                                                <button type="submit" class="btn btn-sm btn-light" title="Archive room"
+                                                    style="font-size:11px; color:#616161; border:1px solid #1a1a1a;">
+                                                    <i class="bi bi-backpack4-fill"></i>
+                                                </button>
+                                            </form>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -545,6 +596,60 @@ $page = 'messages';
         </div>
     </div>
 
+    <!-- CSV UPLOAD MODAL -->
+    <div class="modal fade" id="csvUploadModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content rounded-4">
+                <div class="modal-header">
+                    <h5 class="modal-title"><strong><i class="fa fa-file-csv me-2"></i>Import Students via CSV</strong>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+
+                    <!-- File pick -->
+                    <div id="csv-step-1">
+                        <p style="font-size:13px;color:#888;">
+                            Upload a <code>.csv</code> or <code>.tsv</code> file with these columns:<br>
+                            <strong>student_id, full_name, email, program, year, section, contact no.,
+                                company</strong><br>
+                            Students will be added to a room matching their <strong>company</strong> column.
+                            The room is created automatically if it doesn't exist yet.
+                        </p>
+                        <a href="download-csv-template.php" class="btn btn-sm btn-outline-secondary mb-3">
+                            <i class="fa fa-download me-1"></i> Download Template
+                        </a>
+                        <input type="file" id="csvFileInput" accept=".csv,.tsv,.txt" class="form-control mb-3"
+                            onchange="previewCSV(this)">
+                        <div id="csv-error" class="alert alert-danger d-none"></div>
+                    </div>
+
+                    <!--Preview -->
+                    <div id="csv-step-2" class="d-none">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span style="font-size:13px;color:#555;" id="csv-preview-count"></span>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="resetCSV()">
+                                <i class="fa fa-rotate-left me-1"></i> Choose different file
+                            </button>
+                        </div>
+                        <div style="overflow-x:auto;max-height:380px;border:1px solid #eee;border-radius:8px;">
+                            <table class="table table-sm table-bordered mb-0" id="csv-preview-table"
+                                style="font-size:12px;min-width:700px;">
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" id="csv-confirm-btn" onclick="submitCSV()" disabled>
+                        <i class="fa fa-upload me-1"></i> Confirm & Import
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function showSection(name, e) {
@@ -574,6 +679,178 @@ $page = 'messages';
                 row.style.display = (matchSearch && matchRoom) ? '' : 'none';
             });
         }
+
+        function previewCSV(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const text = e.target.result.trim();
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+
+                if (lines.length < 2) {
+                    showCSVError('File must have at least a header row and one data row.');
+                    return;
+                }
+
+                function parseCSVLine(line) {
+                    const result = [];
+                    let cur = '', inQuotes = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const ch = line[i];
+                        if (ch === '"') {
+                            if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+                            else inQuotes = !inQuotes;
+                        } else if (ch === ',' && !inQuotes) {
+                            result.push(cur.trim()); cur = '';
+                        } else {
+                            cur += ch;
+                        }
+                    }
+                    result.push(cur.trim());
+                    return result;
+                }
+
+                parsedHeaders = parseCSVLine(lines[0]);
+                parsedRows = lines.slice(1).map(l => parseCSVLine(l));
+
+                const required = ['student_id', 'full_name', 'email', 'company'];
+                const normalized = parsedHeaders.map(h => h.toLowerCase().trim());
+                const missing = required.filter(r => {
+                    if (r === 'student_id') return !normalized.includes('student id') && !normalized.includes('student_id');
+                    if (r === 'full_name') return !normalized.includes('full name') && !normalized.includes('full_name');
+                    if (r === 'company') return !normalized.includes('company') && !normalized.includes('hte') && !normalized.includes('institution');
+                    return !normalized.includes(r);
+                });
+
+                if (missing.length > 0) {
+                    showCSVError('Missing required column(s): ' + missing.join(', '));
+                    return;
+                }
+
+                hideCSVError();
+                renderPreview();
+            };
+            reader.readAsText(file);
+        }
+        let parsedHeaders = [];
+        let parsedRows = [];
+
+        function renderPreview() {
+            const table = document.getElementById('csv-preview-table');
+            let html = '<thead style="position:sticky;top:0;background:#f8f9fa;"><tr>';
+
+            const companyColIdx = parsedHeaders.findIndex(h =>
+                ['company', 'hte', 'institution'].includes(h.toLowerCase().trim())
+            );
+
+            parsedHeaders.forEach((h, i) => {
+                const isCompany = i === companyColIdx;
+                html += `<th style="${isCompany ? 'background:#d4edda;color:#155724;' : ''}">${h}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            parsedRows.forEach(row => {
+                html += '<tr>';
+                row.forEach((cell, i) => {
+                    const isCompany = i === companyColIdx;
+                    html += `<td style="${isCompany ? 'background:#f0fff4;font-weight:600;color:#1a7a3c;' : ''}">${cell}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody>';
+            table.innerHTML = html;
+
+            // Summary badge
+            const companies = companyColIdx >= 0
+                ? [...new Set(parsedRows.map(r => r[companyColIdx]).filter(Boolean))]
+                : [];
+
+            document.getElementById('csv-preview-count').innerHTML =
+                `<strong>${parsedRows.length}</strong> student(s) across
+         <strong>${companies.length}</strong> company room(s): `
+                + companies.map(c =>
+                    `<span class="rounded p-1" style="background:#1abc9c;font-size:11px;">${c}</span>`
+                ).join(' ');
+
+            document.getElementById('csv-step-1').classList.add('d-none');
+            document.getElementById('csv-step-2').classList.remove('d-none');
+            document.getElementById('csv-confirm-btn').disabled = false;
+        }
+
+        function resetCSV() {
+            parsedHeaders = [];
+            parsedRows = [];
+            document.getElementById('csvFileInput').value = '';
+            document.getElementById('csv-step-1').classList.remove('d-none');
+            document.getElementById('csv-step-2').classList.add('d-none');
+            document.getElementById('csv-confirm-btn').disabled = true;
+            hideCSVError();
+        }
+
+        function showCSVError(msg) {
+            const el = document.getElementById('csv-error');
+            el.textContent = msg;
+            el.classList.remove('d-none');
+            document.getElementById('csv-confirm-btn').disabled = true;
+        }
+
+        function hideCSVError() {
+            document.getElementById('csv-error').classList.add('d-none');
+        }
+
+        function submitCSV() {
+            if (!parsedHeaders.length || !parsedRows.length) {
+                showCSVError('No data to submit. Please upload a file first.');
+                return;
+            }
+
+            const btn = document.getElementById('csv-confirm-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Importing...';
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'auto-register-save-csv.php';
+
+            const sourceInput = document.createElement('input');
+            sourceInput.type = 'hidden';
+            sourceInput.name = 'source';
+            sourceInput.value = 'ojt-rooms';
+            form.appendChild(sourceInput);
+            // Send headers
+            parsedHeaders.forEach((h, i) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = `headers[${i}]`;
+                input.value = h;
+                form.appendChild(input);
+            });
+
+            // Send rows
+            parsedRows.forEach((row, rowIdx) => {
+                row.forEach((cell, colIdx) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = `csv[${rowIdx}][${colIdx}]`;
+                    input.value = cell;
+                    form.appendChild(input);
+                });
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        setTimeout(() => {
+            const alert = document.getElementById('flashAlert');
+            if (alert) {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 300);
+            }
+        }, 4000);
     </script>
 </body>
 

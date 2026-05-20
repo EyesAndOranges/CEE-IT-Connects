@@ -32,7 +32,7 @@
 
                     <div class="mb-3">
                         <input type="text" name="full_name" class="form-control"
-                            placeholder="Full Name (First Name, Last Name)">
+                            placeholder="Full Name (First Name, Last Name)" required>
                     </div>
 
                     <div class="mb-3 d-flex gap-2">

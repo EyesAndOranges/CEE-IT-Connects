@@ -1,4 +1,7 @@
 <?php
+require 'db.php';
+require_once 'auth.php';
+
 $room_id = $_GET['room_id'];
 
 // ROOM INFO
@@ -723,6 +726,31 @@ $backLink = getDashboardByRole($_SESSION['role']);
 
     <?php else: ?>
 
+        <?php if ($_SESSION['role'] === 'internship_adviser'): ?>
+            <div class="card mb-3 border-0 shadow-sm">
+                <div class="card-body">
+                    <form action="chat-room-content-db.php" method="POST">
+                        <!-- tells the backend WHICH room this post belongs to -->
+                        <input type="hidden" name="room_id" value="<?= $room_id ?>">
+                        <!-- triggers the post_announcement block in chat-room-content-db.php -->
+                        <input type="hidden" name="tab" value="updates">
+                        <input type="hidden" name="post_announcement" value="1">
+
+                        <textarea name="content" class="form-control mb-2" rows="3"
+                            placeholder="Write an announcement for this room…" required
+                            style="resize:none; border-color:#f0c6e8; font-size:14px;"></textarea>
+
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-sm fw-semibold text-white"
+                                style="background:#d63ba5; border-radius:8px; font-size:14px;">
+                                <i class="fa-solid fa-bullhorn me-1"></i> Post Announcement
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <?php foreach ($posts as $post): ?>
             <div class="card mb-3">
                 <div class="card-body">
@@ -746,12 +774,13 @@ $backLink = getDashboardByRole($_SESSION['role']);
 </div>
 
 
+<!-- MODAL FOR ADD PARTICIPANT -->
 <div class="modal-overlay" id="addParticipantModal" onclick="if(event.target===this) closeModal()">
     <div class="modal-box">
 
         <div class="modal-header">
             <h6><i class="fa-solid fa-user-plus me-2"></i>Add Participant</h6>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <button class="modal-close" name="add_participant" onclick="closeModal()">&times;</button>
         </div>
 
         <div class="modal-body">

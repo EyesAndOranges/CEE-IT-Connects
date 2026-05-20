@@ -26,19 +26,15 @@ if (!empty($_GET['gpa'])) {
 }
 
 if (!empty($_GET['deadline'])) {
-
     if ($_GET['deadline'] == "week") {
         $conditions[] = "deadline BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'";
     }
-
     if ($_GET['deadline'] == "month") {
         $conditions[] = "deadline BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'";
     }
-
     if ($_GET['deadline'] == "future") {
         $conditions[] = "deadline >= CURRENT_DATE";
     }
-
 }
 
 if (!empty($_GET['internship_type'])) {
@@ -50,21 +46,20 @@ if (!empty($_GET['company_classification'])) {
     $conditions[] = 'company_classification = :company_classification';
     $params['company_classification'] = $_GET['company_classification'];
 }
-$sql = "SELECT * FROM internships";
 
+$sql = "SELECT * FROM internships";
 if (!empty($conditions)) {
     $sql .= " WHERE " . implode(" AND ", $conditions);
 }
-
 $sql .= " ORDER BY id DESC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 ?>
 
 <?php $page = 'opportunity'; ?>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -75,157 +70,624 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="../CSS/index-style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap"
+        rel="stylesheet">
 
     <style>
+        :root {
+            --navy: #1b2240;
+            --orange: #f55d1e;
+            --orange-lt: #fff1eb;
+            --cream: #faf9f7;
+            --border: #e4e2de;
+            --text: #1b2240;
+            --muted: #7a7a8a;
+            --card-shadow: 0 2px 12px rgba(27, 34, 64, .07);
+            --card-shadow-hover: 0 8px 32px rgba(27, 34, 64, .13);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--cream);
+            color: var(--text);
+            padding-top: 80px;
+
+        }
+
+        /* ── Page header ── */
+        .page-header {
+            padding: 36px 0 28px;
+            opacity: 0.95;
+            margin-top: -20px;
+        }
+
+        .page-header h1 {
+            font-family: 'Geogrotesque', sans-serif;
+            font-weight: 600;
+            font-size: 2rem;
+            color: var(--orange);
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+
+        .page-header p {
+            color: var(--orange);
+            margin: 4px 0 0;
+            font-size: 1rem;
+        }
+
+        /* ── Layout ── */
         .listing-wrapper {
-            background: #f4f4f4;
-            padding: 40px 0;
+            padding: 32px 0 60px;
         }
 
-        .filter-box {
+        /* ── Sidebar ── */
+        .sidebar-card {
             background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px 20px;
+            position: sticky;
+            top: 20px;
         }
 
-        .filter-box h6 {
+        .sidebar-card .sidebar-title {
+            font-size: .7rem;
             font-weight: 700;
-            margin-bottom: 10px;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 16px;
         }
 
+        .search-wrap {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .search-wrap i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            font-size: .85rem;
+        }
+
+        .search-wrap input {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 9px 12px 9px 34px;
+            font-size: .88rem;
+            font-family: inherit;
+            background: var(--cream);
+            color: var(--text);
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+        }
+
+        .search-wrap input:focus {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 3px rgba(245, 93, 30, .12);
+        }
+
+        .filter-section {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .filter-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .filter-label {
+            font-size: .75rem;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--navy);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .fc-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 0;
+            font-size: .88rem;
+            cursor: pointer;
+            color: #444;
+        }
+
+        .fc-item input[type="radio"] {
+            accent-color: var(--orange);
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+        }
+
+        .fc-item:hover {
+            color: var(--navy);
+        }
+
+        .filter-select {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: .88rem;
+            font-family: inherit;
+            background: var(--cream);
+            color: var(--text);
+            outline: none;
+            cursor: pointer;
+            transition: border-color .2s;
+        }
+
+        .filter-select:focus {
+            border-color: var(--orange);
+        }
+
+        .btn-clear-filters {
+            display: block;
+            width: 100%;
+            text-align: center;
+            padding: 9px;
+            border-radius: 8px;
+            background: var(--navy);
+            color: #fff;
+            font-size: .85rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background .2s, opacity .2s;
+            margin-bottom: 20px;
+        }
+
+        .btn-clear-filters:hover {
+            background: #111826;
+            color: #fff;
+        }
+
+        /* ── Results bar ── */
+        .results-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+
+        .results-count {
+            font-size: .85rem;
+            color: var(--muted);
+        }
+
+        .results-count strong {
+            color: var(--navy);
+        }
+
+        /* ── Listing card ── */
         .listing-card {
             background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 18px;
-            margin-bottom: 15px;
-        }
-
-        .listing-card h6 {
-            color: #ff3d00;
-            font-weight: 800;
-        }
-
-        .badge-date {
-            font-size: 12px;
-            color: #777;
-        }
-
-        .btn-read {
-            background: #ff6a00;
-            color: #fff;
-            font-weight: 600;
-        }
-
-        .btn-apply {
-            background: #272f54;
-            color: #fff;
-            font-weight: 600;
-        }
-
-        .btn-clear {
-            background: #6c757d;
-            color: #fff;
-            font-weight: 600;
-        }
-
-
-        /* for the download thingy */
-        .download-files-panel {
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 26px 28px;
+            margin-bottom: 16px;
+            box-shadow: var(--card-shadow);
+            transition: transform .22s ease, box-shadow .22s ease;
             overflow: hidden;
+            position: relative;
         }
 
-        .download-files-header {
+        .listing-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--card-shadow-hover);
+        }
+
+        .card-top {
             display: flex;
             justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
+        .card-title {
+            font-family: 'Geogrotesque', sans-serif;
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: var(--navy);
+        }
+
+        .card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
             align-items: center;
-            padding: 14px 18px;
-            cursor: pointer;
-            user-select: none;
-            background: #fff;
+            margin: 8px 0 12px;
         }
 
-        .download-files-header span {
-            font-weight: 700;
-            font-size: 15px;
-            color: #1a1a2e;
+        .card-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: .78rem;
+            color: var(--muted);
         }
 
-        .download-files-header .toggle-icon {
-            font-size: 13px;
+        .card-desc {
+            font-size: .9rem;
             color: #555;
-            transition: transform 0.25s ease;
+            line-height: 1.65;
+            margin-bottom: 14px;
         }
 
-        .download-files-header.collapsed .toggle-icon {
-            transform: rotate(180deg);
+        .card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 18px;
         }
 
-        .download-files-body {
-            padding: 0 18px 14px 18px;
-            border-top: 1px solid #eee;
+        /* action buttons */
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+            flex-wrap: wrap;
         }
 
-        .download-file-row {
+        .btn-readmore {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border-radius: 8px;
+            border: 1.5px solid var(--navy);
+            background: var(--navy);
+            color: #fff;
+            font-size: .85rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background .2s, color .2s;
+        }
+
+        .btn-readmore:hover,
+        .btn-readmore.active {
+            background: #171b2c;
+            color: #fff;
+        }
+
+        .btn-interested {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border-radius: 8px;
+            border: 1.5px solid var(--orange);
+            background: var(--orange);
+            color: #fff;
+            font-size: .85rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background .2s, border-color .2s;
+        }
+
+        .btn-interested:hover {
+            background: #d94c10;
+            border-color: #d94c10;
+        }
+
+        /* ── Details panel ── */
+        .details-panel {
+            display: none;
+            margin-top: 20px;
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+            animation: fadeSlide .2s ease;
+        }
+
+        .details-panel.open {
+            display: block;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 24px;
+        }
+
+        @media (max-width: 640px) {
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .detail-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            font-size: .88rem;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: var(--navy);
+            min-width: 90px;
+            flex-shrink: 0;
+        }
+
+        .detail-val {
+            color: #555;
+        }
+
+        .detail-val a {
+            color: var(--orange);
+            text-decoration: none;
+        }
+
+        .detail-val a:hover {
+            text-decoration: underline;
+        }
+
+        .details-section-title {
+            font-size: .7rem;
+            font-weight: 700;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin: 0 0 12px;
+        }
+
+        /* ── File rows inside details panel ── */
+        .file-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 11px 0;
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
-        .download-file-row:last-child {
+        .file-row:last-child {
             border-bottom: none;
         }
 
-        .download-file-row .file-label {
+        .file-name {
+            font-size: .88rem;
             font-weight: 600;
-            font-size: 14px;
-            color: #1a1a2e;
-        }
-
-        .download-file-row .file-actions {
+            color: var(--navy);
             display: flex;
+            align-items: center;
             gap: 8px;
         }
 
-        .btn-show-preview {
-            background: #fff;
-            color: #272f54;
-            border: 1px solid #272f54;
-            font-size: 13px;
+        .file-btns {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .btn-preview {
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1.5px solid var(--navy);
+            background: transparent;
+            color: var(--navy);
+            font-size: .8rem;
             font-weight: 600;
-            padding: 5px 12px;
-            border-radius: 4px;
             text-decoration: none;
-            transition: background 0.2s, color 0.2s;
+            transition: background .2s, color .2s;
         }
 
-        .btn-show-preview:hover {
-            background: #272f54;
+        .btn-preview:hover {
+            background: var(--navy);
             color: #fff;
         }
 
-        .btn-download-pdf {
-            background: #272f54;
-            color: #fff;
-            border: none;
-            font-size: 13px;
+        .btn-dl {
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1.5px solid var(--text);
+            color: var(--navy);
+            font-size: .8rem;
             font-weight: 600;
-            padding: 5px 12px;
-            border-radius: 4px;
             text-decoration: none;
-            transition: background 0.2s;
+            transition: background .2s;
         }
 
-        .btn-download-pdf:hover {
-            background: #1a2040;
+        .btn-dl:hover {
+            background: var(--navy);
             color: #fff;
+        }
+
+        /* ── empty state ── */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+        }
+
+        .empty-state i {
+            font-size: 2.5rem;
+            margin-bottom: 14px;
+            color: var(--border);
+        }
+
+        .empty-state p {
+            font-size: .95rem;
+            margin: 0;
+        }
+
+        @keyframes fadeSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ── Mobile ── */
+        .mobile-filter-overlay {
+            display: none;
+        }
+
+        .internship-mobile-header,
+        .mobile-filter-icon-btn {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .listing-wrapper {
+                padding: 15px 0 20px;
+            }
+
+            .internship-mobile-header {
+                display: flex !important;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 12px;
+                width: 100%;
+            }
+
+            .internship-mobile-header h4 {
+                margin: 0 !important;
+                white-space: nowrap;
+            }
+
+            .internship-mobile-header input {
+                flex: 1;
+                background: var(--cream);
+            }
+
+            .mobile-filter-icon-btn {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                background: white;
+                border: 1px solid #bbb;
+                border-radius: 8px;
+                width: 42px;
+                height: 42px;
+                cursor: pointer;
+                flex-shrink: 0;
+                font-size: 1.1rem;
+                color: #333;
+            }
+
+            .mobile-filter-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.4);
+                z-index: 1050;
+                align-items: flex-end;
+            }
+
+            .mobile-filter-overlay.open {
+                display: flex !important;
+            }
+
+            .mobile-filter-sheet {
+                background: white;
+                width: 100%;
+                border-radius: 20px 20px 0 0;
+                padding: 24px 20px 32px;
+                max-height: 80vh;
+                overflow-y: auto;
+                animation: slideUp 0.3s ease;
+            }
+
+            @keyframes slideUp {
+                from {
+                    transform: translateY(100%);
+                }
+
+                to {
+                    transform: translateY(0);
+                }
+            }
+
+            .mobile-filter-sheet-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+            }
+
+            .mobile-filter-sheet-header h5 {
+                font-weight: 700;
+                margin: 0;
+                font-size: 1.1rem;
+            }
+
+            .mobile-filter-close {
+                background: none;
+                border: none;
+                font-size: 1.2rem;
+                cursor: pointer;
+                color: #333;
+            }
+
+            .mobile-filter-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+                margin-bottom: 20px;
+            }
+
+            .mobile-filter-group strong {
+                display: block;
+                font-size: 14px;
+                margin-bottom: 8px;
+            }
+
+            .mobile-filter-group .form-check {
+                margin-bottom: 6px;
+                font-size: 14px;
+            }
+
+            .mobile-filter-group-full {
+                margin-bottom: 16px;
+            }
+
+            .mobile-filter-group-full strong {
+                display: block;
+                font-size: 14px;
+                margin-bottom: 8px;
+            }
+
+            .col-lg-3 {
+                display: none;
+            }
+
+            .col-lg-9 {
+                width: 100%;
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+
+            .desktop-header {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -234,363 +696,505 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <?php include 'navbar.php'; ?>
 
+    <!-- Page header -->
+    <div class="page-header">
+        <div class="container-fluid px-5">
+            <h1>Internship Opportunities</h1>
+            <p style="font-family: 'Poppins', sans-serif;">Find and apply for internships matching your interests</p>
+        </div>
+    </div>
+
     <section class="listing-wrapper">
         <div class="container-fluid px-5">
+            <div class="row g-4">
 
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="fw-bold">Intership</h4>
-
-
-                <!-- Put a textfield here dumbass -->
-                <!-- <button class="btn btn-dark">Search</button> -->
-            </div>
-
-            <div class="row">
-
+                <!-- ── Sidebar ── -->
                 <div class="col-lg-3">
-                    <form method="GET">
+                    <form method="GET" id="filter-form">
+                        <div class="sidebar-card">
 
-                        <!-- <div class="search-box">
-                            <input type="text" id="searchInput" placeholder="Search for an internship listing"
-                                onkeyup="filterListings()">
-                        </div> -->
-                        <div class="filter-box">
-                            <div class="mb-3">
-                                <input type="text" id="search-internship" class="form-control"
-                                    placeholder="Search by name, email, company...">
-                            </div>
-                            <h6>Filters</h6>
-
-                            <div class="d-grid gap-2 mb-3">
-                                <a href="applied-Internship-programs.php" class="btn btn-dark">Clear Filters</a>
+                            <!-- Search -->
+                            <div class="search-wrap">
+                                <i class="fa fa-search"></i>
+                                <input type="text" id="search-internship" placeholder="Search listings…">
                             </div>
 
-                            <!-- <button type="submit" class="btn btn-dark">Apply Filters</button> -->
-                            <div class="mb-3">
-                                <strong>Program</strong>
+                            <a href="applied-Internship-programs.php" class="btn-clear-filters">
+                                <i class="fa fa-rotate-left" style="margin-right:6px;font-size:.8rem;"></i>Clear Filters
+                            </a>
 
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="program"
-                                        value="Information Technology" <?php if (isset($_GET['program']) && $_GET['program'] == "Information Technology")
-                                            echo "checked"; ?>>
-                                    Information Technology
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="program"
-                                        value="Civil Engineering" <?php if (isset($_GET['program']) && $_GET['program'] == "Civil Engineering")
-                                            echo "checked"; ?>>
-                                    Civil Engineering
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="program"
-                                        value="Electrical Engineering" <?php if (isset($_GET['program']) && $_GET['program'] == "Electrical Engineering")
-                                            echo "checked"; ?>>
-                                    Electrical Engineering
-                                </div>
+                            <!-- Program -->
+                            <div class="filter-section">
+                                <span class="filter-label">Program</span>
+                                <?php
+                                $programs = ['Information Technology', 'Civil Engineering', 'Electrical Engineering'];
+                                foreach ($programs as $p):
+                                    $checked = (isset($_GET['program']) && $_GET['program'] == $p) ? 'checked' : '';
+                                    ?>
+                                    <label class="fc-item">
+                                        <input type="radio" name="program" value="<?= htmlspecialchars($p) ?>" <?= $checked ?>>
+                                        <?= htmlspecialchars($p) ?>
+                                    </label>
+                                <?php endforeach; ?>
                             </div>
 
-                            <div class="mb-3">
-                                <strong>Deadline</strong>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="deadline" value="week" <?php if (isset($_GET['deadline']) && $_GET['deadline'] == "week")
-                                        echo "checked"; ?>>
-                                    Due this week
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="deadline" value="month" <?php if (isset($_GET['deadline']) && $_GET['deadline'] == "month")
-                                        echo "checked"; ?>>
-                                    Due this month
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="deadline" value="future" <?php if (isset($_GET['deadline']) && $_GET['deadline'] == "future")
-                                        echo "checked"; ?>>
-                                    Upcoming
-                                </div>
+                            <!-- Deadline -->
+                            <div class="filter-section">
+                                <span class="filter-label">Deadline</span>
+                                <?php
+                                $deadlines = ['week' => 'Due this week', 'month' => 'Due this month', 'future' => 'Upcoming'];
+                                foreach ($deadlines as $val => $label):
+                                    $checked = (isset($_GET['deadline']) && $_GET['deadline'] == $val) ? 'checked' : '';
+                                    ?>
+                                    <label class="fc-item">
+                                        <input type="radio" name="deadline" value="<?= $val ?>" <?= $checked ?>>
+                                        <?= $label ?>
+                                    </label>
+                                <?php endforeach; ?>
                             </div>
 
-                            <div class="mb-3">
-                                <strong>Internship Type</strong>
-                                <div>
-                                    <input class="form-check-input" type="radio" name="internship_type" value="All"
-                                        <?php if (isset($_GET['internship_type']) && $_GET['internship_type'] == "All")
-                                            echo "checked"; ?>>
-                                    All internship types
-                                </div>
-                                <div>
-                                    <input class="form-check-input" type="radio" name="internship_type" value="paid"
-                                        <?php if (isset($_GET['internship_type']) && $_GET['internship_type'] == "paid")
-                                            echo "checked"; ?>>
-                                    With stipend
-                                </div>
-                                <div>
-                                    <input class="form-check-input" type="radio" name="internship_type" value="unpaid"
-                                        <?php if (isset($_GET['internship_type']) && $_GET['internship_type'] == "unpaid")
-                                            echo "checked"; ?>>
-                                    Without stipend
-                                </div>
+                            <!-- Internship Type -->
+                            <div class="filter-section">
+                                <span class="filter-label">Internship Type</span>
+                                <?php
+                                $types = ['All' => 'All types', 'paid' => 'With stipend', 'unpaid' => 'Without stipend'];
+                                foreach ($types as $val => $label):
+                                    $checked = (isset($_GET['internship_type']) && $_GET['internship_type'] == $val) ? 'checked' : '';
+                                    ?>
+                                    <label class="fc-item">
+                                        <input type="radio" name="internship_type" value="<?= $val ?>" <?= $checked ?>>
+                                        <?= $label ?>
+                                    </label>
+                                <?php endforeach; ?>
                             </div>
 
-
-                            <div class="mb-3">
-                                <strong>Company Classification</strong>
-                                <div>
-                                    <select class="form-select" name="company_classification">
-                                        <option value="" selected disabled>Select an option</option>
-
-                                        <option value="private" <?= (($_GET['company_classification'] ?? '') === 'private') ? 'selected' : '' ?>>Private Sector</option>
-
-                                        <option value="public" <?= (($_GET['company_classification'] ?? '') === 'public') ? 'selected' : '' ?>>Public Sector (Government)</option>
-
-                                        <option value="institution" <?= (($_GET['company_classification'] ?? '') === 'institution') ? 'selected' : '' ?>>Academic & Research Institutions
+                            <!-- Company Classification -->
+                            <div class="filter-section">
+                                <span class="filter-label">Company Type</span>
+                                <?php
+                                $classes = [
+                                    '' => 'All classifications',
+                                    'private' => 'Private Sector',
+                                    'public' => 'Public / Government',
+                                    'institution' => 'Academic & Research',
+                                    'NGO' => 'Nonprofit & Civil Society',
+                                    'multilateral_org' => 'International Organizations',
+                                    'media' => 'Creative & Media',
+                                    'technology' => 'Technology & Innovation',
+                                    'healthcare' => 'Healthcare & Social Services',
+                                    'industrial' => 'Industrial & Manufacturing',
+                                    'financial' => 'Financial & Business',
+                                    'tourism' => 'Hospitality & Tourism',
+                                    'freelance' => 'Freelance / Gig-Based',
+                                    'religious' => 'Religious & Faith-Based',
+                                    'hybrid' => 'Public-Private Partnerships',
+                                ];
+                                $selClass = $_GET['company_classification'] ?? '';
+                                ?>
+                                <select class="filter-select" name="company_classification"
+                                    onchange="document.getElementById('filter-form').submit()">
+                                    <?php foreach ($classes as $val => $label): ?>
+                                        <option value="<?= htmlspecialchars($val) ?>" <?= ($selClass === $val) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($label) ?>
                                         </option>
-
-                                        <option value="NGO" <?= (($_GET['company_classification'] ?? '') === 'NGO') ? 'selected' : '' ?>>Nonprofit & Civil Society
-                                        </option>
-
-                                        <option value="multilateral_org" <?= (($_GET['company_classification'] ?? '') === 'multilateral_org') ? 'selected' : '' ?>>International & Multilateral
-                                            Organizations
-                                        </option>
-
-                                        <option value="media" <?= (($_GET['company_classification'] ?? '') === 'media') ? 'selected' : '' ?>>Creative & Media Sector
-                                        </option>
-
-                                        <option value="technology" <?= (($_GET['company_classification'] ?? '') === 'technology') ? 'selected' : '' ?>>Technology & Innovation Sector
-                                        </option>
-
-                                        <option value="healthcare" <?= (($_GET['company_classification'] ?? '') === 'healthcare') ? 'selected' : '' ?>>Healthcare & Social Services
-                                        </option>
-
-                                        <option value="industrial" <?= (($_GET['company_classification'] ?? '') === 'industrial') ? 'selected' : '' ?>>Industrial & Manufacturing
-                                        </option>
-
-                                        <option value="financial" <?= (($_GET['company_classification'] ?? '') === 'financial') ? 'selected' : '' ?>>Financial & Business Services
-                                        </option>
-
-                                        <option value="tourism" <?= (($_GET['company_classification'] ?? '') === 'tourism') ? 'selected' : '' ?>>Hospitality & Tourism
-                                        </option>
-
-                                        <option value="freelance" <?= (($_GET['company_classification'] ?? '') === 'freelance') ? 'selected' : '' ?>>Freelance / Independent & Gig-Based
-                                        </option>
-
-                                        <option value="religious" <?= (($_GET['company_classification'] ?? '') === 'religious') ? 'selected' : '' ?>>Religious & Faith-Based
-                                            Organizations
-                                        </option>
-
-                                        <option value="hybrid" <?= (($_GET['company_classification'] ?? '') === 'hybrid') ? 'selected' : '' ?>>Hybrid / Public-Private Partnerships
-                                        </option>
-                                    </select>
-                                </div>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
+
                         </div>
                     </form>
                 </div>
 
+                <!-- ── Listings ── -->
                 <div class="col-lg-9">
-                    <small class="text-muted">
-                        Showing <?php echo count($internships); ?> internship listings
-                    </small>
+
+                    <!-- Mobile header -->
+                    <div class="internship-mobile-header">
+                        <div style="position: relative; flex: 1; min-width: 0;">
+                            <i class="fa fa-search"
+                                style="position: absolute; left:12px; top: 50%; transform: translateY(-50%); color: #aaa; z-index: 1;"></i>
+                            <input type="text" id="search-internship-mobile" class="form-control"
+                                placeholder="Search listings…" style="padding-left: 36px; width: 100%;">
+                        </div>
+                        <button class="mobile-filter-icon-btn" onclick="openMobileFilter()">
+                            <i class="fa-solid fa-filter"></i>
+                        </button>
+                    </div>
+
+                    <div class="results-bar">
+                        <span class="results-count">
+                            Showing <strong id="visible-count"><?= count($internships) ?></strong>
+                            of <strong><?= count($internships) ?></strong> listings
+                        </span>
+                    </div>
+
+                    <?php if (empty($internships)): ?>
+                        <div class="empty-state">
+                            <i class="fa fa-briefcase"></i>
+                            <p>No internship listings match your current filters.</p>
+                        </div>
+                    <?php endif; ?>
 
                     <?php foreach ($internships as $internship): ?>
-                        <?php /* if ($internship['program'] !== $studentProgram)
-                continue;*/ ?>
-                        <div class="listing-card mt-3"
-                            data-type="<?= htmlspecialchars($internship['internship_type'] ?? '') ?>"
-                            data-classification="<?= htmlspecialchars($internship['company_classification'] ?? '') ?>">
+                        <div class="listing-card" data-type="<?= htmlspecialchars($internship['internship_type'] ?? '') ?>"
+                            data-classification="<?= htmlspecialchars($internship['company_classification'] ?? '') ?>"
+                            data-deadline="<?= htmlspecialchars($internship['deadline'] ?? '') ?>">
 
-                            <h6><?php echo htmlspecialchars($internship['title']); ?></h6>
-
-                            <p class="badge-date">
-                                <?php echo htmlspecialchars($internship['company']); ?> |
-                                <?php echo htmlspecialchars($internship['location']); ?>
-                            </p>
-
-                            <p class="mb-3">
-                                <?php echo nl2br(htmlspecialchars($internship['description'])); ?>
-                            </p>
-
-                            <?php if (!empty($internship['program'])): ?>
-                                <p><strong>Program:</strong> <?php echo htmlspecialchars($internship['program']); ?></p>
-                            <?php endif; ?>
-
-                            <?php if (!empty($internship['internship_type'])): ?>
-                                <p><strong>Internship type:</strong>
-                                    <?php echo htmlspecialchars($internship['internship_type']); ?>
-                                </p>
-                            <?php endif; ?>
-
-                            <?php if (!empty($internship['company_classification'])): ?>
-                                <p><strong>Company classification:</strong>
-                                    <?php echo htmlspecialchars($internship['company_classification']); ?></p>
-                            <?php endif; ?>
-
-                            <?php if (!empty($internship['deadline'])): ?>
-                                <p data-deadline="<?= htmlspecialchars($internship['deadline']) ?>">
-                                    <strong>Deadline:</strong> <?= htmlspecialchars($internship['deadline']) ?>
-                                </p>
-                            <?php endif; ?>
-
-                            <?php if (!empty($internship['phone_numbers'])): ?>
-                                <p><strong>Contact:</strong> <?php echo htmlspecialchars($internship['phone_numbers']); ?></p>
-                            <?php endif; ?>
-                            <?php if (!empty($internship['email'])): ?>
-                                <p><strong>Email:</strong> <?php echo htmlspecialchars($internship['email']); ?></p>
-                            <?php endif; ?>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-read" onclick="toggleFiles(<?= $internship['id'] ?>)">
-                                    Read More
-                                </button>
-                                <form method="POST" action="applied-internship-programs-db.php">
-                                    <input type="hidden" name="internship_id" value="<?= $internship['id'] ?>">
-                                    <button type="submit" class="btn btn-apply">Interested</button>
-                                </form>
-
+                            <div class="card-top">
+                                <h5 class="card-title"><?= htmlspecialchars($internship['company']) ?></h5>
                             </div>
-                            <!-- ── Download Files for Application Panel ── -->
-                            <div class="download-files-panel  mt-2" style="display:none;"
-                                id="files-<?= $internship['id'] ?>">
-                                <div class=" download-files-header" id="downloadFilesToggle">
-                                    <span>Download files for application</span>
-                                    <i class="fa fa-chevron-up toggle-icon"></i>
+
+                            <div class="card-meta">
+                                <span class="card-meta-item">
+                                    <i class="fa fa-briefcase"></i>
+                                    <?= htmlspecialchars($internship['title']) ?>
+                                </span>
+                                <span class="card-meta-item">
+                                    <i class="fa fa-map-marker-alt"></i>
+                                    <?= htmlspecialchars($internship['location']) ?>
+                                </span>
+                                <?php if (!empty($internship['deadline'])): ?>
+                                    <span class="card-meta-item">
+                                        <i class="fa fa-calendar"></i>
+                                        Deadline: <?= htmlspecialchars($internship['deadline']) ?>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if (!empty($internship['phone_numbers'])): ?>
+                                    <span class="card-meta-item">
+                                        <i class="fa fa-phone"></i>
+                                        <?= htmlspecialchars($internship['phone_numbers']) ?>
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+
+                            <p class="card-desc">
+                                <?= nl2br(htmlspecialchars($internship['description'])) ?>
+                            </p>
+
+                            <div class="card-actions">
+                                <button class="btn-readmore" onclick="togglePanel(<?= $internship['id'] ?>, this)">
+                                    <i class="fa fa-circle-info"></i> Read More
+                                </button>
+                                <form method="POST" action="applied-internship-programs-db.php" style="margin:0;">
+                                    <input type="hidden" name="internship_id" value="<?= $internship['id'] ?>">
+                                    <button type="submit" class="btn-interested">
+                                        <i class="fa fa-bookmark"></i> Interested
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- ── Read More / Details Panel ── -->
+                            <div class="details-panel" id="details-<?= $internship['id'] ?>">
+                                <p class="details-section-title">Company Details</p>
+                                <div class="details-grid">
+
+                                    <div class="detail-row">
+                                        <span class="detail-label">Company:</span>
+                                        <span class="detail-val"><?= htmlspecialchars($internship['company']) ?></span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">Location:</span>
+                                        <span class="detail-val"><?= htmlspecialchars($internship['location']) ?></span>
+                                    </div>
+
+                                    <?php if (!empty($internship['program'])): ?>
+                                        <div class="detail-row">
+                                            <span class="detail-label">Program:</span>
+                                            <span class="detail-val"><?= htmlspecialchars($internship['program']) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($internship['year_level'])): ?>
+                                        <div class="detail-row">
+                                            <span class="detail-label">Year Level:</span>
+                                            <span class="detail-val"><?= htmlspecialchars($internship['year_level']) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($internship['internship_type'])): ?>
+                                        <div class="detail-row">
+                                            <span class="detail-label">Type:</span>
+                                            <span
+                                                class="detail-val"><?= $internship['internship_type'] === 'paid' ? 'With stipend' : 'Without stipend' ?></span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($internship['company_classification'])): ?>
+                                        <div class="detail-row">
+                                            <span class="detail-label">Classification:</span>
+                                            <span
+                                                class="detail-val"><?= htmlspecialchars($internship['company_classification']) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($internship['deadline'])): ?>
+                                        <div class="detail-row">
+                                            <span class="detail-label">Deadline:</span>
+                                            <span class="detail-val"><?= htmlspecialchars($internship['deadline']) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($internship['phone_numbers'])): ?>
+                                        <div class="detail-row">
+                                            <span class="detail-label">Contact:</span>
+                                            <span
+                                                class="detail-val"><?= htmlspecialchars($internship['phone_numbers']) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($internship['email'])): ?>
+                                        <div class="detail-row">
+                                            <span class="detail-label">Email:</span>
+                                            <span class="detail-val">
+                                                <a href="mailto:<?= htmlspecialchars($internship['email']) ?>">
+                                                    <?= htmlspecialchars($internship['email']) ?>
+                                                </a>
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($internship['website'])): ?>
+                                        <div class="detail-row">
+                                            <span class="detail-label">Website:</span>
+                                            <span class="detail-val">
+                                                <a href="<?= htmlspecialchars($internship['website']) ?>" target="_blank">
+                                                    <?= htmlspecialchars($internship['website']) ?>
+                                                </a>
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($internship['address'])): ?>
+                                        <div class="detail-row" style="grid-column: 1 / -1;">
+                                            <span class="detail-label">Address:</span>
+                                            <span class="detail-val"><?= htmlspecialchars($internship['address']) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+
                                 </div>
-                                <div class="download-files-body" id="downloadFilesBody">
 
-                                    <div class="download-file-row">
-                                        <span class="file-label">Memorandum of Understanding (MOU)</span>
-                                        <div class="file-actions">
-                                            <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=
-                                            <?= $_SESSION['user_id'] ?>&action=mou" class="btn-show-preview"
-                                                target="_blank">
-                                                Show Preview
-                                            </a>
-                                            <a href="download-mou.php?id=<?= $internship['id'] ?>&action=mou"
-                                                class="btn-download-pdf">
-                                                Download PDF
-                                            </a>
-                                        </div>
+                                <hr>
+                                <p class="details-section-title">Application Documents</p>
+
+                                <div class="file-row">
+                                    <span class="file-name">Memorandum of Understanding (MOU)</span>
+                                    <div class="file-btns">
+                                        <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=<?= $_SESSION['user_id'] ?>&action=mou"
+                                            class="btn-preview" target="_blank">Preview</a>
+                                        <a href="download-mou.php?id=<?= $internship['id'] ?>&action=mou"
+                                            class="btn-dl">Download PDF</a>
                                     </div>
-
-                                    <div class="download-file-row">
-                                        <span class="file-label">Recommendation Letter</span>
-                                        <div class="file-actions">
-                                            <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=
-                                            <?= $_SESSION['user_id'] ?>&action=rl" class="btn-show-preview"
-                                                target="_blank">
-                                                Show Preview
-                                            </a>
-                                            <a href="download-mou.php?id=<?= $internship['id'] ?>&action=rl"
-                                                class="btn-download-pdf">Download
-                                                PDF</a>
-                                        </div>
-                                    </div>
-
-                                    <div class="download-file-row">
-                                        <span class="file-label">Waiver</span>
-                                        <div class="file-actions">
-                                            <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=
-                                            <?= $_SESSION['user_id'] ?>&action=waiver" class="btn-show-preview"
-                                                target="_blank">
-                                                Show Preview
-                                            </a>
-                                            <a href="download-mou.php?id=<?= $internship['id'] ?>&action=waiver"
-                                                class="btn-download-pdf">Download
-                                                PDF</a>
-                                        </div>
-                                    </div>
-
                                 </div>
+
+                                <div class="file-row">
+                                    <span class="file-name">Recommendation Letter</span>
+                                    <div class="file-btns">
+                                        <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=<?= $_SESSION['user_id'] ?>&action=rl"
+                                            class="btn-preview" target="_blank">Preview</a>
+                                        <a href="download-mou.php?id=<?= $internship['id'] ?>&action=rl"
+                                            class="btn-dl">Download PDF</a>
+                                    </div>
+                                </div>
+
+                                <div class="file-row">
+                                    <span class="file-name">Waiver</span>
+                                    <div class="file-btns">
+                                        <a href="mou-preview.php?id=<?= $internship['id'] ?>&student_id=<?= $_SESSION['user_id'] ?>&action=waiver"
+                                            class="btn-preview" target="_blank">Preview</a>
+                                        <a href="download-mou.php?id=<?= $internship['id'] ?>&action=waiver"
+                                            class="btn-dl">Download PDF</a>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
                     <?php endforeach; ?>
 
-                </div>
+                    <!-- Mobile Filter Modal -->
+                    <div class="mobile-filter-overlay" id="mobileFilterOverlay"
+                        onclick="closeMobileFilterOnOverlay(event)">
+                        <div class="mobile-filter-sheet">
+                            <div class="mobile-filter-sheet-header">
+                                <h5>Filters</h5>
+                                <button class="mobile-filter-close" onclick="closeMobileFilter()">&#x2715;</button>
+                            </div>
 
+                            <div class="mobile-filter-row">
+                                <div class="mobile-filter-group">
+                                    <strong>Deadline</strong>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_deadline" value="week">
+                                        <label class="form-check-label">Due this week</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_deadline" value="month">
+                                        <label class="form-check-label">Due this month</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_deadline" value="future">
+                                        <label class="form-check-label">Upcoming</label>
+                                    </div>
+                                </div>
+
+                                <div class="mobile-filter-group">
+                                    <strong>Internship Type</strong>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_internship_type"
+                                            value="All">
+                                        <label class="form-check-label">All types</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_internship_type"
+                                            value="paid">
+                                        <label class="form-check-label">With stipend</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="m_internship_type"
+                                            value="unpaid">
+                                        <label class="form-check-label">Without stipend</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mobile-filter-group-full">
+                                <strong>Company Classification</strong>
+                                <select class="form-select" id="m_company_classification">
+                                    <option value="" selected disabled>Select an option</option>
+                                    <option value="private">Private Sector</option>
+                                    <option value="public">Public / Government</option>
+                                    <option value="institution">Academic & Research</option>
+                                    <option value="NGO">Nonprofit & Civil Society</option>
+                                    <option value="multilateral_org">International Organizations</option>
+                                    <option value="media">Creative & Media</option>
+                                    <option value="technology">Technology & Innovation</option>
+                                    <option value="healthcare">Healthcare & Social Services</option>
+                                    <option value="industrial">Industrial & Manufacturing</option>
+                                    <option value="financial">Financial & Business</option>
+                                    <option value="tourism">Hospitality & Tourism</option>
+                                    <option value="freelance">Freelance / Gig-Based</option>
+                                    <option value="religious">Religious & Faith-Based</option>
+                                    <option value="hybrid">Public-Private Partnerships</option>
+                                </select>
+                            </div><br>
+
+                            <a href="applied-Internship-programs.php" class="btn-clear-filters">
+                                <i class="fa fa-rotate-left" style="margin-right:6px;font-size:.8rem;"></i>Clear Filters
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </div>
     </section>
+
     <script>
-        function filterListings() {
-            const input = document.getElementById('searchInput').value.toLowerCase();
-            document.querySelectorAll('.listing').forEach(listing => {
-                const title = listing.dataset.title;
-                listing.style.display = title.includes(input) ? 'block' : 'none';
-            });
-        }
-        function toggleFiles(id) {
-            const panel = document.getElementById("files-" + id);
-            panel.style.display = panel.style.display === "none" ? "block" : "none";
+        function togglePanel(id, btn) {
+            const card = btn.closest('.listing-card');
+            const panel = card.querySelector('.details-panel');
+            const isOpen = panel.classList.contains('open');
+
+            document.querySelectorAll('.details-panel.open').forEach(p => p.classList.remove('open'));
+            document.querySelectorAll('.btn-readmore.active').forEach(b => b.classList.remove('active'));
+
+            if (!isOpen) {
+                panel.classList.add('open');
+                btn.classList.add('active');
+            }
         }
 
         function applyFilters() {
             const search = document.getElementById('search-internship').value.toLowerCase();
-            const deadline = document.querySelector('input[name="deadline"]:checked')?.value ?? '';
-            const internshipType = document.querySelector('input[name="internship_type"]:checked')?.value ?? '';
-            const companyClass = document.querySelector('select[name="company_classification"]').value ?? '';
+            const dlRadio = document.querySelector('input[name="deadline"]:checked');
+            const tyRadio = document.querySelector('input[name="internship_type"]:checked');
+            const ccSel = document.querySelector('select[name="company_classification"]');
 
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            const deadline = dlRadio ? dlRadio.value : '';
+            const iType = tyRadio ? tyRadio.value : '';
+            const cClass = ccSel ? ccSel.value : '';
+
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            let visible = 0;
 
             document.querySelectorAll('.listing-card').forEach(card => {
                 const text = card.innerText.toLowerCase();
 
-                // search filter
-                const matchSearch = search === '' || text.includes(search);
+                const matchSearch = !search || text.includes(search);
 
-                // deadline filter
                 let matchDeadline = true;
                 if (deadline) {
-                    const deadlineEl = card.querySelector('[data-deadline]');
-                    const deadlineStr = deadlineEl ? deadlineEl.dataset.deadline : '';
-                    const deadlineDate = deadlineStr ? new Date(deadlineStr) : null;
-
-                    if (deadlineDate) {
+                    const dlStr = card.dataset.deadline ?? '';
+                    const dlDate = dlStr ? new Date(dlStr) : null;
+                    if (dlDate) {
                         const week = new Date(today); week.setDate(today.getDate() + 7);
                         const month = new Date(today); month.setDate(today.getDate() + 30);
-
-                        if (deadline === 'week') matchDeadline = deadlineDate >= today && deadlineDate <= week;
-                        if (deadline === 'month') matchDeadline = deadlineDate >= today && deadlineDate <= month;
-                        if (deadline === 'future') matchDeadline = deadlineDate >= today;
+                        if (deadline === 'week') matchDeadline = dlDate >= today && dlDate <= week;
+                        if (deadline === 'month') matchDeadline = dlDate >= today && dlDate <= month;
+                        if (deadline === 'future') matchDeadline = dlDate >= today;
                     } else {
                         matchDeadline = false;
                     }
                 }
 
-                // internship type filter
-                const matchType = internshipType === '' || internshipType === 'All'
-                    || card.dataset.type === internshipType;
+                // type
+                const matchType = !iType || iType === 'All' || card.dataset.type === iType;
+                // classification
+                const matchClass = !cClass || card.dataset.classification === cClass;
 
-                // company classification filter
-                const matchClass = companyClass === '' || card.dataset.classification === companyClass;
-
-                card.style.display = (matchSearch && matchDeadline && matchType && matchClass) ? '' : 'none';
+                const show = matchSearch && matchDeadline && matchType && matchClass;
+                card.style.display = show ? '' : 'none';
+                if (show) visible++;
             });
+
+            const vc = document.getElementById('visible-count');
+            if (vc) vc.textContent = visible;
         }
 
-        // attach listeners
         document.getElementById('search-internship').addEventListener('input', applyFilters);
         document.querySelectorAll('input[name="deadline"]').forEach(r => r.addEventListener('change', applyFilters));
         document.querySelectorAll('input[name="internship_type"]').forEach(r => r.addEventListener('change', applyFilters));
-        document.querySelector('select[name="company_classification"]').addEventListener('change', applyFilters);
 
-        document.getElementById('search-internship').addEventListener('input', function () {
-            const query = this.value.toLowerCase();
-            document.querySelectorAll('#internship-tbody tr').forEach(row => {
-                row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
-            });
-        });
         document.querySelectorAll('input[name="program"]').forEach(r => {
-            r.addEventListener('change', function () {
-                this.closest('form').submit();
-            });
+            r.addEventListener('change', () => document.getElementById('filter-form').submit());
+        });
+
+        function openMobileFilter() {
+            document.getElementById('mobileFilterOverlay').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeMobileFilter() {
+            document.getElementById('mobileFilterOverlay').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        function closeMobileFilterOnOverlay(e) {
+            if (e.target === document.getElementById('mobileFilterOverlay')) closeMobileFilter();
+        }
+
+        document.getElementById('search-internship-mobile')?.addEventListener('input', function () {
+            document.getElementById('search-internship').value = this.value;
+            applyFilters();
+        });
+
+        document.querySelectorAll('input[name="m_deadline"]').forEach(r => r.addEventListener('change', function () {
+            const desk = document.querySelector(`input[name="deadline"][value="${this.value}"]`);
+            if (desk) desk.checked = true;
+            applyFilters();
+        }));
+        document.querySelectorAll('input[name="m_internship_type"]').forEach(r => r.addEventListener('change', function () {
+            const desk = document.querySelector(`input[name="internship_type"][value="${this.value}"]`);
+            if (desk) desk.checked = true;
+            applyFilters();
+        }));
+
+        document.getElementById('m_company_classification')?.addEventListener('change', function () {
+            const desk = document.querySelector('select[name="company_classification"]');
+            if (desk) desk.value = this.value;
+            applyFilters();
         });
     </script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../JS/index-script.js"></script>
-
 </body>
 
 </html>

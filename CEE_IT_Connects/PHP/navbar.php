@@ -93,13 +93,11 @@ function timeAgo($datetime)
             z-index: 1000;
         }
 
-        /* ── LOGO ── */
         .nav-logo {
-            height: 40px;
+            height: 60px;
             width: auto;
         }
 
-        /* ── BRAND TEXT ── */
         .brand-text {
             color: #ff6b2c;
             font-weight: 700;
@@ -108,7 +106,6 @@ function timeAgo($datetime)
             font-family: 'GeogrotSharp TRIAL', sans-serif;
         }
 
-        /* ── NAV LINKS ── */
         .navbar-nav .nav-link {
             color: white;
             font-weight: 600;
@@ -122,7 +119,6 @@ function timeAgo($datetime)
             color: #00cfff;
         }
 
-        /* Active: orange pill */
         .navbar-nav .nav-link.active {
             background: #ff6b2c;
             color: white;
@@ -130,7 +126,7 @@ function timeAgo($datetime)
             padding: 10px 18px;
         }
 
-        /* ── LAYOUT: three-column flex ── */
+        /* ── THREE-COLUMN LAYOUT ── */
         .navbar-wrapper {
             display: flex;
             align-items: center;
@@ -233,7 +229,6 @@ function timeAgo($datetime)
             padding-right: 15px;
         }
 
-        /* ── UNREAD DOT ── */
         .dot {
             width: 8px;
             height: 8px;
@@ -313,57 +308,69 @@ function timeAgo($datetime)
         .logout:hover {
             text-decoration: underline;
         }
+
+        /* ── MOBILE ── */
+        @media (max-width: 768px) {
+            .brand-text {
+                font-size: 13px;
+            }
+
+            .nav-logo {
+                height: 30px;
+            }
+
+            .navbar-icons {
+                gap: 15px;
+            }
+
+            .navbar-icons i {
+                font-size: 15px;
+            }
+
+            .notif-popup {
+                width: 260px;
+                right: -60px;
+            }
+        }
     </style>
 </head>
 
 <nav class="navbar navbar-expand-lg navbar-custom fixed-top">
-    <div class="navbar-wrapper">
+    <div class="container-fluid px-3">
 
         <!-- Logo + Brand -->
         <a class="navbar-brand d-flex align-items-center" href="index.php">
             <img src="../Sources/CEE IT Connects Logo.png" class="nav-logo">
-            <span class="brand-text ms-2">CEE IT CONNECTS</span>
+            <span class="brand-text ms-1">CEE IT CONNECTS</span>
         </a>
-
-        <!-- Mobile Toggle -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
 
         <!-- Center Menu (students only) -->
         <?php if (!$hideStudentNav): ?>
-            <div class="navbar-center">
-                <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
-                    <ul class="navbar-nav gap-4">
-                        <li class="nav-item">
-                            <a class="nav-link <?= ($page == 'home') ? 'active' : '' ?>" href="index.php">
-                                Home
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?= ($page == 'opportunity') ? 'active' : '' ?>"
-                                href="applied-internship-programs.php">
-                                Internships
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?= ($page == 'announcements') ? 'active' : '' ?>" href="announcement.php">
-                                Announcements
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+            <div class="navbar-center d-none d-lg-flex">
+                <ul class="navbar-nav gap-5">
+                    <li class="nav-item">
+                        <a class="nav-link <?= ($page == 'home') ? 'active' : '' ?>" href="index.php">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= ($page == 'opportunity') ? 'active' : '' ?>"
+                            href="applied-internship-programs.php">Internships</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= ($page == 'announcements') ? 'active' : '' ?>"
+                            href="announcement.php">Announcements</a>
+                    </li>
+                </ul>
             </div>
         <?php endif; ?>
 
         <!-- Right Icons -->
-        <div class="navbar-icons d-flex align-items-center gap-3 position-relative">
+        <div class="navbar-icons d-flex align-items-center position-relative">
 
-            <!-- Messages icon (students only) -->
+            <!-- Messages (students only) -->
             <?php if (!$hideStudentNav): ?>
                 <div>
                     <a href="Message.php">
-                        <i class="fa-<?= ($page == 'messages') ? 'solid' : 'regular' ?> fa-comment"></i>
+                        <i class="fa-solid fa-desktop"></i>
                     </a>
                 </div>
             <?php endif; ?>
@@ -392,16 +399,14 @@ function timeAgo($datetime)
                             <div class="notif-item"
                                 onclick="window.location.href='<?= htmlspecialchars($notif['link'] ?? 'index.php') ?>'">
                                 <?php if (!$notif['is_read']): ?>
-                                    <div class="dot"></div>
-                                <?php endif; ?>
+                                    <div class="dot"></div><?php endif; ?>
                                 <div>
                                     <strong><?= htmlspecialchars($notif['title']) ?></strong>
                                     <p class="mb-0 small text-muted"><?= htmlspecialchars($notif['message']) ?></p>
                                     <small><?= timeAgo($notif['created_at']) ?></small>
                                 </div>
                             </div>
-                        <?php endif;
-                    endforeach; ?>
+                        <?php endif; endforeach; ?>
                     <?php if (!$hasToday): ?>
                         <p class="text-muted small">No notifications today</p>
                     <?php endif; ?>
@@ -419,16 +424,14 @@ function timeAgo($datetime)
                             <div class="notif-item"
                                 onclick="window.location.href='<?= htmlspecialchars($notif['link'] ?? 'index.php') ?>'">
                                 <?php if (!$notif['is_read']): ?>
-                                    <div class="dot"></div>
-                                <?php endif; ?>
+                                    <div class="dot"></div><?php endif; ?>
                                 <div>
                                     <strong><?= htmlspecialchars($notif['title']) ?></strong>
                                     <p class="mb-0 small text-muted"><?= htmlspecialchars($notif['message']) ?></p>
                                     <small><?= timeAgo($notif['created_at']) ?></small>
                                 </div>
                             </div>
-                        <?php endif;
-                    endforeach; ?>
+                        <?php endif; endforeach; ?>
                     <?php if (!$hasWeek): ?>
                         <p class="text-muted small">No notifications this week</p>
                     <?php endif; ?>
@@ -445,16 +448,14 @@ function timeAgo($datetime)
                             <div class="notif-item"
                                 onclick="window.location.href='<?= htmlspecialchars($notif['link'] ?? 'index.php') ?>'">
                                 <?php if (!$notif['is_read']): ?>
-                                    <div class="dot"></div>
-                                <?php endif; ?>
+                                    <div class="dot"></div><?php endif; ?>
                                 <div>
                                     <strong><?= htmlspecialchars($notif['title']) ?></strong>
                                     <p class="mb-0 small text-muted"><?= htmlspecialchars($notif['message']) ?></p>
                                     <small><?= timeAgo($notif['created_at']) ?></small>
                                 </div>
                             </div>
-                        <?php endif;
-                    endforeach; ?>
+                        <?php endif; endforeach; ?>
                     <?php if (!$hasOlder): ?>
                         <p class="text-muted small">No older notifications</p>
                     <?php endif; ?>
@@ -464,30 +465,60 @@ function timeAgo($datetime)
             <!-- Profile dropdown -->
             <div class="profile-wrapper">
                 <button class="icon-btn" id="profileBtn" title="Profile">
-                    <i class="fa-solid fa-user"></i>
+                    <i class="fa-<?= ($page == 'profile') ? 'solid' : 'regular' ?> fa-user"></i>
                 </button>
 
                 <div class="profile-drop" id="profileDrop">
-                    <!-- Initials avatar -->
                     <div style="width:52px;height:52px;border-radius:50%;background:#eef1ff;color:#272f54;
                                 display:flex;align-items:center;justify-content:center;
                                 font-size:18px;font-weight:700;margin-bottom:8px;">
                         <?= htmlspecialchars($initials) ?>
                     </div>
-
                     <div class="p-name"><?= htmlspecialchars($displayName) ?></div>
                     <div class="p-email"><?= htmlspecialchars($displayEmail) ?></div>
-
                     <button class="btn-edit" onclick="window.location.href='personal-information.php'">
                         <i class="bi bi-pencil-square"></i> Edit Profile
                     </button>
-
                     <a href="logout.php" class="logout">Log Out?</a>
                 </div>
             </div>
 
-        </div><!-- /.navbar-icons -->
-    </div><!-- /.navbar-wrapper -->
+            <!-- Mobile menu toggle (students only) -->
+            <?php if (!$hideStudentNav): ?>
+                <button id="mobileMenuToggle" class="d-lg-none"
+                    style="border:none; background:transparent; cursor:pointer;">
+                    <i class="bi bi-list" style="color:white; font-size:24px;"></i>
+                </button>
+            <?php endif; ?>
+
+        </div>
+    </div>
+
+    <!-- MOBILE DROPDOWN MENU -->
+    <?php if (!$hideStudentNav): ?>
+        <div id="mobileMenu" style="
+            display: none;
+            position: absolute;
+            top: 70px; left: 0;
+            width: 100%;
+            background: #2c3e67;
+            z-index: 999;
+            padding: 10px 0;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);">
+            <a href="index.php" style="display:block;padding:14px 24px;color:white;text-decoration:none;font-weight:600;
+                <?= ($page == 'home') ? 'background:#ff6b2c;border-radius:8px;margin:4px 12px;' : '' ?>">
+                <i class="fa-solid fa-house me-2"></i> Home
+            </a>
+            <a href="applied-internship-programs.php" style="display:block;padding:14px 24px;color:white;text-decoration:none;font-weight:600;
+                <?= ($page == 'opportunity') ? 'background:#ff6b2c;border-radius:8px;margin:4px 12px;' : '' ?>">
+                <i class="fa-solid fa-briefcase me-2"></i> Internships
+            </a>
+            <a href="announcement.php" style="display:block;padding:14px 24px;color:white;text-decoration:none;font-weight:600;
+                <?= ($page == 'announcements') ? 'background:#ff6b2c;border-radius:8px;margin:4px 12px;' : '' ?>">
+                <i class="fa-solid fa-bullhorn me-2"></i> Announcements
+            </a>
+        </div>
+    <?php endif; ?>
 </nav>
 
 <script>
@@ -531,4 +562,21 @@ function timeAgo($datetime)
             profileDrop.classList.remove('open');
         }
     });
+
+    // ── Mobile menu toggle ──
+    const mobileToggle = document.getElementById('mobileMenuToggle');
+    const mobileMenu = document.getElementById('mobileMenu');
+
+    if (mobileToggle && mobileMenu) {
+        mobileToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            mobileMenu.style.display = mobileMenu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!mobileMenu.contains(e.target) && !mobileToggle.contains(e.target)) {
+                mobileMenu.style.display = 'none';
+            }
+        });
+    }
 </script>
