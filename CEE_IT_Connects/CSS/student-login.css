@@ -86,7 +86,7 @@ body, html {
 
 /* --- TOGGLE BUTTONS (Now <a> tags) --- */
 .role-toggle {
-    background-color: #fff;
+    background-color: transparent;
     padding: 0;
     margin-bottom: 2rem;
     display: flex;
@@ -199,7 +199,69 @@ body, html {
 }
 
 @media (max-width: 768px) {
+
+    body, html {
+        overflow-x: hidden;
+        background: white;
+    }
+
+    .form-control {
+        border: 1px solid #272f54;
+    }
+
+    .login-title {
+        -webkit-text-stroke-width: 0.3px;
+        -webkit-text-stroke-color: #ffffff;
+    }
+
+    .login-container,
+    .row {
+        position: relative;
+        min-height: 100vh;
+    }
+
+    /* LEFT CURVED DESIGN */
     .left-panel {
-        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 45%;
+        max-width: 180px;
+        height: 100vh;
+        background-image: url("../Sources/mobile left image.png");
+        background-repeat: no-repeat;
+        background-size: 100% 100% !important;
+        background-position: left top;
+        opacity: 0.7;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    /* FORM SECTION */
+    .right-panel {
+        position: relative;
+        z-index: 1;
+
+        background: transparent;
+
+        padding-left: 22px !important;
+        padding-right: 22px !important;
+
+        align-items: center;
+    }
+
+    .login-title {
+        font-size: 2rem;
+        text-align: center;
+    }
+
+    .login-subtitle {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .role-toggle,
+    .form-wrapper {
+        width: 100%;
     }
 }

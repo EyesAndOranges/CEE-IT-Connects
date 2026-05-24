@@ -267,9 +267,13 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         @media (max-width: 768px) {
-            body { overflow: auto !important; }
+            body, html { 
+                overflow: hidden !important; 
+                overflow-y: auto !important;
+                height: auto !important;
+            }
 
-            .page-body { display: flex !important; }
+            .page-body { display: flex !important; flex-direction: row !important;}
 
             aside.sidebar, .sidebar {
                 width: 60px !important;
@@ -355,8 +359,11 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
             .main-content {
                 margin-left: 60px !important;
                 padding: 15px !important;
+                width: calc(100% - 60px) !important;
+                max-width: calc(100% - 60px) !important;
                 height: auto !important;
-                overflow-y: auto !important;
+                overflow-y: visible !important;
+                overflow-x: hidden !important;
             }
 
             .summary-container { 
@@ -364,47 +371,48 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
                 grid-template-columns: repeat(3, 1fr) !important;
                 gap: 8px !important;
                 margin-bottom: 20px !important;
+                width: 100% !important;
 
             }
 
             .summary-card {
-                padding: 12px !important;
+                padding: 10px 6px !important;
                 border-radius: 10px !important;
                 display: flex !important;
-                flex-direction: column !important;
-                align-items: flex-start !important;
-                gap: 4px !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                justify-content: space-between !important;
                 position:relative !important;
-                overflow: visible !important;
+                overflow: hidden !important;
             }
 
             .card-content {
                 display: flex !important;
                 flex-direction: column !important;
-                width: 100% !important;
+                width: auto !important;
             }
            
             .card-content .label { 
-                order: 1 !important;
+                order: 2 !important;
                 font-size: 8px !important;
-                margin-bottom: 4px !important;
+                margin-top: 2px !important;
+                margin-bottom: 0 !important;
                 word-break: break-word !important;
                 line-height: 1.2 !important;
             }
 
             .card-content .count { 
-                order: 2 !important;
-                font-size: 1.4rem !important;
+                order: 1 !important;
+                font-size: 1.3rem !important;
+                line-height: 1 !important;
             }
 
             .gold-icon {
-                position:absolute !important;
-                top: 12px !important;
-                right: 12px !important;
-                font-size: 1.1rem !important;
-                z-index: 1 !important;
-                display: block !important;
+                position:static !important;
+                font-size: 1.3rem !important;
+                display: inline-block !important;
                 opacity: 1 !important;
+                margin-left: 4px !important;
             }
 
             .table-controls {
@@ -476,7 +484,19 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
                 grid-column: span 1 !important;
             }
 
-            .table-container { overflow-x: auto !important; }            
+            .table-container { overflow-x: auto !important; } 
+            
+            .table-responsive-container {
+                width: 100% !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+                margin-bottom: 15px;
+            }
+
+            .table-responsive-container table {
+                width: 500px !important;
+                width: 100% !important;
+            }
         }
     </style>
 </head>
@@ -700,37 +720,40 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php if (empty($recentInternships)): ?>
                         <p class="text-muted small mb-0">No internships posted yet.</p>
                     <?php else: ?>
-                    <table style="width:100%; border-collapse:collapse; font-size:13px;">
-                        <thead>
-                            <tr style="color:#aaa; font-size:12px; text-transform:uppercase; letter-spacing:.04em;">
-                                <th style="padding:8px 10px; border-bottom:1px solid #f0f2f7; font-weight:600;">Title</th>
-                                <th style="padding:8px 10px; border-bottom:1px solid #f0f2f7; font-weight:600;">Company</th>
-                                <th style="padding:8px 10px; border-bottom:1px solid #f0f2f7; font-weight:600;">Location</th>
-                                <th style="padding:8px 10px; border-bottom:1px solid #f0f2f7; font-weight:600;">Posted</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($recentInternships as $ri): ?>
-                            <tr>
-                                <td style="padding:10px; border-bottom:1px solid #f0f2f7; font-weight:500; color:#272f54;">
-                                    <?= htmlspecialchars($ri['title']) ?>
-                                </td>
-                                <td style="padding:10px; border-bottom:1px solid #f0f2f7; color:#888; font-size:12px;">
-                                    <?= htmlspecialchars($ri['company']) ?>
-                                </td>
-                                <td style="padding:10px; border-bottom:1px solid #f0f2f7; color:#888; font-size:12px;">
-                                    <i class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($ri['location']) ?>
-                                </td>
-                                <td style="padding:10px; border-bottom:1px solid #f0f2f7;">
-                                    <span style="background:#f0f4ff; color:#272f54; font-size:11px; padding:3px 10px; border-radius:6px; font-weight:500;">
-                                        <?= date("M d, Y", strtotime($ri['created_at'])) ?>
-                                    </span>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                    <?php endif; ?>
+                    
+                    <div class="table-responsive-lg">
+                        
+                        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                            <thead>
+                                <tr style="color:#aaa; font-size:12px; text-transform:uppercase; letter-spacing:.04em;">
+                                    <th style="padding:8px 10px; border-bottom:1px solid #f0f2f7; font-weight:600;">Title</th>
+                                    <th style="padding:8px 10px; border-bottom:1px solid #f0f2f7; font-weight:600;">Company</th>
+                                    <th style="padding:8px 10px; border-bottom:1px solid #f0f2f7; font-weight:600;">Location</th>
+                                    <th style="padding:8px 10px; border-bottom:1px solid #f0f2f7; font-weight:600; white-space:nowrap;">Posted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($recentInternships as $ri): ?>
+                                <tr>
+                                    <td style="padding:10px; border-bottom:1px solid #f0f2f7; font-weight:500; color:#272f54;">
+                                        <?= htmlspecialchars($ri['title']) ?>
+                                    </td>
+                                    <td style="padding:10px; border-bottom:1px solid #f0f2f7; color:#888; font-size:12px;">
+                                        <?= htmlspecialchars($ri['company']) ?>
+                                    </td>
+                                    <td style="padding:10px; border-bottom:1px solid #f0f2f7; color:#888; font-size:12px;">
+                                        <i class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($ri['location']) ?>
+                                    </td>
+                                    <td style="padding:10px; border-bottom:1px solid #f0f2f7; white-space:nowrap;">
+                                        <span style="background:#f0f4ff; color:#272f54; font-size:11px; padding:3px 10px; border-radius:6px; font-weight:500; display:inline-block;">
+                                            <?= date("M d, Y", strtotime($ri['created_at'])) ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div> <?php endif; ?>
                 </div>
             </div>
         </div>

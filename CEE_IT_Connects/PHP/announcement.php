@@ -205,11 +205,41 @@ require 'auth.php'; ?>
             transition: max-height 0.3s ease, padding 0.25s ease;
             padding: 0 18px;
             background: #f5f8ff;
+            margin-bottom: 0 !important;
         }
 
         .faq-item.open .faq-answer {
-            max-height: 150px;
+            max-height: max-content;
             padding: 10px 18px 14px 18px;
+        }
+
+        @media (max-width: 768px) {
+            .announcement-wrapper {
+                padding: 17px 10px;
+            }
+
+            .prep-banner {
+                grid-template-columns: 1fr;
+            }
+
+            .prep-col {
+                display: flex;
+                align-items: flex-start;
+                gap: 16px;
+                border-right: none;
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+            }
+
+            .prep-letter {
+                margin: 0;
+                flex-shrink: 0;
+            }
+
+            .prep-content{
+                flex: 1;
+            }
+
+            .prep-col:last-child { border-bottom: none; }
         }
     </style>
 </head>
@@ -226,23 +256,31 @@ require 'auth.php'; ?>
             <div class="prep-banner">
                 <div class="prep-col">
                     <p class="prep-letter">P</p>
-                    <p class="prep-tip-title">Prepare your documents early</p>
-                    <p class="prep-tip-desc">Don't wait for deadlines. Have your resume, endorsement letter, and forms ready ahead of time.</p>
+                    <div class="prep-content">
+                        <p class="prep-tip-title">Prepare your documents early</p>
+                        <p class="prep-tip-desc">Don't wait for deadlines. Have your resume, endorsement letter, and forms ready ahead of time.</p>
+                    </div>
                 </div>
                 <div class="prep-col">
                     <p class="prep-letter">R</p>
-                    <p class="prep-tip-title">Research about the company</p>
-                    <p class="prep-tip-desc">Know what the company does before your interview. It shows initiative and professionalism.</p>
+                    <div class="prep-content">
+                        <p class="prep-tip-title">Research about the company</p>
+                        <p class="prep-tip-desc">Know what the company does before your interview. It shows initiative and professionalism.</p>
+                    </div>
                 </div>
                 <div class="prep-col">
                     <p class="prep-letter">E</p>
-                    <p class="prep-tip-title">Email professionally</p>
-                    <p class="prep-tip-desc">Use proper text and a formal tone when communicating with companies.</p>
+                    <div class="prep-content">
+                        <p class="prep-tip-title">Email professionally</p>
+                        <p class="prep-tip-desc">Use proper text and a formal tone when communicating with companies.</p>
+                    </div>
                 </div>
                 <div class="prep-col">
                     <p class="prep-letter">P</p>
-                    <p class="prep-tip-title">Punctuality is everything</p>
-                    <p class="prep-tip-desc">Being on time reflects your work ethic and attitude.</p>
+                    <div class="prep-content">
+                        <p class="prep-tip-title">Punctuality is everything</p>
+                        <p class="prep-tip-desc">Being on time reflects your work ethic and attitude.</p>
+                    </div>
                 </div>
             </div>
 

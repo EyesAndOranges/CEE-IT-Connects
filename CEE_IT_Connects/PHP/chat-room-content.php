@@ -577,9 +577,41 @@ $backLink = getDashboardByRole($_SESSION['role']);
             cursor: not-allowed;
         }
 
-        /*susu*/
         #roomChatBackBar {
             display: none !important;
+        }
+
+        /*susu - DESKTOP CHAT SCROLL*/
+        @media (min-width: 769px) {
+            html, body {
+                height: 100vh;
+                overflow: hidden; 
+            }
+
+            .main-content {
+                height: 100vh;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .chat-container {
+                display: flex;
+                flex-direction: column;
+                height: calc(100vh - 320px); 
+                position: relative;
+            }
+
+            .chat-messages {
+                flex: 1 1 auto;
+                overflow-y: auto !important; 
+                max-height: 100%;
+            }
+
+            .chat-input-bar {
+                flex-shrink: 0;
+                background: #ffffff;
+            }
         }
 
         @media (max-width: 768px) {
@@ -589,19 +621,46 @@ $backLink = getDashboardByRole($_SESSION['role']);
                 padding-left: 10px;
             }
 
+            .p-3.text-white.rounded.d-flex.justify-content-between.align-items-center {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 12px;
+            }
+
+            .p-3.text-white.rounded .text-end {
+                width: 100% !important;
+                text-align: left !important;
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                gap: 15px;
+            }
+
             .progress-bar-bg {
-                width: 150px;
-                height: 8px;
-                background: #e0e0e0;
-                border-radius: 4px;
-                overflow: hidden;
+                flex-grow: 1 !important;
+                margin-bottom: 0 !important;
+                width: 100% !important;
+            }
+
+            .p-3.text-white.rounded .text-end small {
+                white-space: nowrap !important;
+            }
+
+            .chat-container {
+                height: calc(100vh - 90px) !important; 
+                border-radius: 0;
+            }
+
+            .chat-messages {
+                flex: 1 1 auto; 
             }
         }
     </style>
 </head>
 <?php print_r($_SESSION); ?>
 <div class="d-flex justify-content-start mb-2">
-    <a href="<?= $backLink ?>" class="text-danger fw-semibold" style="text-decoration:none; padding: 20px 0 15px;">
+    <a href="?section=home" class="text-danger fw-semibold" style="text-decoration:none; padding: 20px 0 15px;">
         <i class="fa-solid fa-arrow-left"></i> Back to rooms
     </a>
 </div>
@@ -649,11 +708,11 @@ $backLink = getDashboardByRole($_SESSION['role']);
         class="me-3 fw-bold tab-link <?= $tab === 'updates' ? 'text-danger active-tab' : 'text-dark' ?>">
         Updates
     </a>
-    <a href="?room_id=<?= $room_id ?>&tab=members"
+    <a href="?room_id=<?= $room_id ?>&tab=members&section=home"
         class="me-3 fw-bold tab-link <?= $tab === 'members' ? 'text-danger active-tab' : 'text-dark' ?>">
         Members
     </a>
-    <a href="?room_id=<?= $room_id ?>&tab=chats"
+    <a href="?room_id=<?= $room_id ?>&tab=chats&section=home"
         class="fw-bold tab-link <?= $tab === 'chats' ? 'text-danger active-tab' : 'text-dark' ?>">
         Chats
     </a>
@@ -931,14 +990,14 @@ $backLink = getDashboardByRole($_SESSION['role']);
                 users: JSON.stringify(selected)
             })
         })
-            .then(res => res.text())
-            .then(res => {
-                if (res === "success") {
-                    location.reload(); // refresh members list
-                } else {
-                    alert("Failed to add members");
-                }
-            });
+        .then(res => res.text())
+        .then(res => {
+            if (res === "success") {
+                location.reload(); // refresh members list
+            } else {
+                alert("Failed to add members");
+            }
+        });
     }
 
 
@@ -1037,6 +1096,18 @@ $backLink = getDashboardByRole($_SESSION['role']);
         strip.style.display = 'none';
         document.getElementById('sendBtn').disabled = true;
         msgs.scrollTop = msgs.scrollHeight;
+
+        function scrollToLatestMessage() {
+        const chatContainer = document.getElementById('chatMessages');
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    }
+
+    // Execute the anchor adjustment whenever the document fully mounts
+    document.addEventListener("DOMContentLoaded", () => {
+        scrollToLatestMessage();
+    });
     }
 
     function escHtml(str) {

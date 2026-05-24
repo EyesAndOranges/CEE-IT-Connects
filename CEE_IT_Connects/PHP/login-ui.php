@@ -2,6 +2,8 @@
 $role = $_GET['role'] ?? 'student';
 $statePath = __DIR__ . '/register_toggle.txt';
 $registerVisible = file_exists($statePath) ? trim(file_get_contents($statePath)) : 'show';
+
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -14,9 +16,74 @@ $registerVisible = file_exists($statePath) ? trim(file_get_contents($statePath))
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../CSS/student-login.css">
+
+    <style>
+        /* Mobile Layout Adjustments */
+        @media (max-width: 767px) {
+            .right-panel {
+                padding-left: 28px !important;
+                padding-right: 28px !important;
+                padding-top: 28px;
+            }
+
+            .logo-img {
+                margin-top: 20px;
+                margin-bottom: 10px;
+            }
+        }
+
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .login-container, .row.h-100 {
+                min-height: 100vh;
+                height: 100vh !important;
+            }
+            
+            .left-panel {
+                height: 110vh;
+                background-size: 100% 100% !important;
+                background-position: left center !important;
+            }
+
+            .right-panel {
+                transform: scale(1.15);
+                transform-origin: center center;
+                padding-left: 40px !important;
+                padding-right: 40px !important;
+            }
+
+            .form-wrapper, 
+            .role-toggle {
+                max-width: 440px !important;
+                width: 100%;
+            }
+
+            .login-title {
+                font-size: 2.1rem !important;
+            }
+            
+            .login-subtitle {
+                font-size: 1.75rem !important;
+            }
+
+            .form-control {
+                padding: 14px !important;
+                font-size: 1.05rem !important;
+            }
+
+            .btn-login {
+                padding: 14px !important;
+                font-size: 1.2rem !important;
+            }
+        }
+    </style>
 </head>
 
 <body>
+
+    <?php if (!empty($_SESSION['error'])): ?>
+        <div class="alert alert-danger"><?= $_SESSION['error'] ?></div>
+        <?php unset($_SESSION['error']); ?>
+    <?php endif; ?>
 
     <!-- LOADING SCREEN -->
     <div id="loading-screen">

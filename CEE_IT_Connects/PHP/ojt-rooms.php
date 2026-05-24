@@ -490,6 +490,11 @@ $page = 'messages'
             .chat-container .chat-messages {
                 flex: 1 !important;
             }
+
+            .btn-create {
+                padding: 5px 10px;
+                width: 65%;
+            }
         }
     </style>
 </head>

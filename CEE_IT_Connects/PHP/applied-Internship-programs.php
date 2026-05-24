@@ -602,19 +602,36 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 display: none;
             }
 
-             /* Make listing cards full width on mobile */
-             .col-lg-9 {
+            /* Make listing cards full width on mobile */
+            .col-lg-9 {
                 width: 100%;
                 flex: 0 0 100%;
                 max-width: 100%;
-             }
-             .desktop-header {
-                display: none;
-             }
+            }
 
-             .col-lg-9 > small.text-muted:first-of-type {
-                display: none;
-             }
+            .desktop-header { display: none; }
+            .col-lg-9 > small.text-muted:first-of-type { display: none; }
+
+            .container-fluid.px-3 h1{ font-size: 25px; }
+            .container-fluid.px-3 p{ font-size: 13px; }
+
+            .btn-readmore {
+                padding: 5px 20px;
+                font-size: .85rem;
+            }
+            .btn-readmore.active {
+                background: #171b2c;
+                color: #fff;
+            }
+            .btn-interested {
+                padding: 5px 20px;
+                font-size: .85rem;
+                margin-left: 9px;
+            }
+            .btn-interested.active {
+                background: #d94c10;
+                border-color: #d94c10;
+            }
         }
 
         /* Hide mobile elements on desktop */
@@ -622,6 +639,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .mobile-filter-icon-btn {
             display: none;
         }
+
     </style>
 </head>
 <body>
@@ -630,14 +648,14 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- Page header -->
     <div class="page-header">
-        <div class="container-fluid px-5">
+        <div class="container-fluid px-3 px-md-5">
             <h1>Internship Opportunities</h1>
             <p style="font-family: 'Poppins', sans-serif;">Find and apply for internships matching your interests</p>
         </div>
     </div>
 
     <section class="listing-wrapper">
-        <div class="container-fluid px-5">
+        <div class="container-fluid px-3 px-md-5">
             <div class="row g-4">
 
                 <!-- ── Sidebar ── -->

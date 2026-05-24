@@ -485,8 +485,7 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             .main-content {
                 margin-left: 60px !important;
-                margin-right: 15px;
-                padding: 15px !important;
+                padding: 10px !important;
             }
 
             /* STAT CARDS — 1 row, 3 columns */
@@ -540,7 +539,7 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 align-items: center !important;
                 justify-content: center !important;
                 align-self: flex-start !important;
-                margin-top: 2px !important;
+                margin-top: 4px !important;
             }
             .row.g-3.mb-4 .card-body .rounded-3 i {
                 font-size: 10px !important;
