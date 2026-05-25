@@ -1,0 +1,6 @@
+{
+    "require": {
+        "setasign/fpdi-fpdf": "^2.3",
+        "tecnickcom/tcpdf": "^6.11"
+    }
+}

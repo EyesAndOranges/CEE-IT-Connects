@@ -3,201 +3,341 @@ require 'db.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/../../vendor/autoload.php';
 
-
 use setasign\Fpdi\Fpdi;
-
-$student_id = $_SESSION['user_id'];
-$id = $_GET['id'] ?? null;
-$action = $_GET['action'] ?? null;
-
-if (!$id) {
-    die("Invalid request.");
-}
 
 if (!isset($_SESSION['user_id'])) {
     die("User not logged in.");
 }
 
-// Get internship data
-$stmt = $pdo->prepare("
-    SELECT 
-        i.*, 
-        s.full_name AS student_name,
-        s.year_level AS student_year,
-        s.program AS student_program,
-        a.name AS admin_name,
-        a.title AS admin_title,
-        adv.full_name AS adviser_name,
-        adv.title AS adviser_title
+$student_id = (int) $_SESSION['user_id'];
+$id = (int) ($_GET['id'] ?? 0);
+$action = $_GET['action'] ?? null;
+
+if (!$action) {
+    die("Invalid request.");
+}
+
+// Handle approval early — it needs no internship id
+if ($action === 'approval') {
+    $approvalPdf = __DIR__ . '/../Sources/forms/approval.pdf';
+    if (!file_exists($approvalPdf)) {
+        http_response_code(500);
+        exit('Approval PDF not found.');
+    }
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: inline; filename="approval.pdf"');
+    header('Cache-Control: private, max-age=0, must-revalidate');
+    readfile($approvalPdf);
+    exit;
+}
+
+if (!$id) {
+    die("Invalid request.");
+}
+
+// ── Fetch student ─────────────────────────────────────────────────────────────
+$stmtS = $pdo->prepare("
+    SELECT full_name, student_id, program, contact_number, email
+    FROM students WHERE id = ?
+");
+$stmtS->execute([$student_id]);
+$student = $stmtS->fetch(PDO::FETCH_ASSOC);
+if (!$student)
+    die("Student not found.");
+
+// ── Fetch internship ──────────────────────────────────────────────────────────
+$stmtI = $pdo->prepare("
+    SELECT i.*, i.latitude, i.longtitude, a.name AS adviser_name, a.title AS adviser_title
     FROM internships i
-    LEFT JOIN admins a ON i.admin_id = a.id
-    LEFT JOIN advisers adv ON i.adviser_id = adv.id
-    JOIN students s ON s.id = ?
+    LEFT JOIN admins a ON a.id = i.adviser_id
     WHERE i.id = ?
 ");
-$stmt->execute([$student_id, $id]);
-$data = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$data) {
+$stmtI->execute([$id]);
+$internship = $stmtI->fetch(PDO::FETCH_ASSOC);
+if (!$internship)
     die("Internship not found.");
+
+// ── Variables ─────────────────────────────────────────────────────────────────
+$studentName = $student['full_name'] ?? '';
+$studentNo = $student['student_id'] ?? '';
+$studentProg = $student['program'] ?? '';
+$companyName = $internship['company'] ?? '';
+$companyAddr = $internship['location'] ?? '';
+$companyPhone = $internship['phone_numbers'] ?? '';
+$companyEmail = $internship['email'] ?? '';
+$duration = $internship['duration'] ?? '';
+$adviserName = $internship['adviser_name'] ?? '';
+$today = date('F j, Y');
+
+function getDepartment(string $program): string
+{
+    $map = [
+        'BSIT' => 'Department of Information Technology',
+        'BSCS' => 'Department of Computer Science',
+        'BSCE' => 'Department of Civil Engineering',
+        'BSEE' => 'Department of Electrical Engineering',
+        'BSME' => 'Department of Mechanical Engineering',
+        'BSECE' => 'Department of Electronics Engineering',
+    ];
+    foreach ($map as $code => $dept) {
+        if (stripos($program, $code) !== false)
+            return $dept;
+    }
+    return $program;
 }
 
-$title = !empty($data['title'])
-    ? $data['title']
-    : $data['admin_title'];
+function getProgramCode(string $program): string
+{
+    $codes = ['BSIT', 'BSCS', 'BSCE', 'BSEE', 'BSME', 'BSECE'];
+    foreach ($codes as $code) {
+        if (stripos($program, $code) !== false)
+            return $code;
+    }
+    return $program;
+}
+
+$department = getDepartment($studentProg);
+$programCode = getProgramCode($studentProg);
+
+$plv_lat = 14.698835;
+$plv_lng = 120.979268;
+
+$hte_lat = $internship['latitude'] ?? null;
+$hte_lng = $internship['longtitude'] ?? null;
+
+$google_api_key = 'AIzaSyDITrnTUmS0AwxqZCE8cfYI3d5kjtzg7RY&callback=initMa';
+
+// Source Paths
+$pdfBase = __DIR__ . '/../Sources/forms/';
+$formFiles = [
+    'hte_info' => $pdfBase . 'CEIT-OJTF-001_HTE_Information_Form.pdf',
+    'addendum' => $pdfBase . 'CEIT-OJTF-009_Addendum_for_Student_Intern_Placement.pdf',
+    'rl' => $pdfBase . 'OJT_Recommendation_Letter.pdf',
+    'waiver' => $pdfBase . 'CEIT-OJTF-008_OJT_Waiver_Form.pdf',
+    'vicinity' => $pdfBase . 'CEIT-OJTF-003_OJT_Vicinity_Map.pdf',
+    'oath' => $pdfBase . 'CEIT-OJTF-007_OJT_Oath_of_Undertaking.pdf',
+    'internship_plan' => $pdfBase . 'CEIT-OJTF-002_Internship_Plan.pdf',
+    'approval' => $pdfBase . 'approval.pdf',
+];
+
+$sourcePdf = $formFiles[$action];
+if (!file_exists($sourcePdf))
+    die("Source PDF not found: $sourcePdf");
+
+// preview
+$pdf = new Fpdi();
+$pdf->SetAutoPageBreak(false);
+
 switch ($action) {
-    case 'mou':
-        $pdf = new FPDI();
-        $file = __DIR__ . "/../Sources/MOU_template.pdf";
-        $pageCount = $pdf->setSourceFile($file);
 
-        for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
+    case 'hte_info':
+        $pdf->setSourceFile($sourcePdf);
+        $pdf->AddPage('L', 'A4');
+        $tpl = $pdf->importPage(1);
+        $pdf->useTemplate($tpl, 0, 0, 297, 210);
+        $pdf->SetFont('Helvetica', '', 9);
+        $pdf->SetTextColor(0, 0, 0);
 
-            $templateId = $pdf->importPage($pageNo);
-            $pdf->AddPage();
-            $pdf->useTemplate($templateId);
-
-            if ($pageNo == 1) {
-
-                $pdf->SetFont('Arial', '', 11);
-
-                $pdf->SetXY(40, 60);
-                $pdf->Write(0, $data['company']);
-
-                $pdf->SetXY(40, 70);
-                $pdf->Write(0, $data['student_name']);
-
-                $pdf->SetXY(87, 209);
-                $pdf->Write(0, $data['duration']);
-            } elseif ($pageNo == 2) {
-                //$pdf->SetXY(40, 80);
-                //$pdf->Write(0, $data['location']);
-                $pdf->SetXY(40, 67);
-                $pdf->Write(0, date("F d, Y"));
-
-                $pdf->SetXY(40, 83);
-                $pdf->Write(0, $data['title']);
-
-                $pdf->SetXY(40, 100);
-                $pdf->Write(0, date("F d, Y"));
-
-                // Representative (Admin or Adviser)
-                $pdf->SetXY(40, 50);
-                $pdf->Write(0, $data['admin_name'] ?? $data['adviser_name']);
-            }
-        }
-        $pdf->Output("I", "MOU_preview.pdf");
-        exit;
-
+        // Student copy (left column)
+        $pdf->SetXY(50, 53);
+        $pdf->Cell(60, 5, $studentName, 0, 0, 'L');
+        $pdf->SetXY(125, 53);
+        $pdf->Cell(35, 5, $studentNo, 0, 0, 'L');
+        $pdf->SetXY(73, 76);
+        $pdf->Cell(85, 5, $companyName, 0, 0, 'L');
+        $pdf->SetXY(73, 85);
+        $pdf->Cell(85, 5, $companyAddr, 0, 0, 'L');
+        $pdf->SetXY(73, 94);
+        $pdf->Cell(63, 5, $companyPhone, 0, 0, 'L');
+        // $pdf->SetXY(73, 100);
+        // $pdf->Cell(63, 5, $companyEmail, 0, 0, 'L');
+        $pdf->SetXY(66, 180);
+        $pdf->Cell(60, 5, $studentName, 0, 0, 'L');
+        // College copy (right column, offset 148.5mm)
+        $o = 148.5;
+        $pdf->SetXY(50 + $o, 53);
+        $pdf->Cell(60, 5, $studentName, 0, 0, 'L');
+        $pdf->SetXY(120 + $o, 53);
+        $pdf->Cell(35, 5, $studentNo, 0, 0, 'L');
+        $pdf->SetXY(73 + $o, 76);
+        $pdf->Cell(85, 5, $companyName, 0, 0, 'L');
+        $pdf->SetXY(73 + $o, 85);
+        $pdf->Cell(85, 5, $companyAddr, 0, 0, 'L');
+        $pdf->SetXY(73 + $o, 94);
+        $pdf->Cell(63, 5, $companyPhone, 0, 0, 'L');
+        // $pdf->SetXY(73 + $o, 100);
+        // $pdf->Cell(63, 5, $companyEmail, 0, 0, 'L');
+        $pdf->SetXY(66 + $o, 180);
+        $pdf->Cell(60, 5, $studentName, 0, 0, 'L');
         break;
+    case 'addendum':
+        $pdf->setSourceFile($sourcePdf);
+        $pdf->AddPage('L', 'A4');
+        $tpl = $pdf->importPage(1);
+        $pdf->useTemplate($tpl, 0, 0, 297, 210);
+        $pdf->SetFont('Helvetica', '', 11);
+        $pdf->SetTextColor(0, 0, 0);
+
+        $pdf->SetXY(70, 42);
+        $pdf->Cell(150, 5, 'Department of ' . $department, 0, 0, 'L');
+        // $pdf->SetXY(14, 56);
+        // $pdf->Cell(8, 6, '1', 0, 0, 'C');
+        $pdf->SetXY(40, 68);
+        $pdf->Cell(48, 6, $studentName, 0, 0, 'L');
+        $pdf->SetXY(95, 68);
+        $pdf->Cell(32, 6, $studentNo, 0, 0, 'C');
+        $pdf->SetXY(145, 68);
+        $pdf->Cell(50, 6, $companyName, 0, 0, 'L');
+        break;
+
     case 'rl':
-        $pdf = new FPDI();
-        $file = __DIR__ . "/../Sources/recom_letter_template.pdf";
-        $pageCount = $pdf->setSourceFile($file);
+        $pdf->setSourceFile($sourcePdf);
+        $pdf->AddPage('P', 'A4');
+        $tpl = $pdf->importPage(1);
+        $pdf->useTemplate($tpl, 0, 0, 210, 297);
+        $pdf->SetFont('Helvetica', '', 9);
+        $pdf->SetTextColor(0, 0, 0);
 
-        for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
-
-            $templateId = $pdf->importPage($pageNo);
-            $pdf->AddPage();
-            $pdf->useTemplate($templateId);
-
-            if ($pageNo == 1) {
-
-                $pdf->SetFont('Arial', '', 11);
-
-                $pdf->SetXY(40, 37);
-                $pdf->Write(0, date("F d, Y"));
-
-                $pdf->SetXY(73, 58);
-                $pdf->Write(0, $data['student_name']);
-
-                $pdf->SetXY(135, 58);
-                $pdf->Write(0, $data['student_year'] . " Year");
-
-                $pdf->SetXY(78, 64);
-                $pdf->Write(0, $data['student_program']);
-
-                $pdf->SetXY(130, 64);
-                $pdf->Write(0, 'PLV');
-
-                $pdf->SetXY(82, 76);
-                $pdf->Write(0, $data['student_name']);
-
-                //$pdf->SetXY(40, 80);
-                //$pdf->Write(0, $data['location']);
-                $pdf->SetXY(60, 93);
-                $pdf->Write(0, $data['student_name']);
-
-                $pdf->SetXY(40, 117);
-                $pdf->Write(0, $data['admin_name'] ?? $data['adviser_name']);
-
-                $pdf->SetXY(40, 127);
-                $pdf->Write(0, $data['admin_title'] ?? $data['adviser_title']);
-
-                $pdf->SetXY(40, 134);
-                $pdf->Write(0, 'PLV');
-
-                // Representative (Admin or Adviser)
-
-
-            }
-        }
-        $pdf->Output("I", "MOU_preview.pdf");
-        exit;
-
+        $pdf->SetXY(64, 206);
+        $pdf->Cell(70, 6, $programCode, 0, 0, 'L');
+        $pdf->SetXY(110, 105);
+        $pdf->Cell(20, 6, '486', 0, 0, 'L');
+        $pdf->SetXY(23, 95);
+        $pdf->Cell(150, 6, $studentName, 0, 0, 'L');
+        // $pdf->SetFont('Helvetica', 'B', 11);
+        // $pdf->SetXY(25, 135);
+        // $pdf->Cell(150, 6, strtoupper($adviserName), 0, 0, 'L');
+        // $pdf->SetFont('Helvetica', '', 10);
+        // $pdf->SetXY(25, 141);
+        // $pdf->Cell(150, 6, 'Chairperson, ' . $department, 0, 0, 'L');
         break;
+
     case 'waiver':
-        $pdf = new FPDI();
-        $file = __DIR__ . "/../Sources/waiver_template.pdf";
-        $pageCount = $pdf->setSourceFile($file);
+        $pdf->setSourceFile($sourcePdf);
+        $pdf->AddPage('P', 'A4');
+        $tpl = $pdf->importPage(1);
+        $pdf->useTemplate($tpl, 0, 0, 210, 297);
+        $pdf->SetFont('Helvetica', '', 10);
+        $pdf->SetTextColor(0, 0, 0);
 
-        for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
+        $pdf->SetXY(90, 74);
+        $pdf->Cell(120, 5, $companyName, 0, 0, 'L');
+        $pdf->SetXY(90, 78);
+        $pdf->Cell(120, 5, $companyAddr, 0, 0, 'L');
+        $pdf->SetXY(73, 161);
+        $pdf->Cell(100, 5, $studentName, 0, 0, 'L');
+        $pdf->SetXY(49, 165);
+        $pdf->Cell(20, 5, '486', 0, 0, 'L');
+        $pdf->SetXY(43, 191);
+        $pdf->Cell(100, 5, $studentName, 0, 0, 'L');
+        break;
 
-            $templateId = $pdf->importPage($pageNo);
-            $pdf->AddPage();
-            $pdf->useTemplate($templateId);
+    case 'vicinity':
+        $pdf->setSourceFile($sourcePdf);
+        $pdf->AddPage('P', 'A4');
+        $tpl = $pdf->importPage(1);
+        $pdf->useTemplate($tpl, 0, 0, 210, 297);
+        $pdf->SetFont('Helvetica', '', 9);
+        $pdf->SetTextColor(0, 0, 0);
 
-            if ($pageNo == 1) {
+        $pdf->SetXY(60, 46);
+        $pdf->Cell(80, 5, $studentName, 0, 0, 'L');
+        $pdf->SetXY(152, 46);
+        $pdf->Cell(45, 5, $studentNo, 0, 0, 'L');
+        $pdf->SetXY(60, 50);
+        $pdf->Cell(160, 5, $companyName, 0, 0, 'L');
+        $pdf->SetXY(60, 55);
+        $pdf->Cell(160, 5, $companyAddr, 0, 0, 'L');
+        $pdf->SetFont('Helvetica', '', 11);
+        $pdf->SetXY(86, 269);
+        $pdf->Cell(80, 5, $studentName, 0, 0, 'L');
 
-                $pdf->SetFont('Arial', '', 11);
+        if ($hte_lat && $hte_lng) {
+            // Build URL manually to allow duplicate 'markers' params
+            $mapUrl = 'https://maps.googleapis.com/maps/api/staticmap'
+                . '?size=600x400'
+                . '&maptype=roadmap'
+                . '&markers=' . urlencode('color:red|label:P|' . $plv_lat . ',' . $plv_lng)
+                . '&markers=' . urlencode('color:blue|label:H|' . $hte_lat . ',' . $hte_lng)
+                . '&path=' . urlencode('color:0x0000ffAA|weight:4|' . $plv_lat . ',' . $plv_lng . '|' . $hte_lat . ',' . $hte_lng)
+                . '&key=' . $google_api_key;
 
-                $pdf->SetXY(37, 38);
-                $pdf->Write(0, $data['student_name']);
+            $mapImage = tempnam(sys_get_temp_dir(), 'map_') . '.png';
 
-                $pdf->SetXY(120, 38);
-                $pdf->Write(0, 'PLV');
-
-                $pdf->SetXY(90, 63);
-                $pdf->Write(0, 'PLV');
-
-                $pdf->SetXY(95, 42);
-                $pdf->Write(0, $data['company']);
-
-                $pdf->SetXY(40, 67);
-                $pdf->Write(0, $data['company']);
-                //$pdf->SetXY(40, 80);
-                //$pdf->Write(0, $data['location']);
-
-                $pdf->SetXY(52, 89);
-                $pdf->Write(0, $data['student_name']);
-
-                $pdf->SetXY(60, 97);
-                $pdf->Write(0, date("F d, Y"));
-
-                $pdf->SetXY(60, 115);
-                $pdf->Write(0, date("F d, Y"));
-
-
-                // Representative (Admin or Adviser)
-                $pdf->SetXY(40, 50);
-                $pdf->Write(0, $data['admin_name'] ?? $data['adviser_name']);
-
-
+            // Use cURL instead of file_get_contents (more reliable on XAMPP)
+            $ch = curl_init($mapUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            $imageData = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($imageData === false || $httpCode !== 200) {
+                // Write error info directly on the PDF instead of silently failing
+                $pdf->SetFont('Helvetica', '', 8);
+                $pdf->SetTextColor(255, 0, 0);
+                $pdf->SetXY(14, 70);
+                $pdf->Cell(180, 5, 'Map error: HTTP ' . $httpCode . ' | lat=' . $hte_lat . ' lng=' . $hte_lng, 0, 0, 'L');
+                $pdf->SetXY(14, 76);
+                $pdf->MultiCell(180, 5, 'URL: ' . $mapUrl);
+                $pdf->SetTextColor(0, 0, 0);
+            }
+            if ($imageData !== false && $httpCode === 200) {
+                file_put_contents($mapImage, $imageData);
+                //  Image(path, x, y, width, height)
+                $pdf->Image($mapImage, 39, 100, 122, 90, 'PNG');
+                unlink($mapImage);
             }
         }
-        $pdf->Output("I", "MOU_preview.pdf");
-        exit;
+        break;
 
+    case 'oath':
+        $pdf->setSourceFile($sourcePdf);
+        $pdf->AddPage('P', 'A4');
+        $tpl = $pdf->importPage(1);
+        $pdf->useTemplate($tpl, 0, 0, 210, 297);
+        $pdf->SetFont('Helvetica', '', 10);
+        $pdf->SetTextColor(0, 0, 0);
+
+        $pdf->SetXY(30, 57);
+        $pdf->Cell(80, 5, $studentName, 0, 0, 'L');
+        $pdf->SetXY(40, 203);
+        $pdf->Cell(80, 5, $studentName, 0, 0, 'L');
+        $pdf->SetXY(61, 217);
+        $pdf->Cell(60, 5, $studentProg, 0, 0, 'L');
+        $pdf->SetXY(61, 223);
+        $pdf->Cell(60, 5, $today, 0, 0, 'L');
+        break;
+
+    case 'internship_plan':
+        $pageCount = $pdf->setSourceFile($sourcePdf);
+        $pdf->AddPage('P', 'A4');
+        $tpl = $pdf->importPage(1);
+        $pdf->useTemplate($tpl, 0, 0, 210, 297);
+        $pdf->SetFont('Helvetica', '', 9);
+        $pdf->SetTextColor(0, 0, 0);
+
+        $pdf->SetXY(55, 38);
+        $pdf->Cell(80, 5, $studentName, 0, 0, 'L');
+        $pdf->SetXY(152, 38);
+        $pdf->Cell(45, 5, $studentNo, 0, 0, 'L');
+        $pdf->SetXY(58, 42);
+        $pdf->Cell(160, 5, $companyName, 0, 0, 'L');
+        $pdf->SetXY(58, 46);
+        $pdf->Cell(160, 5, $companyAddr, 0, 0, 'L');
+
+        // Page 2
+        $pdf->AddPage('P', 'A4');
+        $tpl2 = $pdf->importPage(2);
+        $pdf->useTemplate($tpl2, 0, 0, 210, 297);
+        $pdf->SetXY(80, 168);
+        $pdf->Cell(80, 5, $studentName, 0, 0, 'L');
         break;
 }
-//
+
+// Stream inline for preview (opens in browser tab)
+header('Content-Type: application/pdf');
+header('Content-Disposition: inline; filename="preview.pdf"');
+header('Cache-Control: private, max-age=0, must-revalidate');
+$pdf->Output('I', 'preview.pdf');
+exit;

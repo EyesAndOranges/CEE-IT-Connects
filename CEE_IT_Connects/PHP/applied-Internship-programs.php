@@ -560,6 +560,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 padding: 15px 0 20px;
             }
 
+            /* Header row */
             .internship-mobile-header {
                 display: flex !important;
                 align-items: center;
@@ -578,6 +579,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 background: var(--cream);
             }
 
+            /* Filter icon button */
             .mobile-filter-icon-btn {
                 display: flex !important;
                 align-items: center;
@@ -593,6 +595,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 color: #333;
             }
 
+            /* Dark overlay behind modal */
             .mobile-filter-overlay {
                 display: none;
                 position: fixed;
@@ -606,6 +609,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 display: flex !important;
             }
 
+            /* Bottom sheet */
             .mobile-filter-sheet {
                 background: white;
                 width: 100%;
@@ -647,6 +651,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 color: #333;
             }
 
+            /* Two-column layout for Deadline + Internship Type */
             .mobile-filter-row {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
@@ -679,6 +684,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 display: none;
             }
 
+            /* Make listing cards full width on mobile */
             .col-lg-9 {
                 width: 100%;
                 flex: 0 0 100%;
@@ -688,6 +694,45 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
             .desktop-header {
                 display: none;
             }
+
+            .col-lg-9>small.text-muted:first-of-type {
+                display: none;
+            }
+
+            .container-fluid.px-3 h1 {
+                font-size: 25px;
+            }
+
+            .container-fluid.px-3 p {
+                font-size: 13px;
+            }
+
+            .btn-readmore {
+                padding: 5px 20px;
+                font-size: .85rem;
+            }
+
+            .btn-readmore.active {
+                background: #171b2c;
+                color: #fff;
+            }
+
+            .btn-interested {
+                padding: 5px 20px;
+                font-size: .85rem;
+                margin-left: 9px;
+            }
+
+            .btn-interested.active {
+                background: #d94c10;
+                border-color: #d94c10;
+            }
+        }
+
+        /* Hide mobile elements on desktop */
+        .internship-mobile-header,
+        .mobile-filter-icon-btn {
+            display: none;
         }
     </style>
 </head>

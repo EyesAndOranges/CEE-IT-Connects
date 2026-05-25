@@ -2,32 +2,263 @@
 session_start();
 require 'db.php';
 require 'auth.php';
-$current_room_id = $_GET['room_id'] ?? null;
 
 $isAdviser = isset($_SESSION['role']) && $_SESSION['role'] === 'internship_adviser';
-$stmt = $pdo->prepare("
-    SELECT DISTINCT r.*, a.full_name, a.title, a.role
-    FROM rooms r
-    LEFT JOIN advisers a ON r.adviser_id = a.id
-    LEFT JOIN room_members rm ON r.id = rm.room_id
-    WHERE (
-        r.adviser_id = ?
-        OR rm.user_id = ?
-    )
-    " . (!$isAdviser ? "AND r.is_archived = FALSE" : "") . "
-    ORDER BY r.id DESC
+$adviser_id = $_SESSION['user_id'];
+
+function generateRoomCode($length = 9)
+{
+    $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    $code = '';
+    for ($i = 0; $i < $length; $i++) {
+        $code .= $chars[random_int(0, strlen($chars) - 1)];
+    }
+    return $code;
+}
+
+function generateUniqueRoomCode($pdo)
+{
+    do {
+        $code = generateRoomCode();
+        $stmt = $pdo->prepare("SELECT id FROM rooms WHERE room_code = ?");
+        $stmt->execute([$code]);
+    } while ($stmt->fetch());
+    return $code;
+}
+
+if (!isset($_GET['room_id'])) {
+    // Check if adviser already has a room
+    $stmt = $pdo->prepare("
+        SELECT r.id FROM rooms r
+        LEFT JOIN room_members rm ON r.id = rm.room_id
+        WHERE (r.adviser_id = ? OR (rm.user_id = ? AND rm.user_type = 'adviser'))
+        AND r.is_archived = FALSE
+        LIMIT 1
+    ");
+    $stmt->execute([$adviser_id, $adviser_id]);
+    $room = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$room) {
+        // Auto-create a room for this adviser
+        $advStmt = $pdo->prepare("SELECT full_name FROM advisers WHERE id = ?");
+        $advStmt->execute([$adviser_id]);
+        $adviser = $advStmt->fetch(PDO::FETCH_ASSOC);
+
+        $room_name = ($adviser['full_name'] ?? 'Adviser') . "'s Room";
+        $room_code = generateUniqueRoomCode($pdo);
+
+        $createStmt = $pdo->prepare("
+            INSERT INTO rooms (room_name, room_code, adviser_id, is_archived)
+            VALUES (?, ?, ?, FALSE)
+        ");
+        $createStmt->execute([$room_name, $room_code, $adviser_id]);
+        $room_id = $pdo->lastInsertId();
+
+        $memberStmt = $pdo->prepare("
+            INSERT INTO room_members (room_id, user_id, user_type)
+            VALUES (?, ?, 'adviser')
+        ");
+        $memberStmt->execute([$room_id, $adviser_id]);
+
+        header("Location: ojt-rooms.php?room_id=" . $room_id);
+        exit;
+    }
+
+    header("Location: ojt-rooms.php?room_id=" . $room['id']);
+    exit;
+}
+
+$current_room_id = $_GET['room_id'];
+$section = $_GET['section'] ?? '';
+
+$supReqStmt = $pdo->prepare("
+    SELECT
+        shss.*,
+        s.full_name AS student_name,
+        s.student_id AS student_no,
+        s.program
+    FROM student_hte_supervisor_submissions shss
+    JOIN students s ON shss.student_id = s.id
+    JOIN room_members rm ON s.id = rm.user_id AND rm.user_type = 'student'
+    WHERE rm.room_id = ?
+    ORDER BY
+        CASE shss.status WHEN 'pending' THEN 0 WHEN 'rejected' THEN 1 ELSE 2 END,
+        shss.submitted_at DESC
 ");
-$stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
+$supReqStmt->execute([$current_room_id]);
+$supervisorRequests = $supReqStmt->fetchAll(PDO::FETCH_ASSOC);
 
-$rooms = $stmt->fetchAll(PDO::FETCH_ASSOC);
-?>
+// Load statuses for the status section
+$stmt = $pdo->prepare("
+    SELECT
+        s.id,
+        s.full_name,
+        COALESCE(i.company, oa.company_name) AS company,
+        COALESCE((
+    SELECT ROUND(SUM(
+        GREATEST(0, EXTRACT(EPOCH FROM (h.m_out - h.m_in)) / 3600) +
+        GREATEST(0, EXTRACT(EPOCH FROM (h.a_out - h.a_in)) / 3600)
+    )::numeric, 2)
+    FROM ojt_hours h
+    WHERE h.user_id = s.id 
+    AND h.user_type = 'student'
+    AND h.m_in IS NOT NULL AND h.m_out IS NOT NULL
+    AND h.a_in IS NOT NULL AND h.a_out IS NOT NULL
+), 0) AS total_hours,
+        MAX(m.remarks) AS latest_remarks,
+        COALESCE(
+            JSON_OBJECT_AGG(sp.step_key, sp.is_done)
+            FILTER (WHERE sp.step_key IS NOT NULL),
+            '{}'::json
+        ) AS checklist
+    FROM students s
+    JOIN room_members rm ON s.id = rm.user_id AND rm.user_type = 'student'
+    JOIN rooms r ON rm.room_id = r.id
+    LEFT JOIN student_internships si ON s.id = si.student_id
+    LEFT JOIN internships i ON si.internship_id = i.id
+    LEFT JOIN ojt_applications oa ON s.id = oa.student_id
+    LEFT JOIN (
+        SELECT DISTINCT ON (student_id)
+            student_id, remarks
+        FROM ojt_remarks
+        ORDER BY student_id, updated_at DESC
+    ) m ON s.id = m.student_id
+    LEFT JOIN student_progress sp ON s.id = sp.student_id
+        AND sp.step_key IN (
+            'hte_form','addendum','reco_letter','waiver',
+            'medical_cert','internship_plan','vicinity_map','oath','ojt_started'
+        )
+    WHERE r.id = ?
+    GROUP BY s.id, s.full_name, i.company, oa.company_name
+");
+$stmt->execute([$current_room_id]);
+$statuses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-<?php
+$appStmt = $pdo->prepare("
+    SELECT
+        oa.id AS application_id,
+        oa.company_name,
+        oa.status,
+        oa.submitted_at,
+        oa.reviewed_at,
+        oa.remarks,
+        s.id AS student_id,
+        s.full_name,
+        s.student_id AS student_no,
+        s.program,
+        i.location,
+        -- Aggregate checklist as JSON
+        JSON_OBJECT_AGG(sp.step_key, sp.is_done) FILTER (WHERE sp.step_key IS NOT NULL) AS checklist
+    FROM ojt_applications oa
+    JOIN students s ON oa.student_id = s.id
+    JOIN room_members rm ON s.id = rm.user_id AND rm.user_type = 'student'
+    LEFT JOIN internships i ON oa.internship_id = i.id
+    LEFT JOIN student_progress sp ON s.id = sp.student_id
+    WHERE rm.room_id = ?
+    GROUP BY
+        oa.id, oa.company_name, oa.status, oa.submitted_at,
+        oa.reviewed_at, oa.remarks,
+        s.id, s.full_name, s.student_id, s.program, i.location
+    ORDER BY
+        CASE oa.status WHEN 'pending' THEN 0 WHEN 'rejected' THEN 1 ELSE 2 END,
+        oa.submitted_at DESC
+");
+$appStmt->execute([$current_room_id]);
+$ojtApplications = $appStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$chattableStmt = $pdo->prepare("
+    SELECT 
+        s.id          AS user_id,
+        s.full_name,
+        'student'     AS user_type
+    FROM students s
+    JOIN room_members rm ON s.id = rm.user_id AND rm.user_type = 'student'
+    WHERE rm.room_id = ?
+    UNION
+    SELECT
+        a.id AS user_id,
+        a.full_name,
+        'adviser' AS user_type
+    FROM advisers a
+    WHERE a.role = 'HTE_adviser'
+    AND a.internship_id IN (
+        SELECT ib.internship_id
+        FROM internship_bookmarks ib
+        JOIN room_members rm ON ib.student_id = rm.user_id AND rm.user_type = 'student'
+        WHERE rm.room_id = ?
+    )
+    ORDER BY full_name
+");
+$chattableStmt->execute([$current_room_id, $current_room_id]);
+$chattableUsers = $chattableStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// ── Fetch existing chat conversations for this adviser ────────────────────────
+$adviserChatStmt = $pdo->prepare("
+    SELECT
+        CASE WHEN sender_id = :uid THEN receiver_id ELSE sender_id END AS chat_user_id,
+        CASE WHEN sender_id = :uid THEN receiver_type ELSE sender_type END AS chat_user_type,
+        MAX(created_at) AS last_message_at,
+        (SELECT message FROM messages m2
+         WHERE (m2.sender_id = :uid AND m2.receiver_id = CASE WHEN sender_id = :uid THEN receiver_id ELSE sender_id END)
+            OR (m2.receiver_id = :uid AND m2.sender_id = CASE WHEN sender_id = :uid THEN receiver_id ELSE sender_id END)
+         ORDER BY m2.created_at DESC LIMIT 1) AS last_message
+    FROM messages
+    WHERE (sender_id = :uid AND sender_type = 'adviser')
+       OR (receiver_id = :uid AND receiver_type = 'adviser')
+    GROUP BY chat_user_id, chat_user_type
+    ORDER BY last_message_at DESC
+");
+$adviserChatStmt->execute(['uid' => $adviser_id]);
+$adviserChats = $adviserChatStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// ── Fetch messages if a chat is open ─────────────────────────────────────────
+$chatSection_id = $_GET['chat_id'] ?? null;
+$chatSection_type = $_GET['chat_type'] ?? null;
+$chatMessages = [];
+
+if ($chatSection_id && $section === 'chats') {
+    $msgStmt = $pdo->prepare("
+        SELECT m.*, 
+            COALESCE(s.full_name, a.full_name) AS sender_name
+        FROM messages m
+        LEFT JOIN students s  ON m.sender_id = s.id AND m.sender_type = 'student'
+        LEFT JOIN advisers a  ON m.sender_id = a.id AND m.sender_type = 'adviser'
+        WHERE
+            (m.sender_id = ? AND m.sender_type = 'adviser'
+             AND m.receiver_id = ? AND m.receiver_type = ?)
+            OR
+            (m.sender_id = ? AND m.sender_type = ?
+             AND m.receiver_id = ? AND m.receiver_type = 'adviser')
+        ORDER BY m.created_at ASC
+    ");
+    $msgStmt->execute([
+        $adviser_id,
+        $chatSection_id,
+        $chatSection_type,
+        $chatSection_id,
+        $chatSection_type,
+        $adviser_id,
+    ]);
+    $chatMessages = $msgStmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// helper — get name for a chat list entry
+function getRoomChatName($pdo, $id, $type)
+{
+    if ($type === 'student') {
+        $st = $pdo->prepare("SELECT full_name FROM students WHERE id = ?");
+    } else {
+        $st = $pdo->prepare("SELECT full_name FROM advisers WHERE id = ?");
+    }
+    $st->execute([$id]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+    return $row['full_name'] ?? 'Unknown';
+}
+
 $colors = ['#d63ba5', '#1abc9c', '#3498db', '#9b59b6'];
 $color = $colors[array_rand($colors)];
 $page = 'messages';
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -35,10 +266,8 @@ $page = 'messages';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OJT Adviser | CEE IT Connects</title>
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
     <style>
         body {
             background-color: #f0f2f7;
@@ -47,13 +276,15 @@ $page = 'messages';
             min-height: 100vh;
         }
 
-        /* ── SIDEBAR ── */
         .sidebar {
             width: 240px;
             background: #fff;
             position: fixed;
-            padding: 20px 0 20px 20px;
-            border-radius: 20px;
+            top: 70px;
+            left: 0;
+            height: calc(100vh - 70px);
+            padding: 20px 0 20px 0;
+            border-right: 1px solid #eee;
             overflow-y: auto;
             scrollbar-width: none;
             -ms-overflow-style: none;
@@ -64,15 +295,16 @@ $page = 'messages';
         }
 
         .sidebar a {
-            display: block;
+            display: flex;
             align-items: center;
-            padding: 10px 12px;
+            padding: 10px 20px;
             color: #333;
             text-decoration: none;
             border-radius: 10px;
-            margin-bottom: 6px;
-            font-size: 16px;
+            margin: 2px 10px;
+            font-size: 15px;
             font-weight: 500;
+            transition: 0.2s;
         }
 
         .sidebar a:hover {
@@ -84,78 +316,26 @@ $page = 'messages';
             color: #ff6b2c;
         }
 
-        /* ── ROOMS LIST ── */
-        .rooms-list {
-            font-size: 12px;
-            color: #585858;
-            margin-top: 20px;
-        }
-
-        .room-item {
-            padding: 8px 10px;
-            border-radius: 10px;
-            font-size: 13px;
-        }
-
-        .room-link {
-            text-decoration: none;
-            display: block;
-            margin: 4px;
-            width: calc(100% + 24px);
-            margin-left: -12px;
-        }
-
-        .room-link .room-item:hover {
-            cursor: pointer;
-        }
-
-        /* Active room highlight */
-        .active-room {
-            background: #ffdac8;
-            color: #ff6b2c;
-            font-weight: bold;
-            cursor: default;
-        }
-
-        /* ── MAIN ── */
         .main {
-            background-color: #f0f2f7;
-            margin-left: 260px;
-            padding: 20px;
+            margin-left: 240px;
+            padding: 24px;
             min-height: calc(100vh - 70px);
         }
 
-        /* ── ROOM CARDS ── */
-        .room-card {
-            border-radius: 12px 12px 0 0;
-            color: white;
-            padding: 15px;
-        }
-
-        .room-footer {
-            background: #fff;
-            padding: 10px;
-            border-radius: 0 0 12px 12px;
-            text-align: center;
-        }
-
-        .enter-btn {
-            background: #f4a62a;
-            border: none;
-            color: #fff;
-            font-weight: 600;
-            padding: 5px 15px;
-            border-radius: 8px;
-        }
-
-        /* ── BUTTONS ── */
         .btn-create {
+            display: flex;
+            align-items: center;
             background: #33448f;
             color: #fff;
             font-weight: 600;
-            padding: 8px 20px;
-            border-radius: 8px;
+            padding: 10px 20px;
+            border-radius: 10px;
             border: none;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 4px 10px;
+            transition: 0.2s;
+            width: calc(100% - 20px);
         }
 
         .btn-create:hover {
@@ -163,70 +343,15 @@ $page = 'messages';
             color: #fff;
         }
 
-        /* ── SECTION PANELS ── */
-        .section-panel {
-            display: none;
-        }
-
-        .section-panel.active {
-            display: block;
-        }
-
-        /* ── BADGES ── */
-        .badge-on-track {
-            background: #d4edda;
-            color: #155724;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: .78rem;
-        }
-
-        .badge-pending {
-            background: #fff3cd;
-            color: #856404;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: .78rem;
-        }
-
-        .badge-submitted {
-            background: #cce5ff;
-            color: #004085;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: .78rem;
-        }
-
-        .badge-missing {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: .78rem;
-        }
-
-        /* ── STATUS TABLE ── */
-        .page-section h2 {
-            font-size: 1.6rem;
-            font-weight: 700;
-            margin-bottom: 2px;
-        }
-
-        .page-section p {
-            font-size: .85rem;
-            color: #888;
-            margin-bottom: 16px;
-        }
-
+        /* Status table */
         .search-box {
             display: flex;
             align-items: center;
             gap: 8px;
             background: white;
-            border: 1px solid;
+            border: 1px solid #ccc;
             border-radius: 24px;
             padding: 7px 14px;
-            flex: 1;
             max-width: 300px;
         }
 
@@ -235,7 +360,6 @@ $page = 'messages';
             outline: none;
             font-size: 13px;
             width: 100%;
-            color: #333;
         }
 
         table {
@@ -285,40 +409,728 @@ $page = 'messages';
             background: #ff6b2c;
         }
 
-        /* ── REQUIREMENT ITEMS ── */
-        .req-item {
+        /* Chat styles */
+        .chat-container {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            height: 520px;
+            border: 1px solid #eee;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fafafa;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .msg-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .msg-row.me {
+            flex-direction: row-reverse;
+        }
+
+        .msg-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e0c4d8;
+            display: flex;
             align-items: center;
-            padding: 12px 0;
+            justify-content: center;
+            font-weight: 700;
+            color: #d63ba5;
+            font-size: .7rem;
+            flex-shrink: 0;
+        }
+
+        .msg-bubble-wrap {
+            max-width: 68%;
+        }
+
+        .msg-sender {
+            font-size: .72rem;
+            font-weight: 600;
+            color: #888;
+            margin-bottom: 3px;
+            padding-left: 2px;
+        }
+
+        .me .msg-sender {
+            text-align: right;
+            padding-right: 2px;
+            padding-left: 0;
+        }
+
+        .msg-bubble {
+            padding: 9px 13px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        .msg-row:not(.me) .msg-bubble {
+            background: #fff;
+            border: 1px solid #ecdaea;
+            border-bottom-left-radius: 4px;
+            color: #222;
+        }
+
+        .msg-row.me .msg-bubble {
+            background: #d63ba5;
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .msg-time {
+            font-size: 12px;
+            color: #bbb;
+            margin-top: 3px;
+            padding-left: 2px;
+        }
+
+        .me .msg-time {
+            text-align: right;
+            padding-right: 2px;
+            padding-left: 0;
+        }
+
+        .chat-day-divider {
+            text-align: center;
+            font-size: 12px;
+            color: #bbb;
+            position: relative;
+            margin: 4px 0;
+        }
+
+        .chat-day-divider::before,
+        .chat-day-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 38%;
+            height: 1px;
+            background: #eee;
+        }
+
+        .chat-day-divider::before {
+            left: 0;
+        }
+
+        .chat-day-divider::after {
+            right: 0;
+        }
+
+        .chat-input-bar {
+            border-top: 1px solid #eee;
+            background: #fff;
+            padding: 10px 12px;
+        }
+
+        .file-preview-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .file-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #fce8f5;
+            border: 1px solid #f0c6e8;
+            border-radius: 20px;
+            padding: 4px 10px 4px 8px;
+            font-size: 12px;
+            color: #b5237f;
+        }
+
+        .file-chip button {
+            background: none;
+            border: none;
+            color: #b5237f;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+            font-size: 12px;
+        }
+
+        .chat-input-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .chat-input-row textarea {
+            flex: 1;
+            border: 1.5px solid #e8d0e3;
+            border-radius: 22px;
+            padding: 9px 16px;
+            font-size: 14px;
+            line-height: 1.4;
+            max-height: 110px;
+            overflow-y: auto;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+        }
+
+        .chat-input-row textarea:focus {
+            border-color: #d63ba5;
+        }
+
+        .chat-attach-btn,
+        .chat-send-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .chat-attach-btn {
+            background: #f5e6f2;
+            color: #d63ba5;
+        }
+
+        .chat-attach-btn:hover {
+            background: #ecd3e8;
+        }
+
+        .chat-send-btn {
+            background: #d63ba5;
+            color: #fff;
+        }
+
+        .chat-send-btn:hover {
+            background: #bc2e8e;
+        }
+
+        .chat-send-btn:disabled {
+            background: #e5b8d8;
+            cursor: not-allowed;
+        }
+
+        .progress-bar-bg {
+            width: 80px;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: #ff6b2c;
+        }
+
+        .checklist-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .checklist-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1.5px solid;
+        }
+
+        .checklist-pill.done {
+            background: #d1fae5;
+            color: #065f46;
+            border-color: #6ee7b7;
+        }
+
+        .checklist-pill.pending {
+            background: #f3f4f6;
+            color: #9ca3af;
+            border-color: #e5e7eb;
+        }
+
+
+        .room-chat-wrap {
+            display: flex;
+            height: calc(100vh - 70px);
+            margin: -24px;
+            overflow: hidden;
+        }
+
+        /* Chat list panel */
+        .room-chat-list {
+            width: 280px;
+            flex-shrink: 0;
+            border-right: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .room-chat-list-header {
+            padding: 16px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .room-chat-list-header h5 {
+            font-weight: 700;
+            font-size: 15px;
+            margin: 0;
+        }
+
+        .room-chat-entries {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .room-chat-entry {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            border-bottom: 1px solid #f5f5f5;
+            transition: background .15s;
+        }
+
+        .room-chat-entry:hover {
+            background: #fafafa;
+        }
+
+        .room-chat-entry.active {
+            background: #fff7ed;
+        }
+
+        .room-chat-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 15px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .room-chat-entry-meta {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .room-chat-entry-name {
+            font-weight: 600;
+            font-size: 13.5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .room-chat-entry-preview {
+            font-size: 11.5px;
+            color: #aaa;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .room-chat-badge {
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 99px;
+            font-weight: 600;
+        }
+
+        /* Dividers in chat list */
+        .room-chat-divider {
+            padding: 6px 16px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+            color: #aaa;
+            background: #fafafa;
             border-bottom: 1px solid #f0f0f0;
         }
 
-        .req-item:last-child {
-            border-bottom: none;
+        /* Message panel */
+        .room-message-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #fcfcfc;
+            min-width: 0;
+            overflow: hidden;
         }
 
-        .req-title {
-            font-size: .9rem;
-            font-weight: 600;
-            color: #333;
+        .room-message-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid #eee;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
         }
 
-        .req-sub {
-            font-size: .78rem;
-            color: #888;
-            margin-top: 2px;
+        .room-message-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
-        /* ── RESPONSIVE ── */
-        @media (max-width: 992px) {
-            .main {
-                margin-left: 0;
+        .room-msg-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .room-msg-row.me {
+            flex-direction: row-reverse;
+        }
+
+        .room-msg-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .room-msg-bubble-wrap {
+            max-width: 65%;
+        }
+
+        .room-msg-sender {
+            font-size: 11px;
+            color: #aaa;
+            margin-bottom: 3px;
+            padding-left: 2px;
+        }
+
+        .me .room-msg-sender {
+            text-align: right;
+            padding-left: 0;
+            padding-right: 2px;
+        }
+
+        .room-msg-bubble {
+            padding: 9px 14px;
+            border-radius: 16px;
+            font-size: 13.5px;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        .room-msg-row:not(.me) .room-msg-bubble {
+            background: #fff;
+            border: 1px solid #eee;
+            border-bottom-left-radius: 4px;
+            color: #222;
+        }
+
+        .room-msg-row.me .room-msg-bubble {
+            background: #ff6b2c;
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .room-msg-time {
+            font-size: 11px;
+            color: #ccc;
+            margin-top: 3px;
+            padding-left: 2px;
+        }
+
+        .me .room-msg-time {
+            text-align: right;
+            padding-right: 2px;
+        }
+
+        .room-message-input-bar {
+            border-top: 1px solid #eee;
+            background: #fff;
+            padding: 12px 16px;
+            flex-shrink: 0;
+        }
+
+        .room-message-input-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .room-message-input-row textarea {
+            flex: 1;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 22px;
+            padding: 9px 16px;
+            font-size: 13.5px;
+            line-height: 1.4;
+            max-height: 100px;
+            overflow-y: auto;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            transition: border-color .2s;
+        }
+
+        .room-message-input-row textarea:focus {
+            border-color: #ff6b2c;
+        }
+
+        .room-chat-send-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #ff6b2c;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+            transition: filter .15s;
+        }
+
+        .room-chat-send-btn:hover {
+            filter: brightness(.9);
+        }
+
+        .room-chat-send-btn:disabled {
+            background: #ffb899;
+            cursor: not-allowed;
+        }
+
+        .room-chat-empty {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #ccc;
+            gap: 10px;
+        }
+
+        .room-chat-search {
+            padding: 10px 16px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .room-chat-search input {
+            width: 100%;
+            padding: 7px 12px;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 20px;
+            font-size: 13px;
+            outline: none;
+            font-family: inherit;
+            transition: border-color .2s;
+        }
+
+        .room-chat-search input:focus {
+            border-color: #ff6b2c;
+        }
+
+        /*susu*/
+        .room-initial {
+            display: none;
+        }
+
+        .room-name-text {
+            display: inline;
+        }
+
+        /*===(MEDIA QUERY)===*/
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed !important;
+                top: 70px !important;
+                left: 0 !important;
+                bottom: 0 !important;
+                width: 60px !important;
+                height: calc(100vh - 70px) !important;
+                padding: 10px 0 !important;
+                border-radius: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                overflow-x: hidden !important;
+                z-index: 100;
             }
 
-            .sidebar {
-                position: relative;
-                width: 100%;
+            .sidebar>div {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                width: 100% !important;
+            }
+
+            /* Hide all text */
+            .sidebar .sidebar-text,
+            .rooms-list h6,
+            .rooms-list hr {
+                display: none !important;
+            }
+
+            /* Icon nav links */
+            .sidebar>div>a {
+                width: 44px !important;
+                height: 44px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 12px !important;
+                font-size: 1.2rem !important;
+                padding: 0 !important;
+            }
+
+            .sidebar>div>a i {
+                margin: 0 !important;
+            }
+
+            /* Rooms list */
+            .rooms-list {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                margin-top: 0 !important;
+                width: 100% !important;
+                max-height: unset !important;
+                overflow: hidden !important;
+            }
+
+            .room-link {
+                display: flex !important;
+                justify-content: center !important;
+                width: 100% !important;
+                margin: 0 0 8px 0 !important;
+                padding: 0 !important;
+            }
+
+            /* Room bubble — show ONLY the initial letter */
+            .room-item {
+                width: 44px !important;
+                height: 44px !important;
+                min-width: 44px !important;
+                min-height: 44px !important;
+                border-radius: 12px !important;
+                background: #e8e8e8 !important;
+                color: #555 !important;
+                font-weight: bold !important;
+                font-size: 1.2rem !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: hidden !important;
+            }
+
+            .room-item.active-room {
+                background: #ffdac8 !important;
+                color: #ff6b2c !important;
+            }
+
+            .room-item.text-muted {
+                background: #f0f0f0 !important;
+                color: #bbb !important;
+            }
+
+            .room-name-text {
+                display: none !important;
+            }
+
+            .room-initial {
+                display: flex !important;
+            }
+
+            /* Push main content past the sidebar */
+            .main {
+                margin-left: 65px !important;
+                padding: 15px !important;
+            }
+
+            .room-card h5 {
+                display: -webkit-box !important;
+                -webkit-line-clamp: 2 !important;
+                line-clamp: 2 !important;
+                -webkit-box-orient: vertical !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+
+            /* Fix card height so all cards are equal */
+            .room-card {
+                min-height: 130px !important;
+                max-height: 130px !important;
+                overflow: hidden !important;
+            }
+
+            .avatar {
+                width: 34px;
+                height: 34px;
+                min-width: 34px;
+                min-height: 34px;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+
+            .chat-container {
+                position: fixed !important;
+                top: 70px !important;
+                left: 60px !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                height: calc(100vh - 70px) !important;
+                border-radius: 0 !important;
+                border: none !important;
+            }
+
+            .chat-container .chat-messages {
+                flex: 1 !important;
+            }
+
+            .btn-create {
+                padding: 5px 10px;
+                width: 65%;
             }
         }
     </style>
@@ -331,8 +1143,7 @@ $page = 'messages';
     <?php if (isset($_SESSION['success'])): ?>
         <div class="alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
             style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
-            <i class="fa fa-circle-check me-1"></i>
-            <?= $_SESSION['success'] ?>
+            <i class="fa fa-circle-check me-1"></i><?= $_SESSION['success'] ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php unset($_SESSION['success']); ?>
@@ -341,8 +1152,7 @@ $page = 'messages';
     <?php if (isset($_SESSION['warning'])): ?>
         <div class="alert alert-warning alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
             style="z-index:9999; min-width:400px;" role="alert" id="flashAlert">
-            <i class="fa fa-triangle-exclamation me-1"></i>
-            <?= $_SESSION['warning'] ?>
+            <i class="fa fa-triangle-exclamation me-1"></i><?= $_SESSION['warning'] ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php unset($_SESSION['warning']); ?>
@@ -351,249 +1161,664 @@ $page = 'messages';
     <?php if (isset($_SESSION['error'])): ?>
         <div class="alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
             style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
-            <i class="fa fa-circle-xmark me-1"></i>
-            <?= $_SESSION['error'] ?>
+            <i class="fa fa-circle-xmark me-1"></i><?= $_SESSION['error'] ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
 
+    <?php if (isset($_SESSION['info'])): ?>
+        <div class="alert alert-info alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
+            style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
+            <i class="fa fa-circle-info me-1"></i><?= $_SESSION['info'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['info']); ?>
+    <?php endif; ?>
+
     <!-- SIDEBAR -->
     <div class="sidebar">
         <div style="display:flex; flex-direction:column; width:100%;">
-            <a href="#" onclick="event.preventDefault(); showSection('home', event)" class="active" id="nav-home">
-                <i class="fa-solid fa-house me-1"></i> Virtual Rooms
+
+            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>" class="<?= $section === '' ? 'active' : '' ?>">
+                <i class="fa-solid fa-comments me-2"></i> Room
             </a>
-            <a href="#" onclick="event.preventDefault(); showSection('status', event)" id="nav-status">
+
+            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=status"
+                class="<?= $section === 'status' ? 'active' : '' ?>">
                 <i class="fa-solid fa-calendar-check me-2"></i> Status
             </a>
-            <a href="#" onclick="event.preventDefault(); showSection('requirements', event)" id="nav-requirements">
-                <i class="fa-solid fa-list me-2"></i> Requirements
+
+            <!-- <a href="ojt-rooms.php?room_id=<?//= $current_room_id ?>&section=remarks"
+                class="<?//= $section === 'remarks' ? 'active' : '' ?>">
+                <i class="fa-solid fa-list me-2"></i> Remarks
+            </a> -->
+
+            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=ojt_applications"
+                class="<?= $section === 'ojt_applications' ? 'active' : '' ?>">
+                <i class="bi bi-book-fill me-2"></i> OJT Applications
+                <?php
+                $pendingStmt = $pdo->prepare("
+                    SELECT COUNT(*) FROM ojt_applications oa 
+                    JOIN room_members rm ON oa.student_id = rm.user_id AND rm.user_type = 'student'
+                    WHERE rm.room_id = ? AND oa.status = 'pending'
+                ");
+                $pendingStmt->execute([$current_room_id]);
+                $pCount = $pendingStmt->fetchColumn();
+                if ($pCount > 0):
+                    ?>
+                    <span class="ms-auto badge rounded-pill"
+                        style="background:#ff6b2c;font-size:10px;"><?= $pCount ?></span>
+                <?php endif; ?>
+            </a>
+            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=supervisor_requests"
+                class="<?= $section === 'supervisor_requests' ? 'active' : '' ?>">
+                <i class="fa-solid fa-user-tie me-2"></i> Supervisor Requests
+                <?php
+                $supPendingStmt = $pdo->prepare("
+                    SELECT COUNT(*) FROM student_hte_supervisor_submissions shss
+                    JOIN room_members rm ON shss.student_id = rm.user_id AND rm.user_type = 'student'
+                    WHERE rm.room_id = ? AND shss.status = 'pending'
+                ");
+                $supPendingStmt->execute([$current_room_id]);
+                $supPCount = $supPendingStmt->fetchColumn();
+                if ($supPCount > 0):
+                    ?>
+                    <span class="ms-auto badge rounded-pill"
+                        style="background:#ff6b2c;font-size:10px;"><?= $supPCount ?></span>
+                <?php endif; ?>
+            </a>
+            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=chats"
+                class="<?= $section === 'chats' ? 'active' : '' ?>">
+                <i class="fa-solid fa-comments me-2"></i> Chats
             </a>
 
-            <div class="rooms-list" style="overflow-y:auto; max-height:400px; scrollbar-width:none;">
-                <hr><br>
-                <h6>ROOMS</h6>
 
-                <?php foreach ($rooms as $room): ?>
-                    <?php if (!$isAdviser && $room['is_archived'])
-                        continue; ?>
+            <?php if ($isAdviser): ?>
+                <hr style="border-color:#eee; margin:10px 0;">
+                <button class="btn-create" data-bs-toggle="modal" data-bs-target="#csvUploadModal">
+                    <i class="fa fa-file-csv me-2"></i> Import Students
+                </button>
+            <?php endif; ?>
 
-                    <?php if ($current_room_id == $room['id']): ?>
-                        <a href="#" onclick="return false;" class="room-link">
-                            <div class="room-item active-room">
-                                <?= htmlspecialchars($room['room_name']) ?>
-                                <?php if ($room['is_archived']): ?>
-                                    <span style="font-size:10px;"> (Archived)</span>
-                                <?php endif; ?>
-                            </div>
-                        </a>
-                    <?php else: ?>
-                        <a href="?room_id=<?= $room['id'] ?>" class="room-link">
-                            <div class="room-item <?= $room['is_archived'] ? 'text-muted' : '' ?>">
-                                <?= htmlspecialchars($room['room_name']) ?>
-                                <?php if ($room['is_archived']): ?>
-                                    <span style="font-size:10px;"> (Archived)</span>
-                                <?php endif; ?>
-                            </div>
-                        </a>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </div>
         </div>
     </div>
 
     <!-- MAIN CONTENT -->
     <div class="main">
-        <?//php var_dump($_SESSION) ?>
-        <?php if ($current_room_id): ?>
 
+        <?php if ($section === ''): ?>
             <?php include 'chat-room-content.php'; ?>
 
-        <?php else: ?>
+        <?php elseif ($section === 'status'): ?>
+            <div>
+                <h4 class="fw-bold mb-1">OJT Status</h4>
+                <p class="text-muted mb-3" style="font-size:.85rem;">Monitor student progress on their OJT program</p>
 
-            <!-- HOME SECTION -->
-            <div class="section-panel active" id="section-home">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h3><strong>Virtual Rooms</strong></h3>
-                    <div class="d-flex gap-2">
-                        <button class="btn-create" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
-                            + Create a Room
-                        </button>
-                        <button class="btn-create" data-bs-toggle="modal" data-bs-target="#csvUploadModal">
-                            <i class="fa fa-file-csv me-1"></i> Import CSV
-                        </button>
-                    </div>
-                </div>
+                <?php
+                // Fetch current required hours for this room
+                $rhStmt = $pdo->prepare("SELECT required_hours FROM rooms WHERE id = ?");
+                $rhStmt->execute([$current_room_id]);
+                $requiredHours = $rhStmt->fetchColumn() ?: 486;
+                ?>
 
-                <div class="row mt-1 g-4">
-                    <?php foreach ($rooms as $room): ?>
-                        <div class="col-12 col-sm-6 col-lg-4">
-                            <div class="card shadow-sm <?= $room['is_archived'] ? 'opacity-50' : '' ?>"
-                                style="border-radius:12px;">
-
-                                <div class="room-card" style="background: <?= $color ?>">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <div>
-                                            <h5><?= htmlspecialchars($room['room_name']) ?></h5>
-                                            <small>
-                                                <?= htmlspecialchars($room['full_name']) ?>
-                                                (<?= htmlspecialchars($room['role']) ?>)
-                                            </small>
-                                        </div>
-                                        <?php if ($isAdviser && !$room['is_archived']): ?>
-                                            <form method="POST" action="archive-room.php"
-                                                onsubmit="return confirm('Archive this room? Students will no longer see it.')">
-                                                <input type="hidden" name="delete">
-                                                <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
-                                                <button type="submit" class="btn btn-sm btn-light" title="Archive room"
-                                                    style="font-size:11px; color:#616161; border:1px solid #ccc;">
-                                                    <i class="fa-solid fa-box-archive"></i>
-                                                </button>
-                                            </form>
-                                        <?php elseif ($isAdviser && $room['is_archived']): ?>
-                                            <span class="badge bg-secondary" style="font-size:10px;">Archived</span>
-                                            <form method="POST" action="archive-room.php"
-                                                onsubmit="return confirm('Restore this room?')">
-                                                <input type="hidden" name="restore">
-                                                <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
-                                                <button type="submit" class="btn btn-sm btn-light" title="Archive room"
-                                                    style="font-size:11px; color:#616161; border:1px solid #1a1a1a;">
-                                                    <i class="bi bi-backpack4-fill"></i>
-                                                </button>
-                                            </form>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-
-                                <div class="room-footer">
-                                    <form method="GET">
-                                        <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
-                                        <button class="enter-btn" <?= $room['is_archived'] ? 'disabled' : '' ?>>
-                                            Enter Room
-                                        </button>
-                                    </form>
-                                </div>
-
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <!-- STATUS SECTION -->
-            <div class="section-panel" id="section-status">
-                <h4><strong>Monitor OJT progress and HTE remarks</strong></h4><br>
-
-                <div style="display:flex; gap:10px; margin-bottom:16px; align-items:center;">
+                <!-- Adviser: Set Required Hours -->
+                <div
+                    style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
                     <div class="search-box">
                         <i class="fa-solid fa-magnifying-glass"></i>
                         <input type="text" id="searchInput" placeholder="Search student" oninput="filterTable()">
                     </div>
-                    <select id="roomFilter" onchange="filterTable()"
-                        style="padding:7px 14px; border:1px solid; border-radius:24px; font-size:12px;">
-                        <option value="">All Rooms</option>
-                        <?php foreach ($rooms as $r): ?>
-                            <option value="<?= htmlspecialchars($r['room_name']) ?>">
-                                <?= htmlspecialchars($r['room_name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <form method="POST" action="ojt-required-hours.php" style="display:flex; align-items:center; gap:8px;">
+                        <input type="hidden" name="room_id" value="<?= $current_room_id ?>">
+                        <label style="font-size:13px; color:#555; font-weight:500; white-space:nowrap;">
+                            Required OJT Hours:
+                        </label>
+                        <input type="number" name="required_hours" value="<?= $requiredHours ?>" min="1" style="width:70px; border:1.5px solid #e5e7eb; border-radius:8px;
+                           padding:6px 8px; font-size:13px; text-align:center; outline:none;">
+                        <button type="submit" class="btn btn-sm"
+                            style="background:#ff6b2c; color:white; border-radius:8px; font-size:13px; font-weight:600;">
+                            <i class="fa fa-save me-1"></i> Save
+                        </button>
+                    </form>
                 </div>
 
-                <div style="background:white; border:1px solid #00000060; border-radius:8px; overflow:hidden;">
+
+                <div style="background:white; border:1px solid #ddd; border-radius:8px; overflow:hidden;">
                     <table>
-                        <thead>
+                        <thead style="background:#f8f9fa;">
                             <tr>
                                 <th>STUDENT</th>
-                                <th>ROOM</th>
                                 <th>COMPANY</th>
                                 <th>HOURS</th>
                                 <th>PROGRESS</th>
-                                <th>HTE REMARKS</th>
+                                <!-- <th>HTE REMARKS</th> -->
                             </tr>
                         </thead>
                         <tbody id="all-students-tbody">
-                            <tr data-room="Room 4A">
-                                <td>
-                                    <div class="student-cell">
-                                        <div class="avatar" style="background:#ff2c8f;"><strong>R</strong></div>
-                                        <h6>Riva Mae Boongaling</h6>
-                                    </div>
-                                </td>
-                                <td>Room 4A</td>
-                                <td>TechCorp PH</td>
-                                <td><strong>364</strong> / 486</td>
-                                <td>
-                                    <div style="display:flex; align-items:center; gap:8px;">
-                                        <div class="progress-bar-bg">
-                                            <div class="progress-bar-fill" style="width:75%"></div>
-                                        </div>
-                                        <span>75%</span>
-                                    </div>
-                                </td>
-                                <td>Very Satisfactory</td>
-                            </tr>
-                            <tr data-room="Room 2C">
-                                <td>
-                                    <div class="student-cell">
-                                        <div class="avatar" style="background:#2c6fff;"><strong>M</strong></div>
-                                        <h6>Mark Anthony Dela Cruz</h6>
-                                    </div>
-                                </td>
-                                <td>Room 2C</td>
-                                <td>TechCorp PH</td>
-                                <td><strong>268</strong> / 486</td>
-                                <td>
-                                    <div style="display:flex; align-items:center; gap:8px;">
-                                        <div class="progress-bar-bg">
-                                            <div class="progress-bar-fill" style="width:55%"></div>
-                                        </div>
-                                        <span>55%</span>
-                                    </div>
-                                </td>
-                                <td>Satisfactory</td>
-                            </tr>
+                            <?php if (empty($statuses)): ?>
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">
+                                        No students in this room yet.
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($statuses as $s):
+                                    $progressWidth = min(round(($s['total_hours'] / $requiredHours) * 100, 2), 100);
+                                    $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22'];
+                                    $avatarColor = $avatarColors[crc32($s['full_name']) % count($avatarColors)];
+                                    ?>
+                                    <tr>
+                                        <td>
+                                            <div class="student-cell">
+                                                <div class="avatar" style="background:<?= $avatarColor ?>;">
+                                                    <strong><?= strtoupper(substr($s['full_name'], 0, 1)) ?></strong>
+                                                </div>
+                                                <span><?= htmlspecialchars($s['full_name']) ?></span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <?php if (empty($s['company'])): ?>
+                                                <span class="rounded-pill px-3 py-1"
+                                                    style="background:#f8d7da; color:#721c24; font-size:12px; font-weight:500;">
+                                                    No company
+                                                </span>
+                                            <?php else: ?>
+                                                <?= htmlspecialchars($s['company']) ?>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><strong><?= $s['total_hours'] ?></strong> / <?= $requiredHours ?></td>
+                                        <td>
+                                            <div style="display:flex; align-items:center; gap:8px;">
+                                                <div class="progress-bar-bg">
+                                                    <div class="progress-bar-fill" style="width:<?= $progressWidth ?>%"></div>
+                                                </div>
+                                                <span><?= $progressWidth ?>%</span>
+                                            </div>
+                                        </td>
+                                        <!-- <td><?//= htmlspecialchars($s['latest_remarks'] ?? '—') ?></td> -->
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- REQUIREMENTS SECTION -->
-            <div class="section-panel" id="section-requirements">
-                <!-- Requirements content goes here -->
+        <?php elseif ($section === 'remarks'): ?>
+            <div>
+                <h4 class="fw-bold mb-1">Requirements & Remarks</h4>
+                <p class="text-muted mb-3" style="font-size:.85rem;">Track student requirement submissions.</p>
+                <!-- your existing remarks/requirements content here -->
             </div>
 
+        <?php elseif ($section === 'ojt_applications'): ?>
+
+            <?php
+            $stepLabels = [
+                'hte_form' => 'HTE Form',
+                'addendum' => 'Addendum',
+                'reco_letter' => 'Reco Letter',
+                'waiver' => 'Waiver',
+                'medical_cert' => 'Medical Cert',
+                'internship_plan' => 'Internship Plan',
+                'vicinity_map' => 'Vicinity Map',
+                'oath' => 'Oath',
+                'ojt_started' => 'OJT Started',
+            ];
+            ?>
+            <div>
+                <h4 class="fw-bold mb-1">OJT Applications</h4>
+                <p class="text-muted mb-3">Track students' OJT application progress.</p>
+
+                <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
+                    <div style="position:relative; flex:1; min-width:200px;">
+                        <i class="fa fa-search"
+                            style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#aaa; font-size:13px;"></i>
+                        <input type="text" id="search-input" placeholder="Search by name, student no., or company..."
+                            oninput="filterApps()" style="width:100%; padding:8px 12px 8px 32px; border:1.5px solid #e5e7eb; border-radius:8px;
+                font-size:13px; font-family:inherit; outline:none; transition:border-color .2s;"
+                            onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                    </div>
+                    <select id="progress-filter" onchange="filterApps()" style="padding:8px 12px; border:1.5px solid #e5e7eb; border-radius:8px; font-size:13px;
+            font-family:inherit; outline:none; background:white; cursor:pointer; transition:border-color .2s;"
+                        onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                        <option value="all">All Progress</option>
+                        <option value="0">Not Started (0%)</option>
+                        <option value="1">In Progress (1-49%)</option>
+                        <option value="50">Halfway (50-74%)</option>
+                        <option value="75">Almost Done (75-99%)</option>
+                        <option value="100">Complete (100%)</option>
+                    </select>
+                </div>
+
+                <?php if (empty($ojtApplications)): ?>
+                    <div class="text-center text-muted py-5">
+                        <i class="fa fa-inbox fa-2x mb-2 d-block"></i>
+                        No OJT applications yet.
+                    </div>
+                <?php else: ?>
+
+                    <!-- Application Cards -->
+                    <div style="display:flex; flex-direction:column; gap:12px;" id="apps-list">
+                        <?php foreach ($ojtApplications as $app):
+                            $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22'];
+                            $avatarColor = $avatarColors[crc32($app['full_name']) % count($avatarColors)];
+                            $checklist = json_decode($app['checklist'] ?? '{}', true) ?: [];
+                            $doneCount = count(array_filter($checklist));
+                            $totalCount = count($stepLabels);
+                            $progressPct = $totalCount > 0 ? round(($doneCount / $totalCount) * 100) : 0;
+                            ?>
+                            <div class="app-card" data-name="<?= strtolower(htmlspecialchars($app['full_name'])) ?>"
+                                data-student="<?= strtolower(htmlspecialchars($app['student_no'])) ?>"
+                                data-company="<?= strtolower(htmlspecialchars($app['company_name'] ?? '')) ?>"
+                                data-progress="<?= $progressPct ?>" style="background:white; border:1px solid #eee; border-radius:12px; padding:18px 20px;
+                            box-shadow:0 1px 4px rgba(0,0,0,0.04); transition:box-shadow .2s;">
+
+                                <!-- Top row: avatar + student info + company + date + status badge -->
+                                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+
+                                    <!-- Avatar + Name -->
+                                    <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:200px;">
+                                        <div style="width:42px;height:42px;border-radius:50%;background:<?= $avatarColor ?>;
+                        color:white;display:flex;align-items:center;justify-content:center;
+                        font-weight:700;font-size:16px;flex-shrink:0;">
+                                            <?= strtoupper(substr($app['full_name'], 0, 1)) ?>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px;">
+                                                <?= htmlspecialchars($app['full_name']) ?>
+                                                <span
+                                                    style=" background: <?= $progressPct === 100 ? '#d1fae5' : ($progressPct >= 50 ? '#dbeafe' : '#fef3c7') ?>;
+                                                color: <?= $progressPct === 100 ? '#065f46' : ($progressPct >= 50 ? '#1e40af' : '#92400e') ?>;
+                                                border: 1px solid <?= $progressPct === 100 ? '#6ee7b7' : ($progressPct >= 50 ? '#93c5fd' : '#fde68a') ?>;
+                                                font-size:11px; font-weight:600; padding:2px 8px;border-radius:99px; white-space:nowrap;">
+                                                    <?= $progressPct ?>%
+                                                </span>
+                                            </div>
+                                            <div style="font-size:12px;color:#888;">
+                                                <?= htmlspecialchars($app['student_no']) ?> &middot;
+                                                <?= htmlspecialchars($app['program']) ?>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Company -->
+                                    <div style="flex:1; min-width:150px;">
+                                        <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;">Company
+                                        </div>
+                                        <div style="font-size:13px;font-weight:500;">
+                                            <?= htmlspecialchars($app['company_name'] ?? '—') ?>
+                                        </div>
+                                        <?php if (!empty($app['location'])): ?>
+                                            <div style="font-size:11px;color:#888;">
+                                                <i class="fa fa-location-dot me-1"></i>
+                                                <?= htmlspecialchars($app['location']) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <!-- Submitted date -->
+                                    <div style="min-width:100px;">
+                                        <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;">
+                                            Submitted</div>
+                                        <div style="font-size:13px;">
+                                            <?= date('M d, Y', strtotime($app['submitted_at'])) ?>
+                                        </div>
+                                    </div>
+
+                                    <!-- Status badge -->
+                                </div>
+
+                                <!-- Checklist Pills -->
+                                <div class="checklist-grid">
+                                    <?php foreach ($stepLabels as $key => $label):
+                                        $done = !empty($checklist[$key]);
+                                        ?>
+                                        <span class="checklist-pill <?= $done ? 'done' : 'pending' ?>">
+                                            <i class="fa <?= $done ? 'fa-circle-check' : 'fa-circle' ?>" style="font-size:10px;"></i>
+                                            <?= $label ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
+
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                <?php endif; ?>
+            </div>
+        <?php elseif ($section === 'supervisor_requests'): ?>
+            <div>
+                <h4 class="fw-bold mb-1">HTE Supervisor Requests</h4>
+                <p class="text-muted mb-3" style="font-size:.85rem;">
+                    Review and approve HTE supervisor account requests from your students.
+                    Approving will create a supervisor account they can use to log student hours.
+                </p>
+
+                <?php if (empty($supervisorRequests)): ?>
+                    <div class="text-center text-muted py-5">
+                        <i class="fa fa-user-tie fa-2x mb-2 d-block"></i>
+                        No supervisor requests yet.
+                    </div>
+                <?php else: ?>
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                        <?php foreach ($supervisorRequests as $req):
+                            $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22'];
+                            $avatarColor = $avatarColors[crc32($req['student_name']) % count($avatarColors)];
+                            $statusStyles = [
+                                'pending' => ['bg' => '#fffbeb', 'border' => '#fde68a', 'color' => '#92400e', 'label' => 'Pending Review'],
+                                'approved' => ['bg' => '#f0fdf4', 'border' => '#bbf7d0', 'color' => '#065f46', 'label' => 'Approved'],
+                                'rejected' => ['bg' => '#fef2f2', 'border' => '#fecaca', 'color' => '#dc2626', 'label' => 'Returned'],
+                            ];
+                            $st = $statusStyles[$req['status']] ?? $statusStyles['pending'];
+                            ?>
+                            <div style="background:white; border:1px solid #eee; border-radius:12px;
+                        padding:18px 20px; box-shadow:0 1px 4px rgba(0,0,0,.04);">
+
+                                <!-- Top row -->
+                                <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+
+                                    <!-- Student info -->
+                                    <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:200px;">
+                                        <div style="width:40px;height:40px;border-radius:50%;background:<?= $avatarColor ?>;
+                                    color:white;display:flex;align-items:center;justify-content:center;
+                                    font-weight:700;font-size:16px;flex-shrink:0;">
+                                            <?= strtoupper(substr($req['student_name'], 0, 1)) ?>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight:600;font-size:14px;">
+                                                <?= htmlspecialchars($req['student_name']) ?>
+                                            </div>
+                                            <div style="font-size:12px;color:#888;">
+                                                <?= htmlspecialchars($req['student_no']) ?> &middot;
+                                                <?= htmlspecialchars($req['program']) ?>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Status badge -->
+                                    <span style="padding:4px 12px; border-radius:99px; font-size:11px; font-weight:600;
+                                 background:<?= $st['bg'] ?>; color:<?= $st['color'] ?>;
+                                 border:1px solid <?= $st['border'] ?>; white-space:nowrap; align-self:center;">
+                                        <?= $st['label'] ?>
+                                    </span>
+                                </div>
+
+                                <!-- Supervisor details -->
+                                <div style="margin-top:14px; display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+                            gap:10px; background:#f9fafb; border-radius:8px; padding:12px 14px;
+                            border:1px solid #f0f0f0;">
+                                    <div>
+                                        <div
+                                            style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">
+                                            Supervisor Name
+                                        </div>
+                                        <div style="font-size:13px;font-weight:600;">
+                                            <?= htmlspecialchars($req['full_name']) ?>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div
+                                            style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">
+                                            Email
+                                        </div>
+                                        <div style="font-size:13px;">
+                                            <?= htmlspecialchars($req['email'] ?? '—') ?>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div
+                                            style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">
+                                            Contact
+                                        </div>
+                                        <div style="font-size:13px;">
+                                            <?= htmlspecialchars($req['contact_number'] ?? '—') ?>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div
+                                            style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">
+                                            Submitted
+                                        </div>
+                                        <div style="font-size:13px;">
+                                            <?= date('M d, Y', strtotime($req['submitted_at'])) ?>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Actions (only for pending) -->
+                                <?php if ($req['status'] === 'pending'): ?>
+                                    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                                        <!-- Approve -->
+                                        <form action="ojt-rooms-db.php" method="POST" style="margin:0;">
+                                            <input type="hidden" name="submission_id" value="<?= $req['id'] ?>">
+                                            <input type="hidden" name="student_id" value="<?= $req['student_id'] ?>">
+                                            <input type="hidden" name="room_id" value="<?= $current_room_id ?>">
+                                            <input type="hidden" name="action" value="approve">
+                                            <button type="submit" style="display:inline-flex;align-items:center;gap:6px;
+                                padding:8px 16px; border-radius:8px; border:none; cursor:pointer;
+                                background:#16a34a; color:white; font-size:13px; font-weight:500;
+                                font-family:inherit; transition:filter .15s;"
+                                                onmouseover="this.style.filter='brightness(.9)'" onmouseout="this.style.filter=''">
+                                                <i class="fa fa-circle-check"></i> Approve & Create Account
+                                            </button>
+                                        </form>
+
+                                        <!-- Reject toggle -->
+                                        <button onclick="toggleRejectSup(<?= $req['id'] ?>)" style="display:inline-flex;align-items:center;gap:6px;
+                                   padding:8px 16px; border-radius:8px; cursor:pointer;
+                                   background:white; color:#dc2626; font-size:13px; font-weight:500;
+                                   border:1.5px solid #fca5a5; font-family:inherit; transition:filter .15s;"
+                                            onmouseover="this.style.filter='brightness(.95)'" onmouseout="this.style.filter=''">
+                                            <i class="fa fa-circle-xmark"></i> Return to Student
+                                        </button>
+                                    </div>
+
+                                    <!-- Reject form (hidden by default) -->
+                                    <div id="reject-sup-<?= $req['id'] ?>" style="display:none; margin-top:10px;">
+                                        <form action="adviser-supervisor-action.php" method="POST">
+                                            <input type="hidden" name="submission_id" value="<?= $req['id'] ?>">
+                                            <input type="hidden" name="student_id" value="<?= $req['student_id'] ?>">
+                                            <input type="hidden" name="room_id" value="<?= $current_room_id ?>">
+                                            <input type="hidden" name="action" value="reject">
+                                            <textarea name="rejection_note" rows="2" placeholder="Reason for returning (optional)..."
+                                                style="width:100%; padding:8px 12px; border:1.5px solid #fca5a5;
+                                                    border-radius:8px; font-size:13px; font-family:inherit;
+                                                    outline:none; resize:vertical; margin-bottom:6px;"></textarea>
+                                            <button type="submit" style="padding:7px 14px; border-radius:8px; border:none;
+                                                background:#dc2626; color:white; font-size:13px; font-weight:500;
+                                                font-family:inherit; cursor:pointer;">
+                                                <i class="fa fa-paper-plane me-1"></i> Confirm Return
+                                            </button>
+                                        </form>
+                                        <i class="fa fa-circle-xmark"></i> Close
+                                    </div>
+
+                                <?php elseif ($req['status'] === 'approved'): ?>
+                                    <div
+                                        style="margin-top:10px; font-size:12px; color:#16a34a; display:flex; align-items:center; gap:6px;">
+                                        <i class="fa fa-circle-check"></i>
+                                        Account created &middot; Approved <?= date('M d, Y', strtotime($req['reviewed_at'])) ?>
+                                    </div>
+
+                                <?php elseif ($req['status'] === 'rejected'): ?>
+                                    <div
+                                        style="margin-top:10px; font-size:12px; color:#dc2626; display:flex; align-items:center; gap:6px;">
+                                        <i class="fa fa-circle-xmark"></i>
+                                        Returned to student &middot; <?= date('M d, Y', strtotime($req['reviewed_at'])) ?>
+                                        <?php if (!empty($req['rejection_note'])): ?>
+                                            &middot; <em><?= htmlspecialchars($req['rejection_note']) ?></em>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+        <?php elseif ($section === 'chats'): ?>
+            <?php
+            // Build a lookup of existing chats keyed by user_id+type for last message preview
+            $chatLookup = [];
+            foreach ($adviserChats as $ac) {
+                $key = $ac['chat_user_id'] . '-' . $ac['chat_user_type'];
+                $chatLookup[$key] = $ac;
+            }
+
+            // Separate chattable users into students and HTE advisers
+            $chatStudents = array_filter($chattableUsers, fn($u) => $u['user_type'] === 'student');
+            $chatHteAdvisers = array_filter($chattableUsers, fn($u) => $u['user_type'] === 'adviser');
+
+            $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22', '#e74c3c', '#16a085'];
+            ?>
+
+            <div class="room-chat-wrap">
+
+                <!-- Left: chat list -->
+                <div class="room-chat-list">
+                    <div class="room-chat-list-header">
+                        <h5>Chats</h5>
+                    </div>
+                    <div class="room-chat-search">
+                        <input type="text" placeholder="Search..." id="roomChatSearch" oninput="filterRoomChats()">
+                    </div>
+                    <div class="room-chat-entries" id="roomChatEntries">
+
+                        <!-- Students -->
+                        <div class="room-chat-divider">Students</div>
+                        <?php foreach ($chatStudents as $u):
+                            $key = $u['user_id'] . '-student';
+                            $preview = $chatLookup[$key]['last_message'] ?? 'No messages yet';
+                            $avatarColor = $avatarColors[crc32($u['full_name']) % count($avatarColors)];
+                            $isActive = ($chatSection_id == $u['user_id'] && $chatSection_type === 'student');
+                            ?>
+                            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=chats&chat_id=<?= $u['user_id'] ?>&chat_type=student"
+                                class="room-chat-entry <?= $isActive ? 'active' : '' ?>"
+                                data-name="<?= strtolower(htmlspecialchars($u['full_name'])) ?>">
+                                <div class="room-chat-avatar" style="background:<?= $avatarColor ?>;">
+                                    <?= strtoupper(substr($u['full_name'], 0, 1)) ?>
+                                </div>
+                                <div class="room-chat-entry-meta">
+                                    <div class="room-chat-entry-name"><?= htmlspecialchars($u['full_name']) ?></div>
+                                    <div class="room-chat-entry-preview"><?= htmlspecialchars(substr($preview, 0, 40)) ?></div>
+                                </div>
+                                <span class="room-chat-badge" style="background:#dbeafe; color:#1e40af;">Student</span>
+                            </a>
+                        <?php endforeach; ?>
+
+                        <!-- HTE Advisers -->
+                        <?php if (!empty($chatHteAdvisers)): ?>
+                            <div class="room-chat-divider" style="margin-top:4px;">HTE Supervisors</div>
+                            <?php foreach ($chatHteAdvisers as $u):
+                                $key = $u['user_id'] . '-adviser';
+                                $preview = $chatLookup[$key]['last_message'] ?? 'No messages yet';
+                                $avatarColor = $avatarColors[crc32($u['full_name']) % count($avatarColors)];
+                                $isActive = ($chatSection_id == $u['user_id'] && $chatSection_type === 'adviser');
+                                ?>
+                                <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=chats&chat_id=<?= $u['user_id'] ?>&chat_type=adviser"
+                                    class="room-chat-entry <?= $isActive ? 'active' : '' ?>"
+                                    data-name="<?= strtolower(htmlspecialchars($u['full_name'])) ?>">
+                                    <div class="room-chat-avatar" style="background:<?= $avatarColor ?>;">
+                                        <?= strtoupper(substr($u['full_name'], 0, 1)) ?>
+                                    </div>
+                                    <div class="room-chat-entry-meta">
+                                        <div class="room-chat-entry-name"><?= htmlspecialchars($u['full_name']) ?></div>
+                                        <div class="room-chat-entry-preview"><?= htmlspecialchars(substr($preview, 0, 40)) ?></div>
+                                    </div>
+                                    <span class="room-chat-badge" style="background:#d1fae5; color:#065f46;">HTE</span>
+                                </a>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
+                    </div>
+                </div>
+
+                <!-- Right: message panel -->
+                <div class="room-message-panel">
+
+                    <?php if ($chatSection_id): ?>
+                        <?php
+                        $openName = getRoomChatName($pdo, $chatSection_id, $chatSection_type);
+                        $openColor = $avatarColors[crc32($openName) % count($avatarColors)];
+                        $isHte = ($chatSection_type === 'adviser');
+                        ?>
+
+                        <!-- Header -->
+                        <div class="room-message-header">
+                            <div class="room-chat-avatar"
+                                style="background:<?= $openColor ?>; width:36px; height:36px; font-size:14px;">
+                                <?= strtoupper(substr($openName, 0, 1)) ?>
+                            </div>
+                            <div>
+                                <div style="font-weight:700; font-size:14px;"><?= htmlspecialchars($openName) ?></div>
+                                <div style="font-size:11px; color:#aaa;">
+                                    <?= $isHte ? 'HTE Supervisor' : 'Student' ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Messages -->
+                        <div class="room-message-body" id="roomMsgBody">
+                            <?php if (empty($chatMessages)): ?>
+                                <div style="text-align:center; color:#ccc; margin:auto; font-size:13px;">
+                                    <i class="fa fa-comments fa-2x d-block mb-2"></i>
+                                    No messages yet. Say hello!
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($chatMessages as $msg):
+                                    $isMe = ($msg['sender_id'] == $adviser_id && $msg['sender_type'] === 'adviser');
+                                    $bubbleColor = $avatarColors[crc32($msg['sender_name'] ?? '') % count($avatarColors)];
+                                    ?>
+                                    <div class="room-msg-row <?= $isMe ? 'me' : '' ?>">
+                                        <?php if (!$isMe): ?>
+                                            <div class="room-msg-avatar" style="background:<?= $bubbleColor ?>;">
+                                                <?= strtoupper(substr($msg['sender_name'] ?? '?', 0, 1)) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="room-msg-bubble-wrap">
+                                            <?php if (!$isMe): ?>
+                                                <div class="room-msg-sender"><?= htmlspecialchars($msg['sender_name'] ?? '') ?></div>
+                                            <?php endif; ?>
+                                            <div class="room-msg-bubble"><?= htmlspecialchars($msg['message']) ?></div>
+                                            <div class="room-msg-time">
+                                                <?= date('M d, g:i A', strtotime($msg['created_at'])) ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Input bar -->
+                        <div class="room-message-input-bar">
+                            <form method="POST" action="message-db.php" id="roomChatForm">
+                                <input type="hidden" name="receiver_id" value="<?= $chatSection_id ?>">
+                                <input type="hidden" name="receiver_type" value="<?= $chatSection_type ?>">
+                                <input type="hidden" name="redirect"
+                                    value="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=chats&chat_id=<?= $chatSection_id ?>&chat_type=<?= $chatSection_type ?>">
+                                <div class="room-message-input-row">
+                                    <textarea name="message" id="roomChatInput" rows="1" placeholder="Type a message…" required
+                                        onkeydown="roomChatEnterSend(event)"></textarea>
+                                    <button type="submit" class="room-chat-send-btn" id="roomChatSendBtn">
+                                        <i class="fa fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                    <?php else: ?>
+                        <div class="room-chat-empty">
+                            <i class="fa fa-comments fa-3x"></i>
+                            <div style="font-size:14px;">Select a student or supervisor to start chatting</div>
+                        </div>
+                    <?php endif; ?>
+
+                </div>
+            </div>
         <?php endif; ?>
-    </div>
-
-    <!-- CREATE ROOM MODAL -->
-    <div class="modal fade" id="joinRoomModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content rounded-4">
-                <div class="modal-header">
-                    <h5 class="modal-title"><strong>Create a Room</strong></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form method="POST" action="ojt-rooms-db.php">
-                        <div class="mb-3">
-                            <label class="form-label">Room Name</label>
-                            <input type="text" name="room_name" class="form-control" placeholder="Enter room name"
-                                required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Section</label>
-                            <input type="text" name="section" class="form-control" placeholder="e.g. 3-4"
-                                pattern="^[0-9]+-[0-9]+$" title="Format must be like 3-4" required>
-                        </div>
-                        <div class="text-end">
-                            <button type="submit" class="btn btn-warning px-4">Create</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- CSV UPLOAD MODAL -->
@@ -601,22 +1826,21 @@ $page = 'messages';
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content rounded-4">
                 <div class="modal-header">
-                    <h5 class="modal-title"><strong><i class="fa fa-file-csv me-2"></i>Import Students via CSV</strong>
+                    <h5 class="modal-title">
+                        <strong><i class="fa fa-file-csv me-2"></i>Import Students via CSV</strong>
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
 
-                    <!-- File pick -->
                     <div id="csv-step-1">
                         <p style="font-size:13px;color:#888;">
-                            Upload a <code>.csv</code> or <code>.tsv</code> file with these columns:<br>
-                            <strong>student_id, full_name, email, program, year, section, contact no.,
-                                company</strong><br>
-                            Students will be added to a room matching their <strong>company</strong> column.
-                            The room is created automatically if it doesn't exist yet.
+                            Upload a <code>.csv</code> file with a single column:
+                            <strong>student_id</strong><br>
+                            Students matching those IDs will be added to your room.
                         </p>
-                        <a href="download-csv-template.php" class="btn btn-sm btn-outline-secondary mb-3">
+                        <a href="download-csv-temp.php?type=student_room" name="add_student_room_temp"
+                            class="btn btn-sm btn-outline-secondary mb-3">
                             <i class="fa fa-download me-1"></i> Download Template
                         </a>
                         <input type="file" id="csvFileInput" accept=".csv,.tsv,.txt" class="form-control mb-3"
@@ -624,7 +1848,6 @@ $page = 'messages';
                         <div id="csv-error" class="alert alert-danger d-none"></div>
                     </div>
 
-                    <!--Preview -->
                     <div id="csv-step-2" class="d-none">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span style="font-size:13px;color:#555;" id="csv-preview-count"></span>
@@ -634,8 +1857,7 @@ $page = 'messages';
                         </div>
                         <div style="overflow-x:auto;max-height:380px;border:1px solid #eee;border-radius:8px;">
                             <table class="table table-sm table-bordered mb-0" id="csv-preview-table"
-                                style="font-size:12px;min-width:700px;">
-                            </table>
+                                style="font-size:12px;min-width:300px;"></table>
                         </div>
                     </div>
 
@@ -652,33 +1874,60 @@ $page = 'messages';
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function showSection(name, e) {
-            if (e) e.preventDefault();
-            const target = document.getElementById('section-' + name);
-            if (!target) {
-                window.location = 'ojt-rooms.php?section=' + name;
-                return;
+        // Flash alert auto-dismiss
+        setTimeout(() => {
+            const alert = document.getElementById('flashAlert');
+            if (alert) {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 300);
             }
-            document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
-            document.getElementById('section-' + name).classList.add('active');
-            document.getElementById('nav-' + name).classList.add('active');
+        }, 4000);
+
+        function toggleRejectSup(id) {
+            const el = document.getElementById('reject-sup-' + id);
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
         }
 
+        // Status table search
         function filterTable() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const room = document.getElementById('roomFilter').value.toLowerCase();
-
+            const search = document.getElementById('searchInput')?.value.toLowerCase() ?? '';
             document.querySelectorAll('#all-students-tbody tr').forEach(row => {
-                const name = row.querySelector('.student-cell h6')?.textContent.toLowerCase() ?? '';
-                const rowRoom = (row.dataset.room ?? '').toLowerCase();
-
-                const matchSearch = name.includes(search);
-                const matchRoom = room === '' || rowRoom === room;
-
-                row.style.display = (matchSearch && matchRoom) ? '' : 'none';
+                const name = row.querySelector('.student-cell span')?.textContent.toLowerCase() ?? '';
+                row.style.display = name.includes(search) ? '' : 'none';
             });
         }
+
+        function filterRoomChats() {
+            const q = document.getElementById('roomChatSearch').value.toLowerCase().trim();
+            document.querySelectorAll('#roomChatEntries .room-chat-entry').forEach(el => {
+                el.style.display = el.dataset.name.includes(q) ? '' : 'none';
+            });
+        }
+
+        // Auto-scroll to bottom
+        const msgBody = document.getElementById('roomMsgBody');
+        if (msgBody) msgBody.scrollTop = msgBody.scrollHeight;
+
+        // Send on Enter (Shift+Enter for newline)
+        function roomChatEnterSend(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('roomChatForm').submit();
+            }
+        }
+
+        // Auto-resize textarea
+        const ta = document.getElementById('roomChatInput');
+        if (ta) {
+            ta.addEventListener('input', () => {
+                ta.style.height = 'auto';
+                ta.style.height = Math.min(ta.scrollHeight, 100) + 'px';
+            });
+        }
+
+        // CSV preview
+        let parsedHeaders = [];
+        let parsedRows = [];
 
         function previewCSV(input) {
             const file = input.files[0];
@@ -704,9 +1953,7 @@ $page = 'messages';
                             else inQuotes = !inQuotes;
                         } else if (ch === ',' && !inQuotes) {
                             result.push(cur.trim()); cur = '';
-                        } else {
-                            cur += ch;
-                        }
+                        } else { cur += ch; }
                     }
                     result.push(cur.trim());
                     return result;
@@ -715,17 +1962,11 @@ $page = 'messages';
                 parsedHeaders = parseCSVLine(lines[0]);
                 parsedRows = lines.slice(1).map(l => parseCSVLine(l));
 
-                const required = ['student_id', 'full_name', 'email', 'company'];
                 const normalized = parsedHeaders.map(h => h.toLowerCase().trim());
-                const missing = required.filter(r => {
-                    if (r === 'student_id') return !normalized.includes('student id') && !normalized.includes('student_id');
-                    if (r === 'full_name') return !normalized.includes('full name') && !normalized.includes('full_name');
-                    if (r === 'company') return !normalized.includes('company') && !normalized.includes('hte') && !normalized.includes('institution');
-                    return !normalized.includes(r);
-                });
+                const hasStudentId = normalized.includes('student_id') || normalized.includes('student id');
 
-                if (missing.length > 0) {
-                    showCSVError('Missing required column(s): ' + missing.join(', '));
+                if (!hasStudentId) {
+                    showCSVError('Missing required column: student_id');
                     return;
                 }
 
@@ -734,46 +1975,20 @@ $page = 'messages';
             };
             reader.readAsText(file);
         }
-        let parsedHeaders = [];
-        let parsedRows = [];
 
         function renderPreview() {
             const table = document.getElementById('csv-preview-table');
             let html = '<thead style="position:sticky;top:0;background:#f8f9fa;"><tr>';
-
-            const companyColIdx = parsedHeaders.findIndex(h =>
-                ['company', 'hte', 'institution'].includes(h.toLowerCase().trim())
-            );
-
-            parsedHeaders.forEach((h, i) => {
-                const isCompany = i === companyColIdx;
-                html += `<th style="${isCompany ? 'background:#d4edda;color:#155724;' : ''}">${h}</th>`;
-            });
+            parsedHeaders.forEach(h => { html += `<th>${h}</th>`; });
             html += '</tr></thead><tbody>';
-
             parsedRows.forEach(row => {
-                html += '<tr>';
-                row.forEach((cell, i) => {
-                    const isCompany = i === companyColIdx;
-                    html += `<td style="${isCompany ? 'background:#f0fff4;font-weight:600;color:#1a7a3c;' : ''}">${cell}</td>`;
-                });
-                html += '</tr>';
+                html += '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>';
             });
-
             html += '</tbody>';
             table.innerHTML = html;
 
-            // Summary badge
-            const companies = companyColIdx >= 0
-                ? [...new Set(parsedRows.map(r => r[companyColIdx]).filter(Boolean))]
-                : [];
-
             document.getElementById('csv-preview-count').innerHTML =
-                `<strong>${parsedRows.length}</strong> student(s) across
-         <strong>${companies.length}</strong> company room(s): `
-                + companies.map(c =>
-                    `<span class="rounded p-1" style="background:#1abc9c;font-size:11px;">${c}</span>`
-                ).join(' ');
+                `<strong>${parsedRows.length}</strong> student(s) to import`;
 
             document.getElementById('csv-step-1').classList.add('d-none');
             document.getElementById('csv-step-2').classList.remove('d-none');
@@ -815,12 +2030,19 @@ $page = 'messages';
             form.method = 'POST';
             form.action = 'auto-register-save-csv.php';
 
-            const sourceInput = document.createElement('input');
-            sourceInput.type = 'hidden';
-            sourceInput.name = 'source';
-            sourceInput.value = 'ojt-rooms';
-            form.appendChild(sourceInput);
-            // Send headers
+            const fields = {
+                source: 'ojt-rooms',
+                room_id: '<?= $current_room_id ?>'
+            };
+
+            Object.entries(fields).forEach(([name, value]) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = name;
+                input.value = value;
+                form.appendChild(input);
+            });
+
             parsedHeaders.forEach((h, i) => {
                 const input = document.createElement('input');
                 input.type = 'hidden';
@@ -829,7 +2051,6 @@ $page = 'messages';
                 form.appendChild(input);
             });
 
-            // Send rows
             parsedRows.forEach((row, rowIdx) => {
                 row.forEach((cell, colIdx) => {
                     const input = document.createElement('input');
@@ -844,13 +2065,53 @@ $page = 'messages';
             form.submit();
         }
 
-        setTimeout(() => {
-            const alert = document.getElementById('flashAlert');
-            if (alert) {
-                alert.classList.remove('show');
-                setTimeout(() => alert.remove(), 300);
+        function toggleReject(appId) {
+            const form = document.getElementById('reject-form-' + appId);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function filterApps() {
+            const search = document.getElementById('search-input').value.toLowerCase().trim();
+            const progress = document.getElementById('progress-filter').value;
+            const cards = document.querySelectorAll('.app-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const name = card.dataset.name || '';
+                const student = card.dataset.student || '';
+                const company = card.dataset.company || '';
+                const pct = parseInt(card.dataset.progress);
+
+                // Search match
+                const matchSearch = !search ||
+                    name.includes(search) ||
+                    student.includes(search) ||
+                    company.includes(search);
+
+                // Progress match
+                let matchProgress = true;
+                if (progress === '0') matchProgress = pct === 0;
+                if (progress === '1') matchProgress = pct >= 1 && pct <= 49;
+                if (progress === '50') matchProgress = pct >= 50 && pct <= 74;
+                if (progress === '75') matchProgress = pct >= 75 && pct <= 99;
+                if (progress === '100') matchProgress = pct === 100;
+
+                const visible = matchSearch && matchProgress;
+                card.style.display = visible ? '' : 'none';
+                if (visible) visibleCount++;
+            });
+
+            // Show empty state if nothing matches
+            let emptyEl = document.getElementById('filter-empty');
+            if (!emptyEl) {
+                emptyEl = document.createElement('div');
+                emptyEl.id = 'filter-empty';
+                emptyEl.style.cssText = 'text-align:center;color:#aaa;padding:40px 0;font-size:14px;';
+                emptyEl.innerHTML = '<i class="fa fa-filter fa-2x mb-2 d-block"></i>No students match your filters.';
+                document.getElementById('apps-list').after(emptyEl);
             }
-        }, 4000);
+            emptyEl.style.display = visibleCount === 0 ? '' : 'none';
+        }
     </script>
 </body>
 

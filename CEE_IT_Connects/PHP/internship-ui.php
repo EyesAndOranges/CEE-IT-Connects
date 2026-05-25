@@ -355,9 +355,6 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
             <a href="#" onclick="showSection('manage_announcement')">
                 <i class="bi bi-bookmark"></i> Manage Announcement
             </a>
-            <a href="#" onclick="showSection('student_register')">
-                <i class="bi bi-file-earmark-person"></i> Student Register
-            </a>
         </aside>
 
         <div class="main-content">
@@ -439,7 +436,8 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
                                                     </td>
                                                     <td
                                                         style="padding:10px; border-bottom:1px solid #f0f2f7; color:#888; font-size:12px;">
-                                                        <?= htmlspecialchars($ri['company']) ?></td>
+                                                        <?= htmlspecialchars($ri['company']) ?>
+                                                    </td>
                                                     <td style="padding:10px; border-bottom:1px solid #f0f2f7;">
                                                         <span
                                                             style="background:#fff8e1;color:#633806;font-size:11px;padding:3px 10px;border-radius:6px;font-weight:500;">Interested</span>
@@ -533,10 +531,12 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
                                                 <tr>
                                                     <td
                                                         style="padding:10px; border-bottom:1px solid #f0f2f7; font-weight:500; color:#272f54;">
-                                                        <?= htmlspecialchars($ri['title']) ?></td>
+                                                        <?= htmlspecialchars($ri['title']) ?>
+                                                    </td>
                                                     <td
                                                         style="padding:10px; border-bottom:1px solid #f0f2f7; color:#888; font-size:12px;">
-                                                        <?= htmlspecialchars($ri['company']) ?></td>
+                                                        <?= htmlspecialchars($ri['company']) ?>
+                                                    </td>
                                                     <td
                                                         style="padding:10px; border-bottom:1px solid #f0f2f7; color:#888; font-size:12px;">
                                                         <i
@@ -602,7 +602,8 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
                                                 </div>
                                                 <div style="flex:1;min-width:0;">
                                                     <p style="margin:0;font-size:13px;font-weight:600;color:#272f54;">
-                                                        <?= htmlspecialchars($doc['name']) ?></p>
+                                                        <?= htmlspecialchars($doc['name']) ?>
+                                                    </p>
                                                     <p style="margin:0;font-size:11px;color:#888;"><?= $doc['type'] ?></p>
                                                 </div>
                                                 <span
@@ -1086,136 +1087,6 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
                     </table>
                 </div>
             </div>
-
-            <!-- ── STUDENT REGISTER ── -->
-            <div id="student_register" class="section sysAdm-header">
-                <h2>Student Register</h2>
-                <p>The master list for keeping tabs on every student in the system.</p>
-
-                <div class="form-card">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                        <div>
-                            <h5 class="fw-semibold mb-1" style="color:#272f54;">Excel Sheet for Student Registration
-                            </h5>
-                            <p class="text-muted small mb-0">View and edit the current student CSV file.</p>
-                        </div>
-                        <button class="btn-button align-self-center" onclick="showSection('edit_csv')">
-                            <i class="bi bi-pencil-square me-1"></i>Edit Current CSV
-                        </button>
-                    </div>
-                </div>
-
-                <hr style="border-color:#eee;">
-
-                <div class="form-card">
-                    <div class="mb-3">
-                        <h5 class="fw-semibold mb-1" style="color:#272f54;">Import New CSV File</h5>
-                        <p class="text-muted small mb-0">Replaces the existing CSV with the uploaded file.</p>
-                    </div>
-                    <form action="auto-register-csv.php" method="POST" enctype="multipart/form-data">
-                        <div class="d-flex gap-2 align-items-center">
-                            <input type="file" name="students_csv" accept=".csv" required class="form-control"
-                                style="flex:1;font-size:13px;">
-                            <button class="btn-button" type="submit">
-                                <i class="bi bi-upload me-1"></i>Replace CSV
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <hr style="border-color:#eee;">
-
-                <div class="form-card">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                        <div>
-                            <h5 class="fw-semibold mb-1" style="color:#272f54;">Download Current CSV</h5>
-                            <p class="text-muted small mb-0">Download the current student registration file.</p>
-                        </div>
-                        <button class="btn-button align-self-center" onclick="window.location.href='download-csv.php'">
-                            <i class="bi bi-download me-2"></i>Download CSV
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ── EDIT CSV ── -->
-            <div id="edit_csv" class="section sysAdm-header">
-                <h2>Edit Student CSV</h2>
-                <div class="form-card">
-                    <?php
-                    $sourceDir = __DIR__ . '/../Sources/';
-                    $activeFile = file_exists($sourceDir . 'active_csv.txt')
-                        ? trim(file_get_contents($sourceDir . 'active_csv.txt'))
-                        : 'students.csv';
-                    $csvPath = $sourceDir . $activeFile;
-                    $csvRows = [];
-
-                    if (file_exists($csvPath)) {
-                        $handle = fopen($csvPath, 'r');
-                        if ($handle !== false) {
-                            while (($row = fgetcsv($handle, 0, ',')) !== false) {
-                                $csvRows[] = $row;
-                            }
-                            fclose($handle);
-                        }
-                        if (count($csvRows) > 1 && $csvRows[0] === $csvRows[1]) {
-                            array_shift($csvRows);
-                        }
-                    }
-                    ?>
-                    <?php if (empty($csvRows)): ?>
-                        <p class="text-muted">No CSV file found. Please upload one first.</p>
-                    <?php else: ?>
-                        <p class="text-muted small mb-3">Editing: <strong><?= htmlspecialchars($activeFile) ?></strong></p>
-                        <form method="POST" action="auto-register-save-csv.php">
-                            <input type="hidden" name="edit_csv">
-                            <?php foreach ($csvRows[0] as $colIndex => $headerCell): ?>
-                                <input type="hidden" name="headers[<?= $colIndex ?>]"
-                                    value="<?= htmlspecialchars($headerCell) ?>">
-                            <?php endforeach; ?>
-
-                            <table class="table table-bordered" id="csv-table">
-                                <thead>
-                                    <tr>
-                                        <?php foreach ($csvRows[0] as $headerCell): ?>
-                                            <th><?= htmlspecialchars($headerCell) ?></th>
-                                        <?php endforeach; ?>
-                                    </tr>
-                                </thead>
-                                <tbody id="csv-tbody">
-                                    <?php foreach ($csvRows as $rowIndex => $row): ?>
-                                        <?php if ($rowIndex === 0)
-                                            continue; ?>
-                                        <tr>
-                                            <?php foreach ($row as $colIndex => $cell): ?>
-                                                <td>
-                                                    <input type="text" name="csv[<?= $rowIndex ?>][<?= $colIndex ?>]"
-                                                        value="<?= htmlspecialchars($cell) ?>" class="form-control">
-                                                </td>
-                                            <?php endforeach; ?>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-
-                            <input type="hidden" id="col-count" value="<?= count($csvRows[0]) ?>">
-                            <input type="hidden" id="row-count" value="<?= count($csvRows) ?>">
-
-                            <div class="d-flex gap-2 mt-3">
-                                <button type="button" class="btn btn-success" onclick="addRow()">
-                                    <i class="bi bi-plus-circle"></i> Add Row
-                                </button>
-                                <div style="flex:1; text-align:right;">
-                                    <button type="submit" class="submit-btn">Save CSV</button>
-                                    <button type="button" class="submit-btn btn-danger"
-                                        onclick="showSection('student_register')">Back</button>
-                                </div>
-                            </div>
-                        </form>
-                    <?php endif; ?>
-                </div>
-            </div>
-
         </div><!-- /.main-content -->
     </div><!-- /.page-body -->
 

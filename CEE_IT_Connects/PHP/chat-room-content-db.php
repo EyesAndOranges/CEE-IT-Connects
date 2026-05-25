@@ -53,7 +53,7 @@ if (isset($_POST['users'])) {
                 'user_type' => $user['type'],
                 'title' => 'You were added to ' . $room['room_name'],
                 'message' => $adviser['full_name'] . ' added you to the room "' . $room['room_name'] . '".',
-                'link' => 'chat-room-content.php?room_id=' . $room_id . '&tab=updates',
+                'link' => 'message.php?room_id=' . $room_id . '&tab=updates',
             ]);
         }
     }
@@ -117,7 +117,7 @@ if (isset($_POST['post_announcement'])) {
             'user_type' => $member['user_type'],
             'title' => 'New Post in the room ' . $room['room_name'],
             'message' => $adviser['full_name'] . ' posted: ' . substr($content, 0, 80) . (strlen($content) > 80 ? '...' : ''),
-            'link' => 'chat-room-content.php?room_id=' . $room_id . '&tab=updates',
+            'link' => 'message.php?room_id=' . $room_id . '&tab=updates',
         ]);
     }
 

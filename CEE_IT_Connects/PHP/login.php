@@ -87,11 +87,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['role'] = strtolower(trim($user['role']));
 
-            if ($user['role'] === 'HTE_adviser') {
-                header("Location: ../PHP/hte-ui.php");
+            // Use the normalized lowercase version for all comparisons
+            $normalizedRole = strtolower(trim($user['role']));
+
+            $dashboards = [
+                'hte_adviser' => '../PHP/hte-ui.php',
+                'internship_adviser' => '../PHP/ojt-rooms.php',
+            ];
+
+            if (isset($dashboards[$normalizedRole])) {
+                header("Location: " . $dashboards[$normalizedRole]);
                 exit;
-            } elseif ($user['role'] === 'internship_adviser') {
-                header("Location: ../PHP/ojt-rooms.php");
+            } else {
+                echo "<script>alert('No dashboard assigned for role: " . htmlspecialchars($normalizedRole) . "'); window.history.back();</script>";
                 exit;
             }
 

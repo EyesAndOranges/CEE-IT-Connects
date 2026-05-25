@@ -2,7 +2,7 @@
 require 'db.php';
 require_once 'auth.php';
 
-$room_id = $_GET['room_id'];
+$room_id = $current_room_id;
 
 // ROOM INFO
 $stmt = $pdo->prepare("
@@ -64,17 +64,32 @@ $stmt = $pdo->prepare("
         s.full_name,
         r.room_name,
         i.company,
-        COALESCE(SUM(l.hours_worked), 0) AS total_hours,
+        COALESCE((
+            SELECT ROUND(SUM(
+                GREATEST(0, CASE 
+                    WHEN h.m_in IS NOT NULL AND h.m_out IS NOT NULL 
+                    THEN EXTRACT(EPOCH FROM (h.m_out - h.m_in)) / 3600 
+                    ELSE 0 
+                END) +
+                GREATEST(0, CASE 
+                    WHEN h.a_in IS NOT NULL AND h.a_out IS NOT NULL 
+                    THEN EXTRACT(EPOCH FROM (h.a_out - h.a_in)) / 3600 
+                    ELSE 0 
+                END)
+            )::numeric, 2)
+            FROM ojt_hours h
+            WHERE h.user_id = s.id 
+            AND h.user_type = 'student'
+        ), 0) AS total_hours,
         MAX(m.remarks) AS latest_remarks
     FROM students s
-    JOIN room_members rm ON s.id = rm.user_id
+    JOIN room_members rm ON s.id = rm.user_id AND rm.user_type = 'student'
     JOIN rooms r ON rm.room_id = r.id
     LEFT JOIN student_internships si ON s.id = si.student_id
     LEFT JOIN internships i ON si.internship_id = i.id
-    LEFT JOIN ojt_logs l ON s.id = l.student_id
     LEFT JOIN (
         SELECT DISTINCT ON (student_id)
-        student_id, remarks
+            student_id, remarks
         FROM ojt_remarks
         ORDER BY student_id, updated_at DESC
     ) m ON s.id = m.student_id
@@ -83,6 +98,10 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$room_id]);
 $statuses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$rhStmt = $pdo->prepare("SELECT required_hours FROM rooms WHERE id = ?");
+$rhStmt->execute([$room_id]);
+$requiredHours = $rhStmt->fetchColumn() ?: 486;
 
 $backLink = getDashboardByRole($_SESSION['role']);
 ?>
@@ -579,6 +598,81 @@ $backLink = getDashboardByRole($_SESSION['role']);
             background: #e5b8d8;
             cursor: not-allowed;
         }
+        /*susu - DESKTOP CHAT SCROLL*/
+        @media (min-width: 769px) {
+            html, body {
+                height: 100vh;
+                overflow: hidden; 
+            }
+
+            .main-content {
+                height: 100vh;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .chat-container {
+                display: flex;
+                flex-direction: column;
+                height: calc(100vh - 320px); 
+                position: relative;
+            }
+
+            .chat-messages {
+                flex: 1 1 auto;
+                overflow-y: auto !important; 
+                max-height: 100%;
+            }
+
+            .chat-input-bar {
+                flex-shrink: 0;
+                background: #ffffff;
+            }
+        }
+
+        @media (max-width: 768px) {
+            #roomChatBackBar {
+                display: flex !important;
+                padding-top: 10px;
+                padding-left: 10px;
+            }
+
+            .p-3.text-white.rounded.d-flex.justify-content-between.align-items-center {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 12px;
+            }
+
+            .p-3.text-white.rounded .text-end {
+                width: 100% !important;
+                text-align: left !important;
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                gap: 15px;
+            }
+
+            .progress-bar-bg {
+                flex-grow: 1 !important;
+                margin-bottom: 0 !important;
+                width: 100% !important;
+            }
+
+            .p-3.text-white.rounded .text-end small {
+                white-space: nowrap !important;
+            }
+
+            .chat-container {
+                height: calc(100vh - 90px) !important; 
+                border-radius: 0;
+            }
+
+            .chat-messages {
+                flex: 1 1 auto; 
+            }
+        }
     </style>
 </head>
 <?php //print_r($_SESSION); ?>
@@ -602,27 +696,26 @@ $backLink = getDashboardByRole($_SESSION['role']);
     </div>
 
     <!-- RIGHT SIDE -->
+
     <?php
     $status = $statuses[0] ?? null;
+    if ($_SESSION['role'] === 'student'):
+        if ($status):
+            $progressWidth = min(round(($status['total_hours'] / $requiredHours) * 100, 2), 100);
+            ?>
+            <div class="text-end">
 
-    if ($status):
-        $progressWidth = min(
-            round(($status['total_hours'] / 486) * 100, 2),
-            100
-        );
-        ?>
-        <div class="text-end">
-            <div class="progress-bar-bg mb-1">
-                <div class="progress-bar-fill" style="width: <?= $progressWidth ?>%;">
+                <div class="progress-bar-bg mb-1">
+                    <div class="progress-bar-fill" style="width: <?= $progressWidth ?>%;">
+                    </div>
                 </div>
+
+                <small>
+                    <small><?= $status['total_hours'] ?> / <?= $requiredHours ?> hours</small>
+                </small>
             </div>
-
-            <small>
-                <?= $status['total_hours'] ?> / 486 hours
-            </small>
-        </div>
+        <?php endif; ?>
     <?php endif; ?>
-
 </div>
 
 <!-- TABS -->

@@ -32,7 +32,8 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 
     <style>
         body {
-            background: #f0f2f5; }
+            background: #f0f2f5;
+        }
 
         .announcement-wrapper {
             min-height: calc(100vh - 70px);
@@ -48,7 +49,9 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             margin: 24px 0 8px 0;
         }
 
-        .section-label:first-of-type { margin-top: 0; }
+        .section-label:first-of-type {
+            margin-top: 0;
+        }
 
         /* PREP BANNER */
         .prep-banner {
@@ -56,17 +59,19 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             grid-template-columns: repeat(4, 1fr);
             border-radius: 10px;
             overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.05);
+            border: 1px solid rgba(255, 255, 255, 0.05);
             margin-bottom: 8px;
         }
 
         .prep-col {
             background: #1e2647;
             padding: 22px 20px;
-            border-right: 1px solid rgba(255,255,255,0.08);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        .prep-col:last-child { border-right: none; }
+        .prep-col:last-child {
+            border-right: none;
+        }
 
         .prep-letter {
             font-size: 48px;
@@ -85,7 +90,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 
         .prep-tip-desc {
             font-size: 12px;
-            color: rgba(255,255,255,0.45);
+            color: rgba(255, 255, 255, 0.45);
             margin: 0;
             line-height: 1.6;
         }
@@ -106,8 +111,13 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             transition: background 0.15s;
         }
 
-        .news-card-new:last-child { border-bottom: none; }
-        .news-card-new:hover { background: #fafbfc; }
+        .news-card-new:last-child {
+            border-bottom: none;
+        }
+
+        .news-card-new:hover {
+            background: #fafbfc;
+        }
 
         .news-card-title {
             font-size: 15px;
@@ -155,10 +165,21 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             transition: background 0.15s;
         }
 
-        .update-card-new:last-child { border-bottom: none; }
-        .update-card-new:nth-child(odd) { border-left-color: #E4572E; }
-        .update-card-new:nth-child(even) { border-left-color: #FFB62F; }
-        .update-card-new:hover { background: #fafbfc; }
+        .update-card-new:last-child {
+            border-bottom: none;
+        }
+
+        .update-card-new:nth-child(odd) {
+            border-left-color: #E4572E;
+        }
+
+        .update-card-new:nth-child(even) {
+            border-left-color: #FFB62F;
+        }
+
+        .update-card-new:hover {
+            background: #fafbfc;
+        }
 
         .update-card-source {
             font-size: 11px;
@@ -199,7 +220,9 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             transition: border-color 0.2s;
         }
 
-        .faq-item:last-child { border-bottom: none; }
+        .faq-item:last-child {
+            border-bottom: none;
+        }
 
         .faq-question {
             display: flex;
@@ -210,8 +233,13 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             transition: background 0.15s;
         }
 
-        .faq-item:hover .faq-question { background: #fafbfc; }
-        .faq-item.open .faq-question { background: #e8f1ff; }
+        .faq-item:hover .faq-question {
+            background: #fafbfc;
+        }
+
+        .faq-item.open .faq-question {
+            background: #e8f1ff;
+        }
 
         .faq-q-text {
             font-size: 14px;
@@ -221,7 +249,9 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             transition: color 0.2s;
         }
 
-        .faq-item.open .faq-q-text { color: #2563eb; }
+        .faq-item.open .faq-q-text {
+            color: #2563eb;
+        }
 
         .faq-chevron {
             font-size: 12px;
@@ -235,7 +265,9 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             color: #2563eb;
         }
 
-        .faq-item.open { border-left-color: #2563eb; }
+        .faq-item.open {
+            border-left-color: #2563eb;
+        }
 
         .faq-answer {
             font-size: 13px;
@@ -259,6 +291,37 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             font-size: 13px;
             color: #b0b8cc;
         }
+
+        @media (max-width: 768px) {
+            .announcement-wrapper {
+                padding: 17px 10px;
+            }
+
+            .prep-banner {
+                grid-template-columns: 1fr;
+            }
+
+            .prep-col {
+                display: flex;
+                align-items: flex-start;
+                gap: 16px;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            }
+
+            .prep-letter {
+                margin: 0;
+                flex-shrink: 0;
+            }
+
+            .prep-content {
+                flex: 1;
+            }
+
+            .prep-col:last-child {
+                border-bottom: none;
+            }
+        }
     </style>
 </head>
 
@@ -275,12 +338,14 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 <div class="prep-col">
                     <p class="prep-letter">P</p>
                     <p class="prep-tip-title">Prepare your documents early</p>
-                    <p class="prep-tip-desc">Don't wait for deadlines. Have your resume, endorsement letter, and forms ready ahead of time.</p>
+                    <p class="prep-tip-desc">Don't wait for deadlines. Have your resume, endorsement letter, and forms
+                        ready ahead of time.</p>
                 </div>
                 <div class="prep-col">
                     <p class="prep-letter">R</p>
                     <p class="prep-tip-title">Research about the company</p>
-                    <p class="prep-tip-desc">Know what the company does before your interview. It shows initiative and professionalism.</p>
+                    <p class="prep-tip-desc">Know what the company does before your interview. It shows initiative and
+                        professionalism.</p>
                 </div>
                 <div class="prep-col">
                     <p class="prep-letter">E</p>
@@ -298,29 +363,29 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             <p class="section-label">News</p>
             <div class="ann-card">
                 <?php if (empty($announcements['news'])): ?>
-                        <p class="empty-state">No news posted yet.</p>
+                    <p class="empty-state">No news posted yet.</p>
                 <?php else: ?>
-                        <?php foreach ($announcements['news'] as $news):
-                            $message = htmlspecialchars($news['message']);
-                            $isLong = strlen($message) > 120;
-                            ?>
-                                <div class="news-card-new">
-                                    <p class="news-card-title"><?= htmlspecialchars($news['title']) ?></p>
-                                    <p class="news-card-desc collapsed" id="newsDesc<?= $news['id'] ?>">
-                                        <?= $message ?>
-                                    </p>
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <small class="text-muted">
-                                            Posted <?= date('F j, Y', strtotime($news['created_at'])) ?>
-                                        </small>
-                                        <?php if ($isLong): ?>
-                                                <button class="news-toggle-btn" onclick="toggleNews(<?= $news['id'] ?>, this)">
-                                                    Read more
-                                                </button>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                        <?php endforeach; ?>
+                    <?php foreach ($announcements['news'] as $news):
+                        $message = htmlspecialchars($news['message']);
+                        $isLong = strlen($message) > 120;
+                        ?>
+                        <div class="news-card-new">
+                            <p class="news-card-title"><?= htmlspecialchars($news['title']) ?></p>
+                            <p class="news-card-desc collapsed" id="newsDesc<?= $news['id'] ?>">
+                                <?= $message ?>
+                            </p>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <small class="text-muted">
+                                    Posted <?= date('F j, Y', strtotime($news['created_at'])) ?>
+                                </small>
+                                <?php if ($isLong): ?>
+                                    <button class="news-toggle-btn" onclick="toggleNews(<?= $news['id'] ?>, this)">
+                                        Read more
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
                 <?php endif; ?>
             </div>
 
@@ -328,18 +393,18 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             <p class="section-label">Updates</p>
             <div class="ann-card">
                 <?php if (empty($announcements['updates'])): ?>
-                        <p class="empty-state">No updates posted yet.</p>
+                    <p class="empty-state">No updates posted yet.</p>
                 <?php else: ?>
-                        <?php foreach ($announcements['updates'] as $update): ?>
-                                <div class="update-card-new">
-                                    <p class="update-card-source">
-                                        Update &nbsp;·&nbsp;
-                                        <span><?= date('F j, Y', strtotime($update['created_at'])) ?></span>
-                                    </p>
-                                    <p class="update-card-title"><?= htmlspecialchars($update['title']) ?></p>
-                                    <p class="update-card-desc"><?= htmlspecialchars($update['message']) ?></p>
-                                </div>
-                        <?php endforeach; ?>
+                    <?php foreach ($announcements['updates'] as $update): ?>
+                        <div class="update-card-new">
+                            <p class="update-card-source">
+                                Update &nbsp;·&nbsp;
+                                <span><?= date('F j, Y', strtotime($update['created_at'])) ?></span>
+                            </p>
+                            <p class="update-card-title"><?= htmlspecialchars($update['title']) ?></p>
+                            <p class="update-card-desc"><?= htmlspecialchars($update['message']) ?></p>
+                        </div>
+                    <?php endforeach; ?>
                 <?php endif; ?>
             </div>
 
@@ -347,17 +412,17 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             <p class="section-label">FAQs</p>
             <div class="ann-card">
                 <?php if (empty($announcements['FAQs'])): ?>
-                        <p class="empty-state">No FAQs posted yet.</p>
+                    <p class="empty-state">No FAQs posted yet.</p>
                 <?php else: ?>
-                        <?php foreach ($announcements['FAQs'] as $faq): ?>
-                                <div class="faq-item">
-                                    <div class="faq-question">
-                                        <p class="faq-q-text"><?= htmlspecialchars($faq['title']) ?></p>
-                                        <i class="fas fa-chevron-down faq-chevron"></i>
-                                    </div>
-                                    <p class="faq-answer"><?= htmlspecialchars($faq['message']) ?></p>
-                                </div>
-                        <?php endforeach; ?>
+                    <?php foreach ($announcements['FAQs'] as $faq): ?>
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <p class="faq-q-text"><?= htmlspecialchars($faq['title']) ?></p>
+                                <i class="fas fa-chevron-down faq-chevron"></i>
+                            </div>
+                            <p class="faq-answer"><?= htmlspecialchars($faq['message']) ?></p>
+                        </div>
+                    <?php endforeach; ?>
                 <?php endif; ?>
             </div>
 
@@ -385,4 +450,5 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         }
     </script>
 </body>
+
 </html>

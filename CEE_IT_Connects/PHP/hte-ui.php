@@ -3,6 +3,8 @@ session_start();
 require 'auth.php';
 require 'db.php';
 $current_room_id = $_GET['room_id'] ?? null;
+$section = $_GET['section'] ?? '';
+$adviser_id = $_SESSION['user_id'];
 
 $isAdviser = isset($_SESSION['role']) && $_SESSION['role'] === 'internship_adviser';
 $stmt = $pdo->prepare("
@@ -49,9 +51,166 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute();
 $statuses = $stmt->fetchAll(PDO::FETCH_ASSOC);
-?>
 
-<?php
+
+// Get the HTE adviser's internship_id
+$adviserStmt = $pdo->prepare("SELECT internship_id FROM advisers WHERE id = ?");
+$adviserStmt->execute([$adviser_id]);
+$adviserInternshipId = $adviserStmt->fetchColumn();
+
+// Get required hours from internships.duration instead of rooms
+$requiredHours = 486; // fallback
+$rhStmt = $pdo->prepare("
+    SELECT r.required_hours 
+    FROM rooms r
+    JOIN room_members rm ON rm.room_id = r.id
+    JOIN internship_bookmarks ib ON ib.student_id = rm.user_id
+    WHERE ib.internship_id = ?
+      AND rm.user_type = 'student'
+    LIMIT 1
+");
+$rhStmt->execute([$adviserInternshipId]);
+$requiredHours = $rhStmt->fetchColumn() ?: 486;
+
+// Fetch all students bookmarked to this adviser's internship
+$roomStatusesStmt = $pdo->prepare("
+    SELECT
+        s.id,
+        s.full_name,
+        i.company,
+        COALESCE(
+            SUM(
+                CASE WHEN oh.m_in IS NOT NULL AND oh.m_out IS NOT NULL
+                    THEN EXTRACT(EPOCH FROM (oh.m_out - oh.m_in)) / 3600
+                    ELSE 0
+                END
+                +
+                CASE WHEN oh.a_in IS NOT NULL AND oh.a_out IS NOT NULL
+                    THEN EXTRACT(EPOCH FROM (oh.a_out - oh.a_in)) / 3600
+                    ELSE 0
+                END
+            ), 0
+        ) AS total_hours
+    FROM students s
+    JOIN internship_bookmarks ib ON ib.student_id = s.id
+    JOIN internships i ON i.id = ib.internship_id
+    LEFT JOIN ojt_hours oh ON oh.user_id = s.id
+    WHERE ib.internship_id = ?
+    GROUP BY s.id, s.full_name, i.company
+");
+$roomStatusesStmt->execute([$adviserInternshipId]);
+$roomStatuses = $roomStatusesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+
+// echo '<pre>';
+// echo "current_room_id: " . $current_room_id . "\n";
+// echo "requiredHours: " . $requiredHours . "\n";
+
+// // Check what's in room_members for this room
+// $debugStmt = $pdo->prepare("SELECT * FROM room_members WHERE room_id = ?");
+// $debugStmt->execute([$current_room_id]);
+// echo "room_members rows:\n";
+// print_r($debugStmt->fetchAll(PDO::FETCH_ASSOC));
+
+// echo "roomStatuses:\n";
+// print_r($roomStatuses);
+// echo '</pre>';
+// die();
+
+$chattableStmt = $pdo->prepare("
+    SELECT 
+        s.id          AS user_id,
+        s.full_name,
+        'student'     AS user_type
+    FROM students s
+    JOIN internship_bookmarks ib ON ib.student_id = s.id
+    JOIN advisers a ON a.internship_id = ib.internship_id
+    WHERE a.id = ? AND a.role = 'HTE_adviser'
+
+    UNION
+
+    -- OJT advisers (internship_adviser) assigned to those students via rooms
+    SELECT
+        adv.id        AS user_id,
+        adv.full_name,
+        'adviser'     AS user_type
+    FROM advisers adv
+    JOIN rooms r ON r.adviser_id = adv.id
+    JOIN room_members rm ON rm.room_id = r.id AND rm.user_type = 'student'
+    JOIN students s ON s.id = rm.user_id
+    JOIN internship_bookmarks ib ON ib.student_id = s.id
+    JOIN advisers hte ON hte.internship_id = ib.internship_id
+    WHERE hte.id = ? AND hte.role = 'HTE_adviser'
+    AND adv.role = 'internship_adviser'
+
+    ORDER BY full_name
+");
+$chattableStmt->execute([$adviser_id, $adviser_id]);
+$chattableUsers = $chattableStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// ── Fetch existing chat conversations for this adviser ────────────────────────
+$adviserChatStmt = $pdo->prepare("
+    SELECT
+        CASE WHEN sender_id = :uid THEN receiver_id ELSE sender_id END AS chat_user_id,
+        CASE WHEN sender_id = :uid THEN receiver_type ELSE sender_type END AS chat_user_type,
+        MAX(created_at) AS last_message_at,
+        (SELECT message FROM messages m2
+         WHERE (m2.sender_id = :uid AND m2.receiver_id = CASE WHEN sender_id = :uid THEN receiver_id ELSE sender_id END)
+            OR (m2.receiver_id = :uid AND m2.sender_id = CASE WHEN sender_id = :uid THEN receiver_id ELSE sender_id END)
+         ORDER BY m2.created_at DESC LIMIT 1) AS last_message
+    FROM messages
+    WHERE (sender_id = :uid AND sender_type = 'adviser')
+       OR (receiver_id = :uid AND receiver_type = 'adviser')
+    GROUP BY chat_user_id, chat_user_type
+    ORDER BY last_message_at DESC
+");
+$adviserChatStmt->execute(['uid' => $adviser_id]);
+$adviserChats = $adviserChatStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// ── Fetch messages if a chat is open ─────────────────────────────────────────
+$chatSection_id = $_GET['chat_id'] ?? null;
+$chatSection_type = $_GET['chat_type'] ?? null;
+$chatMessages = [];
+
+if ($chatSection_id && $section === 'chats') {
+    $msgStmt = $pdo->prepare("
+        SELECT m.*, 
+            COALESCE(s.full_name, a.full_name) AS sender_name
+        FROM messages m
+        LEFT JOIN students s  ON m.sender_id = s.id AND m.sender_type = 'student'
+        LEFT JOIN advisers a  ON m.sender_id = a.id AND m.sender_type = 'adviser'
+        WHERE
+            (m.sender_id = ? AND m.sender_type = 'adviser'
+             AND m.receiver_id = ? AND m.receiver_type = ?)
+            OR
+            (m.sender_id = ? AND m.sender_type = ?
+             AND m.receiver_id = ? AND m.receiver_type = 'adviser')
+        ORDER BY m.created_at ASC
+    ");
+    $msgStmt->execute([
+        $adviser_id,
+        $chatSection_id,
+        $chatSection_type,
+        $chatSection_id,
+        $chatSection_type,
+        $adviser_id,
+    ]);
+    $chatMessages = $msgStmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// helper — get name for a chat list entry
+function getRoomChatName($pdo, $id, $type)
+{
+    if ($type === 'student') {
+        $st = $pdo->prepare("SELECT full_name FROM students WHERE id = ?");
+    } else {
+        $st = $pdo->prepare("SELECT full_name FROM advisers WHERE id = ?");
+    }
+    $st->execute([$id]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+    return $row['full_name'] ?? 'Unknown';
+}
+
 $colors = ['#d63ba5', '#1abc9c', '#3498db', '#9b59b6'];
 $color = $colors[array_rand($colors)];
 $page = 'messages';
@@ -73,7 +232,7 @@ $page = 'messages';
             margin: 0;
             padding-top: 70px;
             min-height: 100vh;
-        overflow-y: auto;
+            overflow-y: auto;
         }
 
         /* ── SECTION PANELS ── */
@@ -422,8 +581,312 @@ $page = 'messages';
         }
 
         /*susu*/
-        .room-initial { display: none; }
-        .room-name-text { display: inline; }
+        .room-initial {
+            display: none;
+        }
+
+        .room-name-text {
+            display: inline;
+        }
+
+        .room-chat-wrap {
+            display: flex;
+            height: calc(100vh - 70px);
+            margin: -24px;
+            overflow: hidden;
+        }
+
+        /* Chat list panel */
+        .room-chat-list {
+            width: 280px;
+            flex-shrink: 0;
+            border-right: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .room-chat-list-header {
+            padding: 16px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .room-chat-list-header h5 {
+            font-weight: 700;
+            font-size: 15px;
+            margin: 0;
+        }
+
+        .room-chat-entries {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .room-chat-entry {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            border-bottom: 1px solid #f5f5f5;
+            transition: background .15s;
+        }
+
+        .room-chat-entry:hover {
+            background: #fafafa;
+        }
+
+        .room-chat-entry.active {
+            background: #fff7ed;
+        }
+
+        .room-chat-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 15px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .room-chat-entry-meta {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .room-chat-entry-name {
+            font-weight: 600;
+            font-size: 13.5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .room-chat-entry-preview {
+            font-size: 11.5px;
+            color: #aaa;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .room-chat-badge {
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 99px;
+            font-weight: 600;
+        }
+
+        /* Dividers in chat list */
+        .room-chat-divider {
+            padding: 6px 16px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+            color: #aaa;
+            background: #fafafa;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        /* Message panel */
+        .room-message-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #fcfcfc;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .room-message-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid #eee;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .room-message-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .room-msg-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .room-msg-row.me {
+            flex-direction: row-reverse;
+        }
+
+        .room-msg-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .room-msg-bubble-wrap {
+            max-width: 65%;
+        }
+
+        .room-msg-sender {
+            font-size: 11px;
+            color: #aaa;
+            margin-bottom: 3px;
+            padding-left: 2px;
+        }
+
+        .me .room-msg-sender {
+            text-align: right;
+            padding-left: 0;
+            padding-right: 2px;
+        }
+
+        .room-msg-bubble {
+            padding: 9px 14px;
+            border-radius: 16px;
+            font-size: 13.5px;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        .room-msg-row:not(.me) .room-msg-bubble {
+            background: #fff;
+            border: 1px solid #eee;
+            border-bottom-left-radius: 4px;
+            color: #222;
+        }
+
+        .room-msg-row.me .room-msg-bubble {
+            background: #ff6b2c;
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .room-msg-time {
+            font-size: 11px;
+            color: #ccc;
+            margin-top: 3px;
+            padding-left: 2px;
+        }
+
+        .me .room-msg-time {
+            text-align: right;
+            padding-right: 2px;
+        }
+
+        .room-message-input-bar {
+            border-top: 1px solid #eee;
+            background: #fff;
+            padding: 12px 16px;
+            flex-shrink: 0;
+        }
+
+        .room-message-input-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .room-message-input-row textarea {
+            flex: 1;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 22px;
+            padding: 9px 16px;
+            font-size: 13.5px;
+            line-height: 1.4;
+            max-height: 100px;
+            overflow-y: auto;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            transition: border-color .2s;
+        }
+
+        .room-message-input-row textarea:focus {
+            border-color: #ff6b2c;
+        }
+
+        .room-chat-send-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #ff6b2c;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+            transition: filter .15s;
+        }
+
+        .room-chat-send-btn:hover {
+            filter: brightness(.9);
+        }
+
+        .room-chat-send-btn:disabled {
+            background: #ffb899;
+            cursor: not-allowed;
+        }
+
+        .room-chat-empty {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #ccc;
+            gap: 10px;
+        }
+
+        .room-chat-search {
+            padding: 10px 16px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .room-chat-search input {
+            width: 100%;
+            padding: 7px 12px;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 20px;
+            font-size: 13px;
+            outline: none;
+            font-family: inherit;
+            transition: border-color .2s;
+        }
+
+        .room-chat-search input:focus {
+            border-color: #ff6b2c;
+        }
 
         /*===MEDIA QUERY===*/
         @media (max-width: 768px) {
@@ -449,7 +912,7 @@ $page = 'messages';
                 display: none !important;
             }
 
-            .sidebar > a {
+            .sidebar>a {
                 width: 44px !important;
                 height: 44px !important;
                 display: flex !important;
@@ -461,7 +924,7 @@ $page = 'messages';
                 padding: 0 !important;
             }
 
-            .sidebar > a i {
+            .sidebar>a i {
                 margin: 0 !important;
             }
 
@@ -510,8 +973,13 @@ $page = 'messages';
                 margin: 0 auto;
             }
 
-            .room-name-text { display: none !important; }
-            .room-initial { display: flex !important; }
+            .room-name-text {
+                display: none !important;
+            }
+
+            .room-initial {
+                display: flex !important;
+            }
 
             .main {
                 margin-left: 70px !important;
@@ -598,7 +1066,8 @@ $page = 'messages';
                 width: 100% !important;
             }
 
-            .log-row-controls select, .log-row-controls[type="number"] {
+            .log-row-controls select,
+            .log-row-controls[type="number"] {
                 flex: 1;
             }
 
@@ -634,30 +1103,33 @@ $page = 'messages';
         <a href="#" onclick="showSection('status', event)" id="nav-status">
             <i class="fa-solid fa-calendar-check me-2"></i><span class="sidebar-text">Status</span>
         </a>
-        <a href="#" onclick="showSection('remarks', event)" id="nav-remarks">
-            <i class="fa-solid fa-star me-1"></i><span class="sidebar-text">Remarks</span>
+        <a href="#" onclick="showSection('chats', event)" id="nav-chats">
+            <i class="fa-solid fa-comments me-2"></i><span class="sidebar-text">Chats</span>
         </a>
+        <!-- <a href="#" onclick="showSection('remarks', event)" id="nav-remarks">
+            <i class="fa-solid fa-star me-1"></i><span class="sidebar-text">Remarks</span>
+        </a> -->
 
         <div class="rooms-list" style="overflow-y:auto; max-height:400px; scrollbar-width:none;">
             <hr><br>
             <h6>ROOMS</h6>
 
             <?php foreach ($rooms as $room): ?>
-                    <?php if ($current_room_id == $room['id']): ?>
-                            <!-- CURRENT ROOM (NOT CLICKABLE) -->
-                            <div class="room-item active-room">
-                                <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
-                                <span class="room-name-text"><?= htmlspecialchars($room['room_name']) ?></span>
-                            </div>
-                    <?php else: ?>
-                            <!-- CLICKABLE ROOM -->
-                            <a href="?room_id=<?= $room['id'] ?>" class="room-link">
-                                <div class="room-item">
-                                    <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
-                                    <span class="room-name-text"><?= htmlspecialchars($room['room_name']) ?></span>
-                                </div>
-                            </a>
-                    <?php endif; ?>
+                <?php if ($current_room_id == $room['id']): ?>
+                    <!-- CURRENT ROOM (NOT CLICKABLE) -->
+                    <div class="room-item active-room">
+                        <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
+                        <span class="room-name-text"><?= htmlspecialchars($room['room_name']) ?></span>
+                    </div>
+                <?php else: ?>
+                    <!-- CLICKABLE ROOM -->
+                    <a href="?room_id=<?= $room['id'] ?>" class="room-link">
+                        <div class="room-item">
+                            <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
+                            <span class="room-name-text"><?= htmlspecialchars($room['room_name']) ?></span>
+                        </div>
+                    </a>
+                <?php endif; ?>
             <?php endforeach; ?>
         </div>
     </div>
@@ -667,95 +1139,122 @@ $page = 'messages';
 
         <!-- ROOMS SECTION -->
         <div id="rooms" class="section-panel active">
-            <?php if ($current_room_id): ?>
+            <?php
+            // var_dump($_SESSION);
+            if ($current_room_id): ?>
 
-                    <?php include 'chat-room-content.php'; ?>
+                <?php include 'chat-room-content.php'; ?>
 
             <?php else: ?>
 
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h3><strong>Virtual Rooms</strong></h3>
-                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
-                            + Join a Room
-                        </button>
-                    </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3><strong>Virtual Rooms</strong></h3>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
+                        + Join a Room
+                    </button>
+                </div>
 
-                    <div class="row mt-1 g-4">
-                        <?php foreach ($rooms as $room): ?>
-                                <div class="col-12 col-sm-6 col-lg-4">
-                                    <div class="card shadow-sm border-0" style="border-radius:12px;">
+                <div class="row mt-1 g-4">
+                    <?php foreach ($rooms as $room): ?>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <div class="card shadow-sm border-0" style="border-radius:12px;">
 
-                                        <div class="room-card" style="background: <?= $color ?>">
-                                            <h5><?= htmlspecialchars($room['room_name']) ?></h5>
-                                            <small>
-                                                <?= htmlspecialchars($room['full_name']) ?>
-                                                (<?= htmlspecialchars($room['role']) ?>)
-                                            </small>
-                                        </div>
-
-                                        <div class="room-footer">
-                                            <form method="GET">
-                                                <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
-                                                <button class="enter-btn">Enter Room</button>
-                                            </form>
-                                        </div>
-
-                                    </div>
+                                <div class="room-card" style="background: <?= $color ?>">
+                                    <h5><?= htmlspecialchars($room['room_name']) ?></h5>
+                                    <small>
+                                        <?= htmlspecialchars($room['full_name']) ?>
+                                        (<?= htmlspecialchars($room['role']) ?>)
+                                    </small>
                                 </div>
-                        <?php endforeach; ?>
-                    </div>
+
+                                <div class="room-footer">
+                                    <form method="GET">
+                                        <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
+                                        <button class="enter-btn">Enter Room</button>
+                                    </form>
+                                </div>
+
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
 
             <?php endif; ?>
         </div>
 
         <!-- STATUS SECTION -->
         <div id="status" class="section-panel">
-            <h4><strong>Monitor OJT progress and HTE remarks</strong></h4><br>
+            <h4 class="fw-bold mb-1">OJT Status</h4>
+            <p class="text-muted mb-3" style="font-size:.85rem;">Monitor student progress on their OJT program</p>
 
-            <div style="display:flex; gap:10px; margin-bottom:16px; align-items:center;">
+            <div
+                style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
                 <div class="search-box">
                     <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" id="statusSearchInput" placeholder="Search student" oninput="filterTable()">
+                    <input type="text" id="searchInput" placeholder="Search student" oninput="filterTable()">
                 </div>
-                <select id="statusRoomFilter" onchange="filterTable()"
-                    style="padding:7px 14px; border:1px solid #bbb; border-radius:24px; font-size:12px;">
-                    <option value="">All Rooms</option>
-                    <?php foreach ($rooms as $r): ?>
-                            <option value="<?= htmlspecialchars($r['room_name']) ?>">
-                                <?= htmlspecialchars($r['room_name']) ?>
-                            </option>
-                    <?php endforeach; ?>
-                </select>
+                <?php if ($isAdviser): ?>
+                    <form method="POST" action="ojt-required-hours.php" style="display:flex; align-items:center; gap:8px;">
+                        <input type="hidden" name="room_id" value="<?= $current_room_id ?>">
+                        <label style="font-size:13px; color:#555; font-weight:500; white-space:nowrap;">
+                            Required OJT Hours:
+                        </label>
+                        <input type="number" name="required_hours" value="<?= $requiredHours ?>" min="1" style="width:70px; border:1.5px solid #e5e7eb; border-radius:8px;
+                       padding:6px 8px; font-size:13px; text-align:center; outline:none;">
+                        <button type="submit" class="btn btn-sm"
+                            style="background:#ff6b2c; color:white; border-radius:8px; font-size:13px; font-weight:600;">
+                            <i class="fa fa-save me-1"></i> Save
+                        </button>
+                    </form>
+                <?php endif; ?>
             </div>
 
-            <div style="background:#fbfbfb; border:1px solid #bbb; border-radius:8px; overflow-x:auto;">
+            <div style="background:white; border:1px solid #ddd; border-radius:8px; overflow:hidden; overflow-x:auto;">
                 <table>
-                    <thead>
+                    <thead style="background:#f8f9fa;">
                         <tr>
                             <th>STUDENT</th>
-                            <th>ROOM</th>
                             <th>COMPANY</th>
                             <th>HOURS</th>
                             <th>PROGRESS</th>
-                            <th>HTE REMARKS</th>
+                            <th>ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody id="all-students-tbody">
-                        <?php foreach ($statuses as $status): ?>
-                                <tr data-room="<?= htmlspecialchars($status['room_name']) ?>">
+                        <?php if (empty($roomStatuses)): ?>
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    No students in this room yet.
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php
+                            $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22'];
+                            foreach ($roomStatuses as $s):
+                                $progressWidth = min(round(($s['total_hours'] / $requiredHours) * 100, 2), 100);
+                                $avatarColor = $avatarColors[crc32($s['full_name']) % count($avatarColors)];
+                                ?>
+                                <tr>
                                     <td>
                                         <div class="student-cell">
-                                            <div class="avatar" style="background:#ff2c8f;">
-                                                <strong><?= strtoupper(substr($status['full_name'], 0, 1)) ?></strong>
+                                            <div class="avatar" style="background:<?= $avatarColor ?>;">
+                                                <strong><?= strtoupper(substr($s['full_name'], 0, 1)) ?></strong>
                                             </div>
-                                            <h6><?= htmlspecialchars($status['full_name']) ?></h6>
+                                            <span><?= htmlspecialchars($s['full_name']) ?></span>
                                         </div>
                                     </td>
-                                    <td><?= htmlspecialchars($status['room_name']) ?></td>
-                                    <td><?= htmlspecialchars($status['company']) ?></td>
-                                    <td><strong><?= $status['total_hours'] ?></strong> / 486</td>
                                     <td>
-                                        <?php $progressWidth = round(($status['total_hours'] / 486) * 100, 2) ?>
+                                        <?php if (empty($s['company'])): ?>
+                                            <span class="rounded-pill px-3 py-1"
+                                                style="background:#f8d7da; color:#721c24; font-size:12px; font-weight:500;">
+                                                No company
+                                            </span>
+                                        <?php else: ?>
+                                            <?= htmlspecialchars($s['company']) ?>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><strong><?= $s['total_hours'] ?></strong> / <?= $requiredHours ?></td>
+                                    <td>
                                         <div style="display:flex; align-items:center; gap:8px;">
                                             <div class="progress-bar-bg">
                                                 <div class="progress-bar-fill" style="width:<?= $progressWidth ?>%"></div>
@@ -763,9 +1262,75 @@ $page = 'messages';
                                             <span><?= $progressWidth ?>%</span>
                                         </div>
                                     </td>
-                                    <td><?= htmlspecialchars($status['latest_remarks'] ?? 'No remarks') ?></td>
+                                    <td>
+                                        <div style="display:flex; flex-direction:column; gap:6px;">
+
+                                            <!-- Student Evaluation Form -->
+                                            <?php
+                                            $hasStudentEval = false;
+                                            $seStmt = $pdo->prepare("SELECT id FROM ojt_evaluations_student WHERE student_id = ?");
+                                            $seStmt->execute([$s['id']]);
+                                            $hasStudentEval = (bool) $seStmt->fetchColumn();
+                                            ?>
+                                            <?php if ($hasStudentEval): ?>
+                                                <a href="ojt-evaluation-download.php?student_id=<?= $s['id'] ?>" target="_blank"
+                                                    style="display:inline-flex; align-items:center; gap:5px; padding:5px 10px;
+                                                        background:#dbeafe; color:#1e40af; border-radius:6px; font-size:11px;
+                                                        font-weight:600; text-decoration:none; white-space:nowrap;
+                                                        border:1px solid #93c5fd; transition:filter .15s;"
+                                                    onmouseover="this.style.filter='brightness(.93)'"
+                                                    onmouseout="this.style.filter=''">
+                                                    <i class="fa fa-file-pdf"></i> Student Eval
+                                                </a>
+                                            <?php else: ?>
+                                                <span
+                                                    style="display:inline-flex; align-items:center; gap:5px; padding:5px 10px;
+                                                        background:#f3f4f6; color:#9ca3af; border-radius:6px; font-size:11px;
+                                                        font-weight:600; white-space:nowrap; border:1px solid #e5e7eb;">
+                                                    <i class="fa fa-file-pdf"></i> Student Eval
+                                                </span>
+                                            <?php endif; ?>
+
+                                            <!-- Supervisor Evaluation Form -->
+                                            <?php
+                                            $supEvalStmt = $pdo->prepare("
+                                                SELECT id
+                                                FROM ojt_evaluations_supervisor
+                                                WHERE student_id = ?
+                                            ");
+                                            $supEvalStmt->execute([$s['id']]);
+                                            $hasSupEval = (bool) $supEvalStmt->fetchColumn();
+                                            ?>
+
+                                            <?php if ($hasSupEval): ?>
+
+                                                <!-- PDF download after submission -->
+                                                <a href="ojt-evaluation-download.php?student_id=<?= $s['id'] ?>" target="_blank"
+                                                    style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+                                                    background:#dbeafe;color:#1e40af;border-radius:6px;font-size:11px;
+                                                    font-weight:600;border:1px solid #93c5fd;cursor:pointer;">
+
+                                                    <i class="fa fa-file-pdf"></i>
+                                                    Supervisor Eval
+                                                </a>
+
+                                            <?php else: ?>
+
+                                                <button type="button" onclick="openSupEvalModal(<?= $s['id'] ?>)" style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+                                                    background:#dbeafe;color:#1e40af;border-radius:6px;font-size:11px;font-weight:600;
+                                                    border:1px solid #93c5fd;cursor:pointer;white-space:nowrap;">
+
+                                                    <i class="fa fa-file-pen"></i>
+                                                    Fill Supervisor Eval
+                                                </button>
+
+                                            <?php endif; ?>
+
+                                        </div>
+                                    </td>
                                 </tr>
-                        <?php endforeach; ?>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -784,62 +1349,62 @@ $page = 'messages';
                     style="padding:7px 14px; border:1px solid #bbb; border-radius:24px; font-size:12px;">
                     <option value="">All Rooms</option>
                     <?php foreach ($rooms as $r): ?>
-                            <option value="<?= htmlspecialchars($r['room_name']) ?>">
-                                <?= htmlspecialchars($r['room_name']) ?>
-                            </option>
+                        <option value="<?= htmlspecialchars($r['room_name']) ?>">
+                            <?= htmlspecialchars($r['room_name']) ?>
+                        </option>
                     <?php endforeach; ?>
                 </select>
             </div>
 
             <div id="student-list">
                 <?php foreach ($students as $student): ?>
-                        <form method="POST" action="hte-db.php">
+                    <form method="POST" action="hte-db.php">
 
-                            <input type="hidden" name="student_id" value="<?= $student['id'] ?>">
-                            <input type="hidden" name="internship_id" value="<?= $student['internship_id'] ?>">
+                        <input type="hidden" name="student_id" value="<?= $student['id'] ?>">
+                        <input type="hidden" name="internship_id" value="<?= $student['internship_id'] ?>">
 
-                            <div class="student-card">
-                                <div class="log-row">
-                                    <div class="log-row-top">
-                                        <div class="avatar" style="background:#ff2c8f;">
-                                            <strong><?= strtoupper(substr($student['full_name'], 0, 1)) ?></strong>
-                                        </div>
-                                        <div class="student-info">
-                                            <strong><?= htmlspecialchars($student['full_name']) ?></strong>
-                                            <span><?= htmlspecialchars($student['company']) ?></span>
-                                        </div>
+                        <div class="student-card">
+                            <div class="log-row">
+                                <div class="log-row-top">
+                                    <div class="avatar" style="background:#ff2c8f;">
+                                        <strong><?= strtoupper(substr($student['full_name'], 0, 1)) ?></strong>
                                     </div>
-                                    <div class="log-row-controls">
-                                        <select name="status" required>
-                                            <option value="Present">Present</option>
-                                            <option value="Absent">Absent</option>
-                                            <option value="Late">Late</option>
-                                        </select>
-                                        <input type="number" name="hours" placeholder="hrs" min="0" max="24" required>
+                                    <div class="student-info">
+                                        <strong><?= htmlspecialchars($student['full_name']) ?></strong>
+                                        <span><?= htmlspecialchars($student['company']) ?></span>
                                     </div>
                                 </div>
-
-                                <div class="remarks-section">
-                                    <div class="remarks-label">Remarks</div>
-                                    <textarea name="remarks" placeholder="Enter remarks..." required></textarea>
-                                    <div class="remarks-footer">
-                                        <select name="rating" required>
-                                            <option>Outstanding</option>
-                                            <option>Very Satisfactory</option>
-                                            <option>Satisfactory</option>
-                                            <option>Fairly Satisfactory</option>
-                                            <option>Did Not Meet Expectations</option>
-                                        </select>
-                                        <label>
-                                            <input type="checkbox" name="completed"> Mark complete
-                                        </label>
-                                        <!-- ONLY ONE BUTTON -->
-                                        <button type="submit" name="save_all" class="btn-submit">Save</button>
-                                    </div>
+                                <div class="log-row-controls">
+                                    <select name="status" required>
+                                        <option value="Present">Present</option>
+                                        <option value="Absent">Absent</option>
+                                        <option value="Late">Late</option>
+                                    </select>
+                                    <input type="number" name="hours" placeholder="hrs" min="0" max="24" required>
                                 </div>
                             </div>
 
-                        </form>
+                            <div class="remarks-section">
+                                <div class="remarks-label">Remarks</div>
+                                <textarea name="remarks" placeholder="Enter remarks..." required></textarea>
+                                <div class="remarks-footer">
+                                    <select name="rating" required>
+                                        <option>Outstanding</option>
+                                        <option>Very Satisfactory</option>
+                                        <option>Satisfactory</option>
+                                        <option>Fairly Satisfactory</option>
+                                        <option>Did Not Meet Expectations</option>
+                                    </select>
+                                    <label>
+                                        <input type="checkbox" name="completed"> Mark complete
+                                    </label>
+                                    <!-- ONLY ONE BUTTON -->
+                                    <button type="submit" name="save_all" class="btn-submit">Save</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
                 <?php endforeach; ?>
             </div>
 
@@ -880,8 +1445,516 @@ $page = 'messages';
             </div>
         </div>
 
+        <div id="chats" class="section-panel <?= $section === 'chats' ? 'active' : '' ?>">
+            <?php
+            $chatLookup = [];
+            foreach ($adviserChats as $ac) {
+                $key = $ac['chat_user_id'] . '-' . $ac['chat_user_type'];
+                $chatLookup[$key] = $ac;
+            }
+            $chatStudents = array_filter($chattableUsers, fn($u) => $u['user_type'] === 'student');
+            $chatOjtAdvisers = array_filter($chattableUsers, fn($u) => $u['user_type'] === 'adviser');
+            $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22', '#e74c3c', '#16a085'];
+            ?>
+
+            <div class="room-chat-wrap">
+                <div class="room-chat-list">
+                    <div class="room-chat-list-header">
+                        <h5>Chats</h5>
+                    </div>
+                    <div class="room-chat-search">
+                        <input type="text" placeholder="Search..." id="roomChatSearch" oninput="filterRoomChats()">
+                    </div>
+                    <div class="room-chat-entries" id="roomChatEntries">
+
+                        <div class="room-chat-divider">My Students</div>
+                        <?php foreach ($chatStudents as $u):
+                            $key = $u['user_id'] . '-student';
+                            $preview = $chatLookup[$key]['last_message'] ?? 'No messages yet';
+                            $avatarColor = $avatarColors[crc32($u['full_name']) % count($avatarColors)];
+                            $isActive = ($chatSection_id == $u['user_id'] && $chatSection_type === 'student');
+                            ?>
+                            <a href="?room_id=<?= $current_room_id ?>&section=chats&chat_id=<?= $u['user_id'] ?>&chat_type=student"
+                                class="room-chat-entry <?= $isActive ? 'active' : '' ?>"
+                                data-name="<?= strtolower(htmlspecialchars($u['full_name'])) ?>">
+                                <div class="room-chat-avatar" style="background:<?= $avatarColor ?>;">
+                                    <?= strtoupper(substr($u['full_name'], 0, 1)) ?>
+                                </div>
+                                <div class="room-chat-entry-meta">
+                                    <div class="room-chat-entry-name">
+                                        <?= htmlspecialchars($u['full_name']) ?>
+                                    </div>
+                                    <div class="room-chat-entry-preview">
+                                        <?= htmlspecialchars(substr($preview, 0, 40)) ?>
+                                    </div>
+                                </div>
+                                <span class="room-chat-badge" style="background:#dbeafe; color:#1e40af;">Student</span>
+                            </a>
+                        <?php endforeach; ?>
+
+                        <?php if (!empty($chatOjtAdvisers)): ?>
+                            <div class="room-chat-divider">OJT Advisers</div>
+                            <?php foreach ($chatOjtAdvisers as $u):
+                                $key = $u['user_id'] . '-adviser';
+                                $preview = $chatLookup[$key]['last_message'] ?? 'No messages yet';
+                                $avatarColor = $avatarColors[crc32($u['full_name']) % count($avatarColors)];
+                                $isActive = ($chatSection_id == $u['user_id'] && $chatSection_type === 'adviser');
+                                ?>
+                                <a href="?room_id=<?= $current_room_id ?>&section=chats&chat_id=<?= $u['user_id'] ?>&chat_type=adviser"
+                                    class="room-chat-entry <?= $isActive ? 'active' : '' ?>"
+                                    data-name="<?= strtolower(htmlspecialchars($u['full_name'])) ?>">
+                                    <div class="room-chat-avatar" style="background:<?= $avatarColor ?>;">
+                                        <?= strtoupper(substr($u['full_name'], 0, 1)) ?>
+                                    </div>
+                                    <div class="room-chat-entry-meta">
+                                        <div class="room-chat-entry-name">
+                                            <?= htmlspecialchars($u['full_name']) ?>
+                                        </div>
+                                        <div class="room-chat-entry-preview">
+                                            <?= htmlspecialchars(substr($preview, 0, 40)) ?>
+                                        </div>
+                                    </div>
+                                    <span class="room-chat-badge" style="background:#d1fae5; color:#065f46;">OJT</span>
+                                </a>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
+                    </div>
+                </div>
+
+                <div class="room-message-panel">
+                    <?php if ($chatSection_id): ?>
+                        <?php
+                        $openName = getRoomChatName($pdo, $chatSection_id, $chatSection_type);
+                        $openColor = $avatarColors[crc32($openName) % count($avatarColors)];
+                        $isHte = ($chatSection_type === 'adviser');
+                        ?>
+                        <div class="room-message-header">
+                            <div class="room-chat-avatar"
+                                style="background:<?= $openColor ?>; width:36px; height:36px; font-size:14px;">
+                                <?= strtoupper(substr($openName, 0, 1)) ?>
+                            </div>
+                            <div>
+                                <div style="font-weight:700; font-size:14px;">
+                                    <?= htmlspecialchars($openName) ?>
+                                </div>
+                                <div style="font-size:11px; color:#aaa;">
+                                    <?= $isHte ? 'HTE Supervisor' : 'Student' ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="room-message-body" id="roomMsgBody">
+                            <?php if (empty($chatMessages)): ?>
+                                <div style="text-align:center; color:#ccc; margin:auto; font-size:13px;">
+                                    <i class="fa fa-comments fa-2x d-block mb-2"></i>
+                                    No messages yet. Say hello!
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($chatMessages as $msg):
+                                    $isMe = ($msg['sender_id'] == $adviser_id && $msg['sender_type'] === 'adviser');
+                                    $bubbleColor = $avatarColors[crc32($msg['sender_name'] ?? '') % count($avatarColors)];
+                                    ?>
+                                    <div class="room-msg-row <?= $isMe ? 'me' : '' ?>">
+                                        <?php if (!$isMe): ?>
+                                            <div class="room-msg-avatar" style="background:<?= $bubbleColor ?>;">
+                                                <?= strtoupper(substr($msg['sender_name'] ?? '?', 0, 1)) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="room-msg-bubble-wrap">
+                                            <?php if (!$isMe): ?>
+                                                <div class="room-msg-sender">
+                                                    <?= htmlspecialchars($msg['sender_name'] ?? '') ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <div class="room-msg-bubble">
+                                                <?= htmlspecialchars($msg['message']) ?>
+                                            </div>
+                                            <div class="room-msg-time">
+                                                <?= date('M d, g:i A', strtotime($msg['created_at'])) ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="room-message-input-bar">
+                            <form method="POST" action="message-db.php" id="roomChatForm">
+                                <input type="hidden" name="receiver_id" value="<?= $chatSection_id ?>">
+                                <input type="hidden" name="receiver_type" value="<?= $chatSection_type ?>">
+                                <input type="hidden" name="redirect"
+                                    value="?room_id=<?= $current_room_id ?>&section=chats&chat_id=<?= $chatSection_id ?>&chat_type=<?= $chatSection_type ?>">
+                                <div class="room-message-input-row">
+                                    <textarea name="message" id="roomChatInput" rows="1" placeholder="Type a message…"
+                                        required onkeydown="roomChatEnterSend(event)"></textarea>
+                                    <button type="submit" class="room-chat-send-btn">
+                                        <i class="fa fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                    <?php else: ?>
+                        <div class="room-chat-empty">
+                            <i class="fa fa-comments fa-3x"></i>
+                            <div style="font-size:14px;">Select a student or supervisor to start chatting</div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
     </div><!-- /.main -->
 
+    <!-- Supervisor Evaluation Modal -->
+
+    <div class="modal fade" id="supEvalModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content" style="border-radius:16px; overflow:hidden;">
+
+                <!-- Header -->
+                <div class="modal-header"
+                    style="background:linear-gradient(135deg,#065f46,#047857); color:#fff; padding:20px 28px;">
+                    <div>
+                        <div
+                            style="font-size:11px; letter-spacing:.12em; opacity:.7; text-transform:uppercase; margin-bottom:4px;">
+                            CEIT-OJTF-010 · Pamantasan ng Lungsod ng Valenzuela
+                        </div>
+                        <h5 class="modal-title fw-bold mb-0" style="font-size:1.2rem;">
+                            Supervisor's Evaluation of Student Intern
+                        </h5>
+                        <div style="font-size:13px; opacity:.8; margin-top:4px;">
+                            Please evaluate the student intern on all applicable criteria below.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-body" style="padding:28px 32px; background:#f8f9fb;">
+                    <form id="supEvalForm">
+
+                        <!-- Student info strip -->
+                        <div style="background:#fff; border-radius:10px; padding:16px 20px; margin-bottom:20px;
+                         border:1px solid #e2e8f0; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                            <div>
+                                <label
+                                    style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;">Name
+                                    of Intern</label>
+                                <input type="text" name="intern_name" class="form-control form-control-sm mt-1"
+                                    placeholder="Full name of intern" required>
+                            </div>
+                            <div>
+                                <label
+                                    style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;">Course
+                                    / Student No.</label>
+                                <input type="text" name="student_no" class="form-control form-control-sm mt-1"
+                                    placeholder="e.g. BSIT / 2021-00001">
+                            </div>
+                            <div>
+                                <label
+                                    style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;">Name
+                                    of Company</label>
+                                <input type="text" name="company_name" class="form-control form-control-sm mt-1"
+                                    placeholder="Company / organization name" required>
+                            </div>
+                            <div>
+                                <label
+                                    style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;">Site
+                                    Internship Supervisor</label>
+                                <input type="text" name="supervisor_name" class="form-control form-control-sm mt-1"
+                                    placeholder="Supervisor's full name" required>
+                            </div>
+                        </div>
+
+                        <!-- Rating legend -->
+                        <div
+                            style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 18px;margin-bottom:20px;font-size:13px;">
+                            <strong>Rating Scale:</strong>
+                            <span style="margin-left:12px;">1 – Unsatisfactory</span>
+                            <span style="margin-left:12px;">2 – Fair</span>
+                            <span style="margin-left:12px;">3 – Commendable</span>
+                            <span style="margin-left:12px;">4 – Exceptional</span>
+                        </div>
+
+                        <!-- ── PART I · About the Intern ── -->
+                        <div
+                            style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#94a3b8;text-transform:uppercase;margin-bottom:10px;">
+                            Part I · About the Intern
+                        </div>
+
+                        <?php
+                        $supSections = [
+                            'A. Learning Skills' => [
+                                'ls_questions' => 'Asks relevant and purposeful questions.',
+                                'ls_resources' => 'Searches for and employs suitable resources.',
+                                'ls_accountability' => 'Takes accountability for errors and gains knowledge from experiences.',
+                            ],
+                            'B. Reading, Writing, and Computational Skills' => [
+                                'rw_written' => 'Demonstrates the ability to understand and follow written materials.',
+                                'rw_express' => 'Expresses ideas and concepts effectively through written communication.',
+                                'rw_math' => 'Applies mathematical procedures, engineering theories, and relevant concepts to the job at hand.',
+                            ],
+                            'C. Listening and Verbal Communications Skills' => [
+                                'lv_listens' => 'Actively listens to others with attentiveness.',
+                                'lv_meetings' => 'Effectively engages in meetings or group discussions.',
+                                'lv_verbal' => 'Demonstrates proficiency in verbal communication.',
+                            ],
+                            'D. Creative Thinking and Problem-Solving Skills' => [
+                                'ps_divides' => 'Divides complex tasks and problems into manageable components.',
+                                'ps_brainstorm' => 'Generates and formulates ideas and options through brainstorming.',
+                                'ps_solve' => 'Demonstrates the ability to solve encountered problems.',
+                            ],
+                            'E. Professional and Career Development Skills' => [
+                                'pd_proactive' => 'Shows a proactive attitude towards work.',
+                                'pd_priorities' => 'Displays proficiency in setting realistic priorities and objectives.',
+                                'pd_demeanor' => 'Demonstrates professional demeanor and conduct.',
+                            ],
+                            'F. Interpersonal and Teamwork Skills' => [
+                                'it_conflicts' => 'Resolves conflicts efficiently and effectively.',
+                                'it_team' => 'Contributes to a collaborative team environment.',
+                                'it_assertive' => 'Demonstrates assertiveness with appropriate behavior.',
+                            ],
+                            'G. Organizational Effectiveness Skills' => [
+                                'oe_endorse' => "Shows a willingness to comprehend and endorse the organization's objectives and aims.",
+                                'oe_adapts' => 'Adapts to the established standards and anticipations of the organization.',
+                                'oe_channels' => 'Operates within the appropriate channels for decision-making and authority.',
+                            ],
+                            'H. Basic Work Habits and Skills' => [
+                                'wh_punctual' => 'Arrives at work punctually and as per the schedule.',
+                                'wh_attitude' => 'Demonstrate a positive and constructive attitude.',
+                                'wh_dress' => "Adheres to the organization's policies and rules regarding dress code and appearance.",
+                            ],
+                            'I. Character Attributes' => [
+                                'ca_ethics' => 'Demonstrates a commitment to ethical values and integrity in their work.',
+                                'ca_principled' => 'Conducts themselves in an ethical and principled manner.',
+                                'ca_diversity' => 'Respects and values the diverse religious, cultural, and ethnic backgrounds of their colleagues.',
+                            ],
+                            'J. Industry-Specific Skills' => [
+                                'is_proficiency' => 'Demonstrated proficiency in industry-specific skills required for their role.',
+                                'is_willingness' => 'Showed a willingness to learn and improve industry-specific skills.',
+                                'is_additional' => 'Based on the profession represented by your company, are there any additional skills or competencies that you feel are important for the intern to possess? If yes, please rate the intern\'s performance in these skills.',
+                            ],
+                        ];
+
+                        foreach ($supSections as $sectionTitle => $fields):
+                            ?>
+                            <div
+                                style="background:#fff;border-radius:10px;padding:18px 22px;margin-bottom:14px;border:1px solid #e2e8f0;">
+                                <div style="font-weight:700;color:#065f46;margin-bottom:12px;font-size:14px;">
+                                    <?= htmlspecialchars($sectionTitle) ?>
+                                </div>
+                                <?php $i = 1;
+                                foreach ($fields as $name => $label): ?>
+                                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+                                     padding:8px 0;<?= $i > 1 ? 'border-top:1px solid #f1f5f9;' : '' ?>">
+                                        <span style="font-size:13px;color:#374151;flex:1;">
+                                            <?= $i ?>. <?= htmlspecialchars($label) ?>
+                                        </span>
+                                        <div class="d-flex gap-2 flex-shrink-0">
+                                            <?php for ($r = 1; $r <= 4; $r++): ?>
+                                                <label
+                                                    style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;">
+                                                    <input type="radio" name="<?= $name ?>" value="<?= $r ?>"
+                                                        style="accent-color:#065f46;width:16px;height:16px;">
+                                                    <span style="font-size:10px;color:#94a3b8;"><?= $r ?></span>
+                                                </label>
+                                            <?php endfor; ?>
+                                        </div>
+                                    </div>
+                                    <?php $i++; endforeach; ?>
+                            </div>
+                        <?php endforeach; ?>
+
+                        <!-- ── K. Comments ── -->
+                        <div
+                            style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#94a3b8;text-transform:uppercase;margin:20px 0 10px;">
+                            K. Comments
+                        </div>
+                        <div
+                            style="background:#fff;border-radius:10px;padding:18px 22px;margin-bottom:14px;border:1px solid #e2e8f0;display:flex;flex-direction:column;gap:14px;">
+                            <?php
+                            $comments = [
+                                'impact' => '1. Please explain how the intern\'s performance has impacted the organization.',
+                                'strengths' => '2. What do you think are the intern\'s key skills or strengths?',
+                                'improvements' => '3. Can you identify any areas where the intern could make improvements?',
+                            ];
+                            foreach ($comments as $name => $label):
+                                ?>
+                                <div>
+                                    <label
+                                        style="font-size:13px;color:#374151;font-weight:500;margin-bottom:6px;display:block;">
+                                        <?= htmlspecialchars($label) ?>
+                                    </label>
+                                    <textarea name="<?= $name ?>" rows="3" class="form-control"
+                                        style="font-size:13px;border-radius:8px;"
+                                        placeholder="Write your answer here…"></textarea>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <!-- ── L. Overall Performance ── -->
+                        <div
+                            style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#94a3b8;text-transform:uppercase;margin:20px 0 10px;">
+                            L. Overall Performance
+                        </div>
+                        <div
+                            style="background:#fff;border-radius:10px;padding:18px 22px;margin-bottom:14px;border:1px solid #e2e8f0;">
+                            <p style="font-size:13px;color:#374151;margin-bottom:14px;">
+                                If I were to rate the intern at the present time:
+                            </p>
+
+                            <!-- Labels row -->
+                            <div
+                                style="display:flex;justify-content:space-between;font-size:11px;color:#64748b;margin-bottom:4px;padding:0 2px;">
+                                <span>Unsatisfactory</span>
+                                <span>Poor</span>
+                                <span>Average</span>
+                                <span>Good</span>
+                                <span>Outstanding</span>
+                            </div>
+
+                            <!-- 0–10 radio scale -->
+                            <div style="display:flex;justify-content:space-between;gap:4px;" id="overallScaleIntern">
+                                <?php for ($v = 0; $v <= 10; $v++): ?>
+                                    <label
+                                        style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
+                                        <input type="radio" name="overall_intern" value="<?= $v ?>" required
+                                            style="accent-color:#065f46;width:16px;height:16px;">
+                                        <span style="font-size:11px;color:#94a3b8;"><?= $v ?></span>
+                                    </label>
+                                <?php endfor; ?>
+                            </div>
+                        </div>
+
+                        <!-- ── PART II · Internship Experience ── -->
+                        <div
+                            style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#94a3b8;text-transform:uppercase;margin:20px 0 10px;">
+                            Part II · Internship Experience
+                        </div>
+                        <div
+                            style="background:#fff;border-radius:10px;padding:18px 22px;margin-bottom:14px;border:1px solid #e2e8f0;display:flex;flex-direction:column;gap:14px;">
+
+                            <!-- A: Suggestions -->
+                            <div>
+                                <label
+                                    style="font-size:13px;color:#374151;font-weight:500;margin-bottom:6px;display:block;">
+                                    A. What are your suggestions for improving the internship program of PLV College of
+                                    Engineering and Information Technology?
+                                </label>
+                                <textarea name="suggestions" rows="3" class="form-control"
+                                    style="font-size:13px;border-radius:8px;"
+                                    placeholder="Write your suggestions here…"></textarea>
+                            </div>
+
+                            <!-- B: Future supervision -->
+                            <div style="border-top:1px solid #f1f5f9;padding-top:14px;">
+                                <label
+                                    style="font-size:13px;color:#374151;font-weight:500;margin-bottom:8px;display:block;">
+                                    B. Based on this experience, would you consider supervising other students from PLV
+                                    College of Engineering and Information Technology in the future? Why, or why not?
+                                </label>
+                                <div class="d-flex align-items-center gap-4 flex-wrap mb-2">
+                                    <label class="d-flex align-items-center gap-2"
+                                        style="cursor:pointer;font-size:13px;">
+                                        <input type="radio" name="supervise_future" value="yes"
+                                            style="accent-color:#065f46;"> Yes
+                                    </label>
+                                    <label class="d-flex align-items-center gap-2"
+                                        style="cursor:pointer;font-size:13px;">
+                                        <input type="radio" name="supervise_future" value="no"
+                                            style="accent-color:#065f46;"> No
+                                    </label>
+                                </div>
+                                <textarea name="supervise_future_reason" rows="2" class="form-control"
+                                    style="font-size:13px;border-radius:8px;"
+                                    placeholder="Please explain your answer…"></textarea>
+                            </div>
+
+                            <!-- C: Overall experience scale 0–10 -->
+                            <div style="border-top:1px solid #f1f5f9;padding-top:14px;">
+                                <p style="font-size:13px;color:#374151;font-weight:500;margin-bottom:14px;">
+                                    C. Overall, how do you rate your experience with this internship?
+                                </p>
+                                <div
+                                    style="display:flex;justify-content:space-between;font-size:11px;color:#64748b;margin-bottom:4px;padding:0 2px;">
+                                    <span>Unsatisfactory</span>
+                                    <span>Poor</span>
+                                    <span>Average</span>
+                                    <span>Good</span>
+                                    <span>Outstanding</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;gap:4px;">
+                                    <?php for ($v = 0; $v <= 10; $v++): ?>
+                                        <label
+                                            style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
+                                            <input type="radio" name="overall_experience" value="<?= $v ?>" required
+                                                style="accent-color:#065f46;width:16px;height:16px;">
+                                            <span style="font-size:11px;color:#94a3b8;"><?= $v ?></span>
+                                        </label>
+                                    <?php endfor; ?>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Signature / title strip -->
+                        <div style="background:#fff;border-radius:10px;padding:16px 20px;margin-bottom:14px;
+                         border:1px solid #e2e8f0;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div>
+                                <label
+                                    style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;">Title
+                                    / Position</label>
+                                <input type="text" name="title_position" class="form-control form-control-sm mt-1"
+                                    placeholder="e.g. IT Manager">
+                            </div>
+                            <div>
+                                <label
+                                    style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;">Contact
+                                    Details</label>
+                                <input type="text" name="contact_details" class="form-control form-control-sm mt-1"
+                                    placeholder="Email / phone">
+                            </div>
+                            <div>
+                                <label
+                                    style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;">Date</label>
+                                <input type="date" name="eval_date" class="form-control form-control-sm mt-1"
+                                    value="<?= date('Y-m-d') ?>">
+                            </div>
+                        </div>
+
+                        <!-- Notice -->
+                        <div
+                            style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 18px;font-size:12px;color:#166534;margin-bottom:8px;">
+                            <strong>Note:</strong> Place this document in a long brown envelope, signed and sealed by
+                            the OJT Coordinator across the flap.
+                            Return to: PLV College of Engineering and Information Technology, 2F CEIT Building, Tongco
+                            St., Maysan Valenzuela.
+                            <strong>This document must not be viewed, seen, or read by the Student Interns after filling
+                                out.</strong>
+                        </div>
+
+                        <!-- Error msg -->
+                        <div id="sup-eval-error-msg"
+                            style="display:none;color:#dc2626;font-size:13px;margin-bottom:10px;"></div>
+
+                    </form>
+                </div><!-- /modal-body -->
+
+                <div class="modal-footer" style="background:#f8f9fb;padding:16px 28px;gap:10px;">
+                    <span style="font-size:12px;color:#94a3b8;flex:1;">
+                        Responses will be kept within the department for record purposes only.
+                    </span>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="supEvalLaterBtn">
+                        Remind Me Later
+                    </button>
+                    <button type="button" class="btn btn-sm fw-semibold px-4" id="supEvalSubmitBtn"
+                        style="background:#065f46;color:#fff;border-radius:8px;">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Submit Evaluation
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div><!-- /#supEvalModal -->
     <!-- JOIN ROOM MODAL -->
     <div class="modal fade" id="joinRoomModal" tabindex="-1">
         <div class="modal-dialog">
@@ -934,6 +2007,31 @@ $page = 'messages';
             });
         }
 
+        function filterRoomChats() {
+            const q = document.getElementById('roomChatSearch').value.toLowerCase().trim();
+            document.querySelectorAll('#roomChatEntries .room-chat-entry').forEach(el => {
+                el.style.display = el.dataset.name.includes(q) ? '' : 'none';
+            });
+        }
+
+        // Auto-scroll to bottom
+        const msgBody = document.getElementById('roomMsgBody');
+        if (msgBody) msgBody.scrollTop = msgBody.scrollHeight;
+
+        // Send on Enter (Shift+Enter for newline)
+        function roomChatEnterSend(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('roomChatForm').submit();
+            }
+        }
+        const ta = document.getElementById('roomChatInput');
+        if (ta) {
+            ta.addEventListener('input', () => {
+                ta.style.height = 'auto';
+                ta.style.height = Math.min(ta.scrollHeight, 100) + 'px';
+            });
+        }
         function filterCards() {
             const search = document.getElementById('remarksSearchInput').value.toLowerCase();
             const room = document.getElementById('remarksRoomFilter').value.toLowerCase();
@@ -949,6 +2047,91 @@ $page = 'messages';
                     (matchSearch && matchRoom) ? '' : 'none';
             });
         }
+
+        function openSupEvalModal(studentId) {
+            const modal = new bootstrap.Modal(document.getElementById('supEvalModal'), {
+                backdrop: 'static',
+                keyboard: false
+            });
+            // store student id so the submit handler can send it
+            document.getElementById('supEvalModal').dataset.studentId = studentId;
+            modal.show();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+
+            /* Later button */
+            const laterBtn = document.getElementById('supEvalLaterBtn');
+            if (laterBtn) {
+                laterBtn.addEventListener('click', function () {
+                    bootstrap.Modal.getInstance(document.getElementById('supEvalModal'))?.hide();
+                });
+            }
+
+            /* Submit button */
+            const submitBtn = document.getElementById('supEvalSubmitBtn');
+            if (submitBtn) {
+                submitBtn.addEventListener('click', async function () {
+                    const form = document.getElementById('supEvalForm');
+                    const errorEl = document.getElementById('sup-eval-error-msg');
+                    errorEl.style.display = 'none';
+
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        errorEl.textContent = 'Please complete all required fields before submitting.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Submitting…';
+
+                    const data = new FormData(form);
+                    data.append('action', 'submit_supervisor_evaluation');
+
+                    const studentId = document.getElementById('supEvalModal').dataset.studentId ?? '';
+                    if (studentId) data.append('student_id', studentId);
+
+                    try {
+                        const res = await fetch('ojt-evaluation-submit.php', { method: 'POST', body: data });
+                        const json = await res.json();
+
+                        if (json.success) {
+                            bootstrap.Modal.getInstance(document.getElementById('supEvalModal'))?.hide();
+
+                            /* open download in new tab */
+                            if (studentId) {
+                                window.open('ojt-supervisor-evaluation-download.php?student_id=' + studentId, '_blank');
+                            }
+
+                            /* success toast */
+                            const toast = document.createElement('div');
+                            toast.style.cssText =
+                                'position:fixed;bottom:24px;right:24px;background:#065f46;color:#fff;' +
+                                'padding:14px 22px;border-radius:10px;font-size:14px;font-weight:600;z-index:9999;' +
+                                'box-shadow:0 4px 20px rgba(0,0,0,.2);';
+                            toast.textContent = '✓ Supervisor evaluation submitted and PDF downloaded!';
+                            document.body.appendChild(toast);
+                            setTimeout(() => toast.remove(), 5000);
+
+                            /* refresh page so the green download button appears */
+                            setTimeout(() => location.reload(), 1200);
+
+                        } else {
+                            errorEl.textContent = json.message || 'Submission failed. Please try again.';
+                            errorEl.style.display = 'block';
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Submit Evaluation';
+                        }
+                    } catch (err) {
+                        errorEl.textContent = 'Network error. Please try again.';
+                        errorEl.style.display = 'block';
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Submit Evaluation';
+                    }
+                });
+            }
+        });
     </script>
 </body>
 

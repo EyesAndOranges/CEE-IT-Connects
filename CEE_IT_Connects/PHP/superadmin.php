@@ -53,14 +53,11 @@ $recentAnnouncementsStmt = $pdo->query("
     LIMIT 5
 ");
 $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
-?>
 
-<?php
 $stmt = $pdo->query("SELECT id, name, email, role FROM admins ORDER BY id ASC");
 $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
-
     $admin_ids = $_POST['admin_id'];
     $roles = $_POST['role'];
 
@@ -89,13 +86,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
     ");
 
     $changedCount = 0;
-
     for ($i = 0; $i < count($admin_ids); $i++) {
         $fetchOldRole->execute([$admin_ids[$i]]);
         $oldRole = $fetchOldRole->fetchColumn();
-
         $updateStmt->execute([$roles[$i], $admin_ids[$i]]);
-
         if ($oldRole !== $roles[$i]) {
             $changedCount++;
             $notifStmt->execute([
@@ -124,6 +118,136 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
     exit;
 }
 
+// Assign adviser POST handler
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_adviser'])) {
+    $student_id = (int) $_POST['student_id'];
+    $adviser_id = (int) $_POST['adviser_id'];
+    $current_room_id = (int) ($_POST['current_room_id'] ?? 0);
+
+    if (!$student_id || !$adviser_id) {
+        $_SESSION['error'] = "Please select a valid adviser.";
+        header("Location: superadmin.php");
+        exit;
+    }
+
+    // Get the adviser's room
+    $roomStmt = $pdo->prepare("
+        SELECT id FROM rooms 
+        WHERE adviser_id = ? AND is_archived = FALSE 
+        LIMIT 1
+    ");
+    $roomStmt->execute([$adviser_id]);
+    $adviserRoom = $roomStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$adviserRoom) {
+        $_SESSION['error'] = "This adviser has no active room yet.";
+        header("Location: superadmin.php");
+        exit;
+    }
+
+    $new_room_id = $adviserRoom['id'];
+
+    // Remove student from current room if they're already in one
+    if ($current_room_id && $current_room_id !== $new_room_id) {
+        $removeStmt = $pdo->prepare("
+            DELETE FROM room_members 
+            WHERE room_id = ? AND user_id = ? AND user_type = 'student'
+        ");
+        $removeStmt->execute([$current_room_id, $student_id]);
+    }
+
+    // Check if already in the new room
+    $checkStmt = $pdo->prepare("
+        SELECT id FROM room_members 
+        WHERE room_id = ? AND user_id = ? AND user_type = 'student'
+    ");
+    $checkStmt->execute([$new_room_id, $student_id]);
+
+    if (!$checkStmt->fetch()) {
+        $insertStmt = $pdo->prepare("
+            INSERT INTO room_members (room_id, user_id, user_type)
+            VALUES (?, ?, 'student')
+        ");
+        $insertStmt->execute([$new_room_id, $student_id]);
+    }
+
+    // Audit log
+    $stmtActivity = $pdo->prepare("
+        INSERT INTO audits (user_id, roles, activity, activity_date) 
+        VALUES (:user_id, :roles, :activity, NOW())
+    ");
+    $stmtActivity->execute([
+        ':user_id' => $_SESSION['user_id'],
+        ':roles' => 'superadmin',
+        ':activity' => "Assigned student ID {$student_id} to adviser ID {$adviser_id}"
+    ]);
+
+    $_SESSION['success'] = "Student successfully assigned to adviser's room.";
+    header("Location: superadmin.php");
+    exit;
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_assign_csv'])) {
+    $headers = array_map('strtolower', array_map('trim', $_POST['headers'] ?? []));
+    $rows = $_POST['csv'] ?? [];
+    $sidIdx = array_search('student_id', $headers);
+    $aidIdx = array_search('adviser_id', $headers);
+
+    if ($sidIdx === false || $aidIdx === false) {
+        $_SESSION['error'] = "CSV must contain student_id and adviser_id columns.";
+        header("Location: superadmin.php?section=assign_adviser");
+        exit;
+    }
+
+    $assigned = 0;
+    $skipped = 0;
+
+    foreach ($rows as $row) {
+        $student_id = (int) ($row[$sidIdx] ?? 0);
+        $adviser_id = (int) ($row[$aidIdx] ?? 0);
+        if (!$student_id || !$adviser_id) {
+            $skipped++;
+            continue;
+        }
+
+        // Skip if student already has an adviser
+        $checkAssigned = $pdo->prepare("
+            SELECT r.id FROM rooms r
+            JOIN room_members rm ON rm.room_id = r.id
+            WHERE rm.user_id = ? AND rm.user_type = 'student' AND r.is_archived = FALSE
+            LIMIT 1
+        ");
+        $checkAssigned->execute([$student_id]);
+        if ($checkAssigned->fetch()) {
+            $skipped++;
+            continue;
+        }
+
+        // Get adviser's room
+        $roomStmt = $pdo->prepare("
+            SELECT id FROM rooms WHERE adviser_id = ? AND is_archived = FALSE LIMIT 1
+        ");
+        $roomStmt->execute([$adviser_id]);
+        $room = $roomStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$room) {
+            $skipped++;
+            continue;
+        }
+
+        $insertStmt = $pdo->prepare("
+            INSERT INTO room_members (room_id, user_id, user_type) VALUES (?, ?, 'student')
+        ");
+        $insertStmt->execute([$room['id'], $student_id]);
+        $assigned++;
+    }
+
+    $pdo->prepare("INSERT INTO audits (user_id, roles, activity, activity_date) VALUES (?, 'superadmin', ?, NOW())")
+        ->execute([$_SESSION['user_id'], "Bulk assigned {$assigned} student(s) via CSV, skipped {$skipped}"]);
+
+    $_SESSION['success'] = "Assigned {$assigned} student(s). Skipped {$skipped} (already assigned or invalid).";
+    header("Location: superadmin.php?section=assign_adviser");
+    exit;
+}
+
 $stmt = $pdo->query("
     SELECT id, full_name AS name, email, 'student' AS role, 'students' AS source FROM students
     UNION ALL
@@ -136,11 +260,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $stmt = $pdo->query("
     SELECT 
-        a.id,
-        a.user_id,
-        a.roles,
-        a.activity,
-        a.activity_date,
+        a.id, a.user_id, a.roles, a.activity, a.activity_date,
         COALESCE(u.name, 'Unknown (#' || a.user_id || ')') AS name
     FROM audits a
     LEFT JOIN (
@@ -149,13 +269,38 @@ $stmt = $pdo->query("
         SELECT id, name, role FROM admins
         UNION ALL
         SELECT id, full_name AS name, role::text AS role FROM advisers
-    ) u
-        ON a.user_id = u.id
-        AND LOWER(a.roles) = LOWER(u.role)
+    ) u ON a.user_id = u.id AND LOWER(a.roles) = LOWER(u.role)
     ORDER BY a.activity_date DESC
     LIMIT 30
 ");
 $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Adviser list with rooms
+$adviserListStmt = $pdo->query("
+    SELECT a.id, a.full_name, a.email, r.id AS room_id, r.room_name
+    FROM advisers a
+    LEFT JOIN rooms r ON r.adviser_id = a.id AND r.is_archived = FALSE
+    WHERE a.role = 'internship_adviser'
+    ORDER BY a.full_name ASC
+");
+$adviserList = $adviserListStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Student list with current adviser/room
+$studentListStmt = $pdo->query("
+    SELECT 
+        s.id,
+        s.full_name,
+        s.email,
+        a.full_name AS adviser_name,
+        r.room_name,
+        r.id AS room_id
+    FROM students s
+    LEFT JOIN room_members rm ON s.id = rm.user_id AND rm.user_type = 'student'
+    LEFT JOIN rooms r ON rm.room_id = r.id AND r.is_archived = FALSE
+    LEFT JOIN advisers a ON r.adviser_id = a.id
+    ORDER BY s.full_name ASC
+");
+$studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -190,18 +335,6 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             animation: fadeIn 0.8s ease-in-out;
         }
 
-        .success-box {
-            background: #d4edda;
-            color: #155724;
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-weight: 600;
-            opacity: 1;
-            transition: opacity 0.5s ease;
-        }
-
         .admin-form {
             display: flex;
             flex-direction: column;
@@ -230,7 +363,6 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             width: 100vw;
         }
 
-        /* SIDEBAR */
         .sidebar {
             width: 220px;
             margin-top: 10px;
@@ -243,6 +375,7 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             position: fixed;
             top: 0;
             left: 0;
+            overflow-y: auto;
         }
 
         .sidebar h3 {
@@ -267,16 +400,15 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             color: #272f54;
         }
 
-        /* MAIN CONTENT */
         .main-content {
             flex: 1;
             padding: 40px;
             background: #f5f7ff;
             margin-left: 220px;
             min-width: 0;
+            overflow-y: auto;
         }
 
-        /* SECTIONS */
         .section {
             display: none;
         }
@@ -285,7 +417,6 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             display: block;
         }
 
-        /* Section card wrapper */
         .sysAdm-section {
             background: #fff;
             border-radius: 12px;
@@ -307,7 +438,6 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             margin-bottom: 20px;
         }
 
-        /* Styled tables */
         .sysAdm-table {
             width: 100%;
             border-collapse: collapse;
@@ -344,7 +474,6 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             background: #f8fafc;
         }
 
-        /* Buttons */
         .btn-update {
             margin-top: 18px;
             padding: 11px 24px;
@@ -401,6 +530,91 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             color: #791f1f;
         }
 
+        .form-card {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(67, 67, 67, 0.08);
+        }
+
+        .btn-button {
+            padding: 8px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            background: #4f51a8;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .btn-button:hover {
+            background: #3A3B7B;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #FFB62F, #E4572E);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .submit-btn:hover {
+            opacity: 0.9;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            padding: 10px 40px 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            font-size: 13px;
+            width: 100%;
+        }
+
+        .search-box i {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #E4572E;
+        }
+
+        /* Assign adviser select */
+        .assign-select {
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 13px;
+            min-width: 200px;
+        }
+
+        .assign-btn {
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            background: #4f51a8;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+
+        .assign-btn:hover {
+            background: #3A3B7B;
+        }
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -412,23 +626,238 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 transform: translateY(0);
             }
         }
+
+        /*susu*/
+
+        @media (max-width: 768px) {
+            .layout {
+                flex-direction: row;
+            }
+
+            .sidebar {
+                top: 60px;
+                width: 60px !important;
+                padding: 10px 0 !important;
+                align-items: center;
+                overflow: visible !important;
+                z-index: 1050;
+            }
+
+            .sidebar h3 {
+                display: none !important;
+            }
+
+            .sidebar a {
+                width: 44px !important;
+                height: 44px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 12px !important;
+                margin: 0 auto 8px auto !important;
+                padding: 0 !important;
+                position: relative;
+            }
+
+            .sidebar a i {
+                margin: 0 !important;
+            }
+
+            /* Hide text labels */
+            .sidebar a .nav-label {
+                display: none !important;
+            }
+
+            /* Tooltip */
+            .sidebar a::after {
+                content: attr(data-tooltip);
+                position: absolute;
+                left: 56px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: #1a1a2e;
+                color: #fff;
+                font-size: 12px;
+                font-weight: 500;
+                padding: 5px 10px;
+                border-radius: 6px;
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s ease;
+            }
+
+            .sidebar a:hover::after {
+                opacity: 1;
+            }
+
+            .main-content {
+                margin-left: 60px !important;
+                padding: 10px !important;
+            }
+
+            /* STAT CARDS — 1 row, 3 columns */
+            .row.g-3.mb-4 {
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 4px !important;
+            }
+
+            .row.g-3.mb-4 .col-md-4 {
+                width: 100% !important;
+                padding: 0 !important;
+            }
+
+            .row.g-3.mb-4 .card {
+                border-radius: 10px !important;
+            }
+
+            .row.g-3.mb-4 .card-body {
+                padding: 8px !important;
+            }
+
+            .row.g-3.mb-4 .card-body p {
+                font-size: 10px !important;
+                margin-bottom: 4px !important;
+                letter-spacing: 0 !important;
+            }
+
+            .row.g-3.mb-4 .card-body .d-flex {
+                flex-wrap: nowrap !important;
+                align-items: flex-start !important;
+                justify-content: space-between !important;
+                gap: 4px !important;
+            }
+
+            .row.g-3.mb-4 .card-body .d-flex > div:first-child {
+                flex: 1 !important;
+            }
+
+            .row.g-3.mb-4 .card-body h2 {
+                font-size: 1.3rem !important;
+                margin-bottom: 0 !important;
+            }
+
+            /* Hide icon box to save space */
+            .row.g-3.mb-4 .card-body .rounded-3 {
+                width: 24px !important;
+                height: 24px !important;
+                flex-shrink: 0;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                align-self: flex-start !important;
+                margin-top: 4px !important;
+            }
+            .row.g-3.mb-4 .card-body .rounded-3 i {
+                font-size: 10px !important;
+            }
+
+            /* TABLES — allow horizontal scroll */
+            .sysAdm-table {
+                font-size: 12px !important;
+            }
+
+            .sysAdm-table th,
+            .sysAdm-table td {
+                padding: 10px 10px !important;
+                font-size: 12px !important;
+            }
+
+            /* DASHBOARD CONTAINER (forms) */
+            .dashboard-container {
+                padding: 20px !important;
+                max-width: 100% !important;
+            }
+
+            /* SECTION HEADERS */
+            .sysAdm-header h2 {
+                font-size: 20px !important;
+            }
+
+            /* DOWNLOAD BUTTONS */
+            .d-flex.justify-content-end.gap-2.mt-4 {
+                flex-direction: row !important;
+                align-items: center !important;
+                justify-content: center;
+            }
+
+            .d-flex.justify-content-end.gap-2.mt-4 button {
+                flex: 1;
+                font-size: 12px;
+                padding: 8px;
+                justify-content: center !important;
+            }
+
+            .stat-card-title {
+                font-size: 9px !important;
+                letter-spacing: 0 !important;
+                margin-bottom: 4px !important;
+                white-space: normal !important;
+                line-height: 1.1 !important;	
+                word-break: break-word !important;
+            }
+
+            .stat-card-number {
+                font-size: 1.3rem !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .row.g-3.mb-4 {
+                gap: 3px !important;
+            }
+
+            .row.g-3.mb-4 .card-body {
+                padding: 6px !important;
+            }
+
+            .row.g-3.mb-4 .card-body p {
+                font-size: 8px !important;
+                letter-spacing: 0 !important;
+                margin-bottom: 2px !important;
+                line-height: 1.2 !important;
+                word-break: break-word !important;
+            }
+
+            .row.g-3.mb-4 .card-body h2 {
+                font-size: 1rem !important;
+                margin-bottom: 0 !important;
+            }
+
+            .row.g-3.mb-4 .card-body .rounded-3 {
+                width: 24px !important;
+                height: 24px !important;
+            }
+
+            .row.g-3.mb-4 .card-body .rounded-3 i {
+                font-size: 10px !important;
+            }
+
+            .stat-card-title {
+                font-size: 7px !important;
+                line-height: 1.1 !important;
+                word-break: break-word !important;
+            }
+
+            .stat-card-number {
+                font-size: 1rem !important;
+            }
+        }
     </style>
 </head>
 
 <script>
     function showSection(event, sectionId) {
-        document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
         document.getElementById(sectionId).classList.add('active');
-        document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
+        document.querySelectorAll('.sidebar a').forEach(l => l.classList.remove('active'));
         event.currentTarget.classList.add('active');
     }
 
     function confirmSuperadminGlobal() {
         const roles = document.querySelectorAll("select[name='role[]']");
-        let superadminCount = 0;
-        let hasChangeToSuperadmin = false;
-        let hasRemovalFromSuperadmin = false;
-
+        let superadminCount = 0, hasChangeToSuperadmin = false, hasRemovalFromSuperadmin = false;
         roles.forEach(select => {
             const original = select.dataset.original;
             const current = select.value;
@@ -436,7 +865,6 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if (current === 'superadmin' && original !== 'superadmin') hasChangeToSuperadmin = true;
             if (original === 'superadmin' && current !== 'superadmin') hasRemovalFromSuperadmin = true;
         });
-
         if (superadminCount > 3) { alert("Only 3 superadmins are allowed."); return false; }
         if (hasRemovalFromSuperadmin) return confirm("You are removing a Superadmin. Continue?");
         if (hasChangeToSuperadmin) return confirm("You are assigning a Superadmin. Are you sure?");
@@ -447,15 +875,12 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 <body>
-
     <?php include 'navbar.php'; ?>
 
-    <!-- Flash messages (Doc 2 logic) -->
     <?php if (isset($_SESSION['success'])): ?>
-        <div class="alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
-            style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
-            <i class="bi bi-check-circle-fill me-2"></i>
-                <?= $_SESSION['success'] ?>
+                <div class="alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
+                    style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
+                    <i class="bi bi-check-circle-fill me-2"></i><?= $_SESSION['success'] ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
                 <?php unset($_SESSION['success']); ?>
@@ -464,8 +889,7 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <?php if (isset($_SESSION['info'])): ?>
                 <div class="alert alert-info alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
                     style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
-                    <i class="bi bi-info-circle-fill me-2"></i>
-                    <?= $_SESSION['info'] ?>
+                    <i class="bi bi-info-circle-fill me-2"></i><?= $_SESSION['info'] ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
                 <?php unset($_SESSION['info']); ?>
@@ -474,8 +898,7 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <?php if (isset($_SESSION['error'])): ?>
                 <div class="alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
                     style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
-                    <i class="bi bi-x-circle-fill me-2"></i>
-                    <?= $_SESSION['error'] ?>
+                    <i class="bi bi-x-circle-fill me-2"></i><?= $_SESSION['error'] ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
                 <?php unset($_SESSION['error']); ?>
@@ -483,7 +906,6 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <div class="layout">
 
-        <!-- SIDEBAR (Doc 1 design: icons + styled active state) -->
         <div class="sidebar">
             <h3>Superadmin</h3>
             <a href="#" onclick="showSection(event, 'dashboard')" class="active">
@@ -504,12 +926,17 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <a href="#" onclick="showSection(event, 'monitor')">
                 <i class="bi bi-binoculars me-2"></i> Monitor
             </a>
+            <a href="#" onclick="showSection(event, 'student_register')">
+                <i class="bi bi-file-earmark-person me-2"></i> Student Register
+            </a>
+            <a href="#" onclick="showSection(event, 'assign_adviser')">
+                <i class="bi bi-person-lines-fill me-2"></i> Assign Adviser
+            </a>
         </div>
 
-        <!-- MAIN CONTENT -->
         <div class="main-content">
 
-            <!-- DASHBOARD SECTION -->
+            <!-- DASHBOARD -->
             <div id="dashboard" class="section active">
                 <div class="d-flex align-items-center justify-content-between mb-4">
                     <div>
@@ -521,7 +948,6 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </span>
                 </div>
 
-                <!-- Stat Cards -->
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
                         <div class="card border-0 rounded-4 h-100" style="background:#272f54;">
@@ -546,8 +972,10 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <p class="small mb-1 fw-semibold text-uppercase"
-                                            style="letter-spacing:.05em;font-size:11px;color:#7a5200;">Students Interested</p>
-                                        <h2 class="fw-bold mb-0" style="color:#3b2600;"><?= (int) $totalInterested ?></h2>
+                                            style="letter-spacing:.05em;font-size:11px;color:#7a5200;">Students
+                                            Interested</p>
+                                        <h2 class="fw-bold mb-0" style="color:#3b2600;"><?= (int) $totalInterested ?>
+                                        </h2>
                                     </div>
                                     <div class="rounded-3 d-flex align-items-center justify-content-center"
                                         style="width:44px;height:44px;background:rgba(0,0,0,0.1);">
@@ -581,16 +1009,19 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
                         <i class="bi bi-briefcase" style="color:#272f54;"></i>
                         <h6 class="fw-bold mb-0" style="color:#272f54;">Recent Internship Postings</h6>
-                        <span class="badge ms-auto rounded-pill" style="background:#eef1ff;color:#272f54;font-size:11px;">Latest 5</span>
+                        <span class="badge ms-auto rounded-pill"
+                            style="background:#eef1ff;color:#272f54;font-size:11px;">Latest 5</span>
                     </div>
                     <div class="card-body px-4 pb-4 pt-2">
                         <?php if (empty($recentInternships)): ?>
                                     <p class="text-muted small mb-0">No internships posted yet.</p>
                         <?php else: ?>
                                     <div class="table-responsive">
-                                        <table id="table-internships" class="table table-hover align-middle mb-0" style="font-size:14px;">
+                                        <table id="table-internships" class="table table-hover align-middle mb-0"
+                                            style="font-size:14px;">
                                             <thead>
-                                                <tr style="color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">
+                                                <tr
+                                                    style="color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">
                                                     <th class="border-0 pb-2 fw-semibold">Title</th>
                                                     <th class="border-0 pb-2 fw-semibold">Company</th>
                                                     <th class="border-0 pb-2 fw-semibold">Location</th>
@@ -600,9 +1031,13 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                             <tbody>
                                                 <?php foreach ($recentInternships as $ri): ?>
                                                             <tr>
-                                                                <td class="fw-semibold" style="color:#272f54;"><?= htmlspecialchars($ri['title']) ?></td>
+                                                                <td class="fw-semibold" style="color:#272f54;">
+                                                                    <?= htmlspecialchars($ri['title']) ?>
+                                                                </td>
                                                                 <td><?= htmlspecialchars($ri['company']) ?></td>
-                                                                <td class="text-muted"><i class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($ri['location']) ?></td>
+                                                                <td class="text-muted"><i
+                                                                        class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($ri['location']) ?>
+                                                                </td>
                                                                 <td>
                                                                     <span class="badge rounded-pill px-3"
                                                                         style="background:#f0f4ff;color:#272f54;font-weight:500;font-size:12px;">
@@ -618,14 +1053,15 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
 
-                <!-- Bottom Row: Interested Students + Announcements -->
+                <!-- Bottom Row -->
                 <div class="row g-4">
                     <div class="col-lg-6">
                         <div class="card border-0 rounded-4 shadow-sm h-100">
                             <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
                                 <i class="bi bi-people" style="color:#272f54;"></i>
                                 <h6 class="fw-bold mb-0" style="color:#272f54;">Recently Interested Students</h6>
-                                <span class="badge ms-auto rounded-pill" style="background:#fff8e1;color:#7a5200;font-size:11px;">Latest 5</span>
+                                <span class="badge ms-auto rounded-pill"
+                                    style="background:#fff8e1;color:#7a5200;font-size:11px;">Latest 5</span>
                             </div>
                             <div id="table-interested" class="card-body px-4 pb-4 pt-2">
                                 <?php if (empty($recentInterested)): ?>
@@ -639,7 +1075,8 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                                     <?= strtoupper(substr($ri['full_name'], 0, 1)) ?>
                                                                 </div>
                                                                 <div class="flex-grow-1 overflow-hidden">
-                                                                    <p class="fw-semibold mb-0 text-truncate" style="color:#272f54;font-size:14px;">
+                                                                    <p class="fw-semibold mb-0 text-truncate"
+                                                                        style="color:#272f54;font-size:14px;">
                                                                         <?= htmlspecialchars($ri['full_name']) ?>
                                                                     </p>
                                                                     <p class="text-muted mb-0 text-truncate" style="font-size:12px;">
@@ -668,7 +1105,8 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
                                 <i class="bi bi-bell" style="color:#272f54;"></i>
                                 <h6 class="fw-bold mb-0" style="color:#272f54;">Recent Announcements</h6>
-                                <span class="badge ms-auto rounded-pill" style="background:#fdecea;color:#7f1d1d;font-size:11px;">Latest 5</span>
+                                <span class="badge ms-auto rounded-pill"
+                                    style="background:#fdecea;color:#7f1d1d;font-size:11px;">Latest 5</span>
                             </div>
                             <div id="table-announcements" class="card-body px-4 pb-4 pt-2">
                                 <?php if (empty($recentAnnouncements)): ?>
@@ -689,7 +1127,8 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                                     <?= htmlspecialchars(ucfirst($a['category'])) ?>
                                                                 </span>
                                                                 <div class="flex-grow-1 overflow-hidden">
-                                                                    <p class="fw-semibold mb-0 text-truncate" style="color:#272f54;font-size:14px;">
+                                                                    <p class="fw-semibold mb-0 text-truncate"
+                                                                        style="color:#272f54;font-size:14px;">
                                                                         <?= htmlspecialchars($a['title']) ?>
                                                                     </p>
                                                                     <p class="text-muted mb-0" style="font-size:12px;">
@@ -704,7 +1143,6 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </div>
 
-                    <!-- Download buttons -->
                     <div class="d-flex justify-content-end gap-2 mt-4 mb-3">
                         <button onclick="downloadDashboardCSV()" class="btn btn-sm btn-outline-secondary"
                             style="background:#272f54;color:white;">
@@ -738,16 +1176,16 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
-            <!-- ADD ADMIN ACCOUNT SECTION -->
+            <!-- ADD ADMIN -->
             <div id="add-admin" class="section sysAdm-section">
                 <div class="sysAdm-header">
                     <h2>Create New Admin Account</h2>
                     <p>Admins can be assigned to an internship administration role.</p>
                 </div>
                 <form method="POST" action="superadmin-db.php" class="admin-form">
-                    <input type="text"     name="name"     placeholder="Full Name"      required>
-                    <input type="email"    name="email"    placeholder="Email Address"  required>
-                    <input type="password" name="password" placeholder="Password"       required>
+                    <input type="text" name="name" placeholder="Full Name" required>
+                    <input type="email" name="email" placeholder="Email Address" required>
+                    <input type="password" name="password" placeholder="Password" required>
                     <select name="role" required>
                         <option value="" disabled selected>Select Role</option>
                         <option value="internship_admin">Internship Admin</option>
@@ -758,50 +1196,39 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </form>
             </div>
 
-            <!-- ADD ADVISER ACCOUNT SECTION -->
+            <!-- ADD ADVISER -->
             <div id="add-adviser" class="section sysAdm-section">
                 <div class="sysAdm-header">
                     <h2>Create New Adviser Account</h2>
                     <p>Advisers can be assigned to either HTE or Internship advising roles.</p>
                 </div>
                 <form method="POST" action="superadmin-db.php" class="admin-form">
-                    <input type="text"     name="name"     placeholder="Full Name"     required>
-                    <input type="email"    name="email"    placeholder="Email Address" required>
-                    <input type="password" name="password" placeholder="Password"      required>
-
-                    <!-- <select name="title" required>
-                        <option value="" disabled selected>Select Title</option>
-                        <option value="Adviser">Adviser</option>
-                        <option value="Professor">Professor</option>
-                        <option value="Engineer">Engineer</option>
-                        <option value="Doctor">Doctor</option>
-                        <option value="Instructor">Instructor</option>
-                    </select> -->
-
+                    <input type="text" name="name" placeholder="Full Name" required>
+                    <input type="email" name="email" placeholder="Email Address" required>
+                    <input type="password" name="password" placeholder="Password" required>
                     <select name="role" id="adviserRole" required>
                         <option value="" disabled selected>Select Role</option>
                         <option value="HTE_adviser">HTE Adviser</option>
                         <option value="internship_adviser">Internship Adviser</option>
                     </select>
-
                     <div id="internshipWrapper" style="display:none;">
                         <select name="internship_id" id="internshipSelect">
                             <option value="" selected>Select Internship</option>
                             <?php foreach ($internships as $internship): ?>
                                         <option value="<?= $internship['id'] ?>">
-                                            <?= htmlspecialchars($internship['company']) ?> — <?= htmlspecialchars($internship['title']) ?>
+                                            <?= htmlspecialchars($internship['company']) ?> —
+                                            <?= htmlspecialchars($internship['title']) ?>
                                         </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-
                     <div style="display:flex;width:100%;justify-content:flex-end;margin-top:12px;">
                         <button type="submit" name="create-adviser" class="btn-create">Create Adviser</button>
                     </div>
                 </form>
             </div>
 
-            <!-- DELETE USER SECTION -->
+            <!-- DELETE USER -->
             <div id="delete" class="section sysAdm-section">
                 <div class="sysAdm-header">
                     <h2>Delete Account</h2>
@@ -825,7 +1252,7 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <td>
                                             <form method="POST" action="superadmin-db.php"
                                                 onsubmit="return confirm('Are you sure you want to delete this user?')">
-                                                <input type="hidden" name="id"     value="<?= $u['id'] ?>">
+                                                <input type="hidden" name="id" value="<?= $u['id'] ?>">
                                                 <input type="hidden" name="source" value="<?= $u['source'] ?>">
                                                 <button type="submit" name="delete" class="btn-delete">
                                                     <i class="bi bi-trash-fill"></i> Delete
@@ -838,13 +1265,12 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </table>
             </div>
 
-            <!-- CHANGE ROLES SECTION -->
+            <!-- CHANGE ROLES -->
             <div id="roles" class="section sysAdm-section">
                 <div class="sysAdm-header">
                     <h2>Admin Management</h2>
                     <p>Assign and update roles for admin users.</p>
                 </div>
-
                 <form method="POST" onsubmit="return confirmSuperadminGlobal()">
                     <table class="sysAdm-table">
                         <thead>
@@ -862,11 +1288,11 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                             <td>
                                                 <input type="hidden" name="admin_id[]" value="<?= $admin['id'] ?>">
                                                 <select name="role[]" data-original="<?= $admin['role'] ?>" required>
-                                                    <option value="null" disabled
-                                                        <?= $admin['role'] !== 'superadmin' && $admin['role'] !== 'internship_admin' ? 'selected' : '' ?>>
+                                                    <option value="null" disabled <?= $admin['role'] !== 'superadmin' && $admin['role'] !== 'internship_admin' ? 'selected' : '' ?>>
                                                         None
                                                     </option>
-                                                    <option value="superadmin"       <?= $admin['role'] == 'superadmin' ? 'selected' : '' ?>>System admin</option>
+                                                    <option value="superadmin" <?= $admin['role'] == 'superadmin' ? 'selected' : '' ?>>
+                                                        System admin</option>
                                                     <option value="internship_admin" <?= $admin['role'] == 'internship_admin' ? 'selected' : '' ?>>Internship Admin</option>
                                                 </select>
                                             </td>
@@ -882,7 +1308,7 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </form>
             </div>
 
-            <!-- MONITOR SECTION -->
+            <!-- MONITOR -->
             <div id="monitor" class="section sysAdm-section">
                 <div class="sysAdm-header">
                     <h2>System Monitoring</h2>
@@ -914,11 +1340,291 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </table>
             </div>
 
+            <!-- STUDENT REGISTER -->
+            <div id="student_register" class="section sysAdm-header">
+                <h2>Student Register</h2>
+                <p>The master list for keeping tabs on every student in the system.</p>
+
+                <div class="form-card">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <div>
+                            <h5 class="fw-semibold mb-1" style="color:#272f54;">Excel Sheet for Student Registration
+                            </h5>
+                            <p class="text-muted small mb-0">View and edit the current student CSV file.</p>
+                        </div>
+                        <button class="btn-button align-self-center" onclick="showSection(event, 'edit_csv')">
+                            <i class="bi bi-pencil-square me-1"></i>Edit Current CSV
+                        </button>
+                    </div>
+                </div>
+
+                <hr style="border-color:#eee;">
+
+                <div class="form-card">
+                    <div class="mb-3">
+                        <h5 class="fw-semibold mb-1" style="color:#272f54;">Import New CSV File</h5>
+                        <p class="text-muted small mb-0">Replaces the existing CSV with the uploaded file.</p>
+                    </div>
+                    <form action="auto-register-csv.php" method="POST" enctype="multipart/form-data">
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="file" name="students_csv" accept=".csv" required class="form-control"
+                                style="flex:1;font-size:13px;">
+                            <button class="btn-button" type="submit">
+                                <i class="bi bi-upload me-1"></i>Replace CSV
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <hr style="border-color:#eee;">
+
+                <div class="form-card">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <div>
+                            <h5 class="fw-semibold mb-1" style="color:#272f54;">Download Current CSV Template</h5>
+                            <p class="text-muted small mb-0">Download the current student registration template.</p>
+                        </div>
+                        <a href="download-csv-temp.php?type=student_register"
+                            class="btn btn-sm btn-outline-secondary mb-3">
+                            <i class="bi bi-download me-1"></i> Download Template
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EDIT CSV -->
+            <div id="edit_csv" class="section sysAdm-header">
+                <h2>Edit Student CSV</h2>
+                <div class="form-card">
+                    <?php
+                    $sourceDir = __DIR__ . '/../Sources/';
+                    $activeFile = file_exists($sourceDir . 'active_csv.txt')
+                        ? trim(file_get_contents($sourceDir . 'active_csv.txt'))
+                        : 'students.csv';
+                    $csvPath = $sourceDir . $activeFile;
+                    $csvRows = [];
+                    if (file_exists($csvPath)) {
+                        $handle = fopen($csvPath, 'r');
+                        if ($handle !== false) {
+                            while (($row = fgetcsv($handle, 0, ',')) !== false) {
+                                $csvRows[] = $row;
+                            }
+                            fclose($handle);
+                        }
+                        if (count($csvRows) > 1 && $csvRows[0] === $csvRows[1]) {
+                            array_shift($csvRows);
+                        }
+                    }
+                    ?>
+                    <?php if (empty($csvRows)): ?>
+                                <p class="text-muted">No CSV file found. Please upload one first.</p>
+                    <?php else: ?>
+                                <p class="text-muted small mb-3">Editing: <strong><?= htmlspecialchars($activeFile) ?></strong></p>
+                                <form method="POST" action="auto-register-save-csv.php">
+                                    <input type="hidden" name="edit_csv">
+                                    <?php foreach ($csvRows[0] as $colIndex => $headerCell): ?>
+                                                <input type="hidden" name="headers[<?= $colIndex ?>]"
+                                                    value="<?= htmlspecialchars($headerCell) ?>">
+                                    <?php endforeach; ?>
+                                    <table class="table table-bordered" id="csv-table">
+                                        <thead>
+                                            <tr>
+                                                <?php foreach ($csvRows[0] as $headerCell): ?>
+                                                            <th><?= htmlspecialchars($headerCell) ?></th>
+                                                <?php endforeach; ?>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="csv-tbody">
+                                            <?php foreach ($csvRows as $rowIndex => $row): ?>
+                                                        <?php if ($rowIndex === 0)
+                                                            continue; ?>
+                                                        <tr>
+                                                            <?php foreach ($row as $colIndex => $cell): ?>
+                                                                        <td>
+                                                                            <input type="text" name="csv[<?= $rowIndex ?>][<?= $colIndex ?>]"
+                                                                                value="<?= htmlspecialchars($cell) ?>" class="form-control">
+                                                                        </td>
+                                                            <?php endforeach; ?>
+                                                        </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                    <input type="hidden" id="col-count" value="<?= count($csvRows[0]) ?>">
+                                    <input type="hidden" id="row-count" value="<?= count($csvRows) ?>">
+                                    <div class="d-flex gap-2 mt-3">
+                                        <button type="button" class="btn btn-success" onclick="addRow()">
+                                            <i class="bi bi-plus-circle"></i> Add Row
+                                        </button>
+                                        <div style="flex:1; text-align:right;">
+                                            <button type="submit" class="submit-btn">Save CSV</button>
+                                            <button type="button" class="submit-btn btn-danger"
+                                                onclick="showSection(event, 'student_register')">Back</button>
+                                        </div>
+                                    </div>
+                                </form>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- ASSIGN ADVISER -->
+            <div id="assign_adviser" class="section sysAdm-section">
+                <div class="sysAdm-header">
+                    <h2>Assign Adviser to Student</h2>
+                    <p>Assign an internship adviser to a student. The student will automatically be added to that
+                        adviser's room.</p>
+                </div>
+
+                <!-- Search + filter -->
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <input type="text" id="assign-search" oninput="filterAssignTable()"
+                            placeholder="Search student..."
+                            style="padding:8px 14px; border-radius:10px; border:1px solid #ddd; font-size:13px; min-width:220px;">
+                        <select id="assign-filter-adviser" onchange="filterAssignTable()"
+                            style="padding:8px 14px; border-radius:10px; border:1px solid #ddd; font-size:13px; min-width:200px;">
+                            <option value="">All Advisers</option>
+                            <option value="unassigned">Unassigned</option>
+                            <?php foreach ($adviserList as $adv): ?>
+                                        <option value="<?= htmlspecialchars($adv['full_name']) ?>">
+                                            <?= htmlspecialchars($adv['full_name']) ?>
+                                        </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <button class="btn-button" data-bs-toggle="modal" data-bs-target="#csvAssignModal">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Import via CSV
+                    </button>
+                </div>
+
+                <table class="sysAdm-table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Email</th>
+                            <th>Current Adviser</th>
+                            <th>Current Room</th>
+                            <th>Assign To</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assign-tbody">
+                        <?php foreach ($studentList as $st): ?>
+                                    <tr data-adviser="<?= htmlspecialchars(strtolower($st['adviser_name'] ?? '')) ?>"
+                                        data-name="<?= htmlspecialchars(strtolower($st['full_name'])) ?>">
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                                                    style="width:34px;height:34px;background:#eef1ff;color:#272f54;font-size:12px;">
+                                                    <?= strtoupper(substr($st['full_name'], 0, 1)) ?>
+                                                </div>
+                                                <?= htmlspecialchars($st['full_name']) ?>
+                                            </div>
+                                        </td>
+                                        <td><?= htmlspecialchars($st['email']) ?></td>
+                                        <td>
+                                            <?php if ($st['adviser_name']): ?>
+                                                        <span class="badge rounded-pill px-3"
+                                                            style="background:#eef1ff;color:#272f54;font-size:12px;">
+                                                            <?= htmlspecialchars($st['adviser_name']) ?>
+                                                        </span>
+                                            <?php else: ?>
+                                                        <span class="badge rounded-pill px-3"
+                                                            style="background:#f8d7da;color:#721c24;font-size:12px;">
+                                                            Unassigned
+                                                        </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?= $st['room_name'] ? htmlspecialchars($st['room_name']) : '—' ?></td>
+                                        <td>
+                                            <form method="POST" id="assign-form-<?= $st['id'] ?>">
+                                                <input type="hidden" name="student_id" value="<?= $st['id'] ?>">
+                                                <input type="hidden" name="current_room_id" value="<?= $st['room_id'] ?? '' ?>">
+                                                <select name="adviser_id" class="assign-select" <?= $st['adviser_name'] ? 'disabled' : '' ?>>
+                                                    <option value="">— Select Adviser —</option>
+                                                    <?php foreach ($adviserList as $adv): ?>
+                                                                <?php if (!$adv['room_id'])
+                                                                    continue; ?>
+                                                                <option value="<?= $adv['id'] ?>" <?= ($st['room_id'] && $adv['room_id'] == $st['room_id']) ? 'selected' : '' ?>>
+                                                                    <?= htmlspecialchars($adv['full_name']) ?>
+                                                                    (<?= htmlspecialchars($adv['room_name']) ?>)
+                                                                </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <?php if ($st['adviser_name']): ?>
+                                                        <span class="badge rounded-pill px-3"
+                                                            style="background:#eaf3de;color:#27500a;font-size:12px;font-weight:500;">
+                                                            <i class="bi bi-check-circle-fill me-1"></i> Assigned
+                                                        </span>
+                                            <?php else: ?>
+                                                        <button type="submit" form="assign-form-<?= $st['id'] ?>" name="assign_adviser"
+                                                            class="assign-btn">
+                                                            <i class="bi bi-person-check me-1"></i> Assign
+                                                        </button>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <!-- CSV ASSIGN ADVISER MODAL -->
+            <div class="modal fade" id="csvAssignModal" tabindex="-1">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                    <div class="modal-content rounded-4">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="bi bi-file-earmark-spreadsheet me-2"></i>
+                                <strong>Bulk Assign Advisers via CSV</strong>
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="csv-assign-step-1">
+                                <p style="font-size:13px;color:#888;">
+                                    Upload a <code>.csv</code> file with two columns:
+                                    <strong>student_id</strong> and <strong>adviser_id</strong><br>
+                                    Only <strong>unassigned</strong> students will be processed. Already-assigned
+                                    students are skipped.
+                                </p>
+                                <a href="download-csv-temp.php?type=assign_adviser"
+                                    class="btn btn-sm btn-outline-secondary mb-3">
+                                    <i class="bi bi-download me-1"></i> Download Template
+                                </a>
+                                <input type="file" id="csvAssignFileInput" accept=".csv,.tsv,.txt"
+                                    class="form-control mb-3" onchange="previewAssignCSV(this)">
+                                <div id="csv-assign-error" class="alert alert-danger d-none"></div>
+                            </div>
+
+                            <div id="csv-assign-step-2" class="d-none">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span style="font-size:13px;color:#555;" id="csv-assign-preview-count"></span>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="resetAssignCSV()">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i> Choose different file
+                                    </button>
+                                </div>
+                                <div style="overflow-x:auto;max-height:380px;border:1px solid #eee;border-radius:8px;">
+                                    <table class="table table-sm table-bordered mb-0" id="csv-assign-preview-table"
+                                        style="font-size:12px;min-width:300px;"></table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button class="btn btn-button" id="csv-assign-confirm-btn" onclick="submitAssignCSV()"
+                                disabled>
+                                <i class="bi bi-upload me-1"></i> Confirm & Import
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div><!-- /.main-content -->
     </div><!-- /.layout -->
 
     <script>
-        // Auto-dismiss flash alerts after 3 seconds
         setTimeout(() => {
             const alert = document.getElementById('flashAlert');
             if (alert) {
@@ -927,20 +1633,19 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
         }, 3000);
 
-        // Adviser role → show/hide internship dropdown
         document.addEventListener('DOMContentLoaded', function () {
-            const role       = document.getElementById('adviserRole');
-            const wrapper    = document.getElementById('internshipWrapper');
+            const role = document.getElementById('adviserRole');
+            const wrapper = document.getElementById('internshipWrapper');
             const internship = document.getElementById('internshipSelect');
 
             function toggleInternshipDropdown() {
                 if (role.value === 'HTE_adviser') {
-                    wrapper.style.display  = 'block';
-                    internship.required    = true;
+                    wrapper.style.display = 'block';
+                    internship.required = true;
                 } else {
-                    wrapper.style.display  = 'none';
-                    internship.required    = false;
-                    internship.value       = '';
+                    wrapper.style.display = 'none';
+                    internship.required = false;
+                    internship.value = '';
                 }
             }
 
@@ -948,34 +1653,54 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             toggleInternshipDropdown();
         });
 
+        function filterAssignTable() {
+            const search = document.getElementById('assign-search').value.toLowerCase();
+            const adviser = document.getElementById('assign-filter-adviser').value.toLowerCase();
+
+            document.querySelectorAll('#assign-tbody tr').forEach(row => {
+                const name = row.dataset.name ?? '';
+                const rowAdviser = row.dataset.adviser ?? '';
+
+                const matchName = name.includes(search);
+                const matchAdviser = adviser === ''
+                    ? true
+                    : adviser === 'unassigned'
+                        ? rowAdviser === ''
+                        : rowAdviser === adviser;
+
+                row.style.display = (matchName && matchAdviser) ? '' : 'none';
+            });
+        }
+
+        function filterMonitor() {
+            const search = document.getElementById('search-monitor').value.toLowerCase();
+            document.querySelectorAll('#monitor-tbody tr').forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(search) ? '' : 'none';
+            });
+        }
+
         function downloadDashboardCSV() {
             let csv = '';
-            csv += 'Recent Internship Postings\n';
-            csv += '"Title","Company","Location","Posted"\n';
+            csv += 'Recent Internship Postings\n"Title","Company","Location","Posted"\n';
             document.querySelectorAll('#table-internships tbody tr').forEach(row => {
-                const cells = [...row.querySelectorAll('td')].map(td => `"${td.innerText.trim().replace(/\n/g,' ').replace(/"/g,'""')}"`);
+                const cells = [...row.querySelectorAll('td')].map(td => `"${td.innerText.trim().replace(/\n/g, ' ').replace(/"/g, '""')}"`);
                 if (cells.length) csv += cells.join(',') + '\n';
             });
-
-            csv += '\nRecently Interested Students\n';
-            csv += '"Name","Email","Company","Date"\n';
+            csv += '\nRecently Interested Students\n"Name","Email","Company","Date"\n';
             document.querySelectorAll('#table-interested .d-flex.align-items-center').forEach(row => {
-                const name    = row.querySelector('.fw-semibold')?.innerText.trim() ?? '';
-                const email   = row.querySelectorAll('p')[1]?.innerText.trim() ?? '';
+                const name = row.querySelector('.fw-semibold')?.innerText.trim() ?? '';
+                const email = row.querySelectorAll('p')[1]?.innerText.trim() ?? '';
                 const company = row.querySelector('.badge')?.innerText.trim() ?? '';
-                const date    = row.querySelector('.text-muted.mb-0.mt-1')?.innerText.trim() ?? '';
+                const date = row.querySelector('.text-muted.mb-0.mt-1')?.innerText.trim() ?? '';
                 csv += `"${name}","${email}","${company}","${date}"\n`;
             });
-
-            csv += '\nRecent Announcements\n';
-            csv += '"Category","Title","Date"\n';
+            csv += '\nRecent Announcements\n"Category","Title","Date"\n';
             document.querySelectorAll('#table-announcements .d-flex.align-items-start').forEach(row => {
                 const category = row.querySelector('.badge')?.innerText.trim() ?? '';
-                const title    = row.querySelector('.fw-semibold')?.innerText.trim() ?? '';
-                const date     = row.querySelector('.text-muted')?.innerText.trim() ?? '';
+                const title = row.querySelector('.fw-semibold')?.innerText.trim() ?? '';
+                const date = row.querySelector('.text-muted')?.innerText.trim() ?? '';
                 csv += `"${category}","${title}","${date}"\n`;
             });
-
             const blob = new Blob([csv], { type: 'text/csv' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
@@ -987,78 +1712,159 @@ $activityLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             let y = 15;
-
-            doc.setFontSize(16);
-            doc.setTextColor(39, 47, 84);
-            doc.text('Dashboard Summary', 14, y);
-            y += 10;
-
-            doc.setFontSize(12);
-            doc.setTextColor(0, 0, 0);
-            doc.text('Recent Internship Postings', 14, y);
-            y += 2;
-
+            doc.setFontSize(16); doc.setTextColor(39, 47, 84);
+            doc.text('Dashboard Summary', 14, y); y += 10;
+            doc.setFontSize(12); doc.setTextColor(0, 0, 0);
+            doc.text('Recent Internship Postings', 14, y); y += 2;
             const internshipRows = [];
             document.querySelectorAll('#table-internships tbody tr').forEach(row => {
-                const cells = [...row.querySelectorAll('td')].map(td => td.innerText.trim().replace(/\n/g,' '));
+                const cells = [...row.querySelectorAll('td')].map(td => td.innerText.trim().replace(/\n/g, ' '));
                 if (cells.length) internshipRows.push(cells);
             });
-            doc.autoTable({
-                head: [['Title','Company','Location','Posted']],
-                body: internshipRows,
-                startY: y,
-                styles: { fontSize: 10 },
-                headStyles: { fillColor: [39,47,84], textColor: [255,255,255] },
-            });
+            doc.autoTable({ head: [['Title', 'Company', 'Location', 'Posted']], body: internshipRows, startY: y, styles: { fontSize: 10 }, headStyles: { fillColor: [39, 47, 84], textColor: [255, 255, 255] } });
             y = doc.lastAutoTable.finalY + 10;
-
-            doc.text('Recently Interested Students', 14, y);
-            y += 2;
+            doc.text('Recently Interested Students', 14, y); y += 2;
             const studentRows = [];
             document.querySelectorAll('#table-interested .d-flex.align-items-center').forEach(row => {
-                const name    = row.querySelector('.fw-semibold')?.innerText.trim() ?? '';
-                const email   = row.querySelectorAll('p')[1]?.innerText.trim() ?? '';
-                const company = row.querySelector('.badge')?.innerText.trim() ?? '';
-                const date    = row.querySelector('.text-muted.mb-0.mt-1')?.innerText.trim() ?? '';
-                studentRows.push([name, email, company, date]);
+                studentRows.push([
+                    row.querySelector('.fw-semibold')?.innerText.trim() ?? '',
+                    row.querySelectorAll('p')[1]?.innerText.trim() ?? '',
+                    row.querySelector('.badge')?.innerText.trim() ?? '',
+                    row.querySelector('.text-muted.mb-0.mt-1')?.innerText.trim() ?? ''
+                ]);
             });
-            doc.autoTable({
-                head: [['Name','Email','Company','Date']],
-                body: studentRows,
-                startY: y,
-                styles: { fontSize: 10 },
-                headStyles: { fillColor: [255,182,47], textColor: [39,47,84] },
-            });
+            doc.autoTable({ head: [['Name', 'Email', 'Company', 'Date']], body: studentRows, startY: y, styles: { fontSize: 10 }, headStyles: { fillColor: [255, 182, 47], textColor: [39, 47, 84] } });
             y = doc.lastAutoTable.finalY + 10;
-
-            doc.text('Recent Announcements', 14, y);
-            y += 2;
+            doc.text('Recent Announcements', 14, y); y += 2;
             const announcementRows = [];
             document.querySelectorAll('#table-announcements .d-flex.align-items-start').forEach(row => {
-                const category = row.querySelector('.badge')?.innerText.trim() ?? '';
-                const title    = row.querySelector('.fw-semibold')?.innerText.trim() ?? '';
-                const date     = row.querySelector('.text-muted')?.innerText.trim() ?? '';
-                if (title) announcementRows.push([category, title, date]);
+                const title = row.querySelector('.fw-semibold')?.innerText.trim() ?? '';
+                if (title) announcementRows.push([
+                    row.querySelector('.badge')?.innerText.trim() ?? '',
+                    title,
+                    row.querySelector('.text-muted')?.innerText.trim() ?? ''
+                ]);
             });
-            doc.autoTable({
-                head: [['Category','Title','Date']],
-                body: announcementRows,
-                startY: y,
-                styles: { fontSize: 10 },
-                headStyles: { fillColor: [228,87,46], textColor: [255,255,255] },
-            });
-
+            doc.autoTable({ head: [['Category', 'Title', 'Date']], body: announcementRows, startY: y, styles: { fontSize: 10 }, headStyles: { fillColor: [228, 87, 46], textColor: [255, 255, 255] } });
             doc.save('dashboard_summary.pdf');
         }
-        function filterMonitor() {
-            const search = document.getElementById('search-monitor').value.toLowerCase();
 
-            document.querySelectorAll('#monitor-tbody tr').forEach(row => {
-                const text = row.innerText.toLowerCase();
-                row.style.display = text.includes(search) ? '' : 'none';
+        function addRow() {
+            const tbody = document.getElementById('csv-tbody');
+            const colCount = parseInt(document.getElementById('col-count').value);
+            let rowCount = parseInt(document.getElementById('row-count').value);
+            rowCount++;
+            document.getElementById('row-count').value = rowCount;
+            const tr = document.createElement('tr');
+            for (let i = 0; i < colCount; i++) {
+                const td = document.createElement('td');
+                td.innerHTML = `<input type="text" name="csv[${rowCount}][${i}]" value="" class="form-control">`;
+                tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
+        }
+        let assignParsedHeaders = [];
+        let assignParsedRows = [];
+
+        function previewAssignCSV(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const text = e.target.result.trim();
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length < 2) {
+                    showAssignCSVError('File must have at least a header row and one data row.');
+                    return;
+                }
+                function parseCSVLine(line) {
+                    const result = []; let cur = '', inQuotes = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const ch = line[i];
+                        if (ch === '"') { if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; } else inQuotes = !inQuotes; }
+                        else if (ch === ',' && !inQuotes) { result.push(cur.trim()); cur = ''; }
+                        else { cur += ch; }
+                    }
+                    result.push(cur.trim());
+                    return result;
+                }
+                assignParsedHeaders = parseCSVLine(lines[0]);
+                assignParsedRows = lines.slice(1).map(l => parseCSVLine(l));
+                const normalized = assignParsedHeaders.map(h => h.toLowerCase().trim());
+                if (!normalized.includes('student_id') || !normalized.includes('adviser_id')) {
+                    showAssignCSVError('Missing required columns: student_id and adviser_id');
+                    return;
+                }
+                hideAssignCSVError();
+                const table = document.getElementById('csv-assign-preview-table');
+                let html = '<thead style="position:sticky;top:0;background:#f8f9fa;"><tr>';
+                assignParsedHeaders.forEach(h => { html += `<th>${h}</th>`; });
+                html += '</tr></thead><tbody>';
+                assignParsedRows.forEach(row => { html += '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>'; });
+                html += '</tbody>';
+                table.innerHTML = html;
+                document.getElementById('csv-assign-preview-count').innerHTML =
+                    `<strong>${assignParsedRows.length}</strong> row(s) to process`;
+                document.getElementById('csv-assign-step-1').classList.add('d-none');
+                document.getElementById('csv-assign-step-2').classList.remove('d-none');
+                document.getElementById('csv-assign-confirm-btn').disabled = false;
+            };
+            reader.readAsText(file);
+        }
+
+        function resetAssignCSV() {
+            assignParsedHeaders = []; assignParsedRows = [];
+            document.getElementById('csvAssignFileInput').value = '';
+            document.getElementById('csv-assign-step-1').classList.remove('d-none');
+            document.getElementById('csv-assign-step-2').classList.add('d-none');
+            document.getElementById('csv-assign-confirm-btn').disabled = true;
+            hideAssignCSVError();
+        }
+
+        function showAssignCSVError(msg) {
+            const el = document.getElementById('csv-assign-error');
+            el.textContent = msg; el.classList.remove('d-none');
+            document.getElementById('csv-assign-confirm-btn').disabled = true;
+        }
+
+        function hideAssignCSVError() {
+            document.getElementById('csv-assign-error').classList.add('d-none');
+        }
+
+        function submitAssignCSV() {
+            if (!assignParsedHeaders.length || !assignParsedRows.length) {
+                showAssignCSVError('No data to submit.');
+                return;
+            }
+            const btn = document.getElementById('csv-assign-confirm-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Processing...';
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'superadmin.php'; // posts back to itself
+
+            const sourceInput = document.createElement('input');
+            sourceInput.type = 'hidden'; sourceInput.name = 'bulk_assign_csv'; sourceInput.value = '1';
+            form.appendChild(sourceInput);
+
+            assignParsedHeaders.forEach((h, i) => {
+                const input = document.createElement('input');
+                input.type = 'hidden'; input.name = `headers[${i}]`; input.value = h;
+                form.appendChild(input);
             });
+            assignParsedRows.forEach((row, rowIdx) => {
+                row.forEach((cell, colIdx) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden'; input.name = `csv[${rowIdx}][${colIdx}]`; input.value = cell;
+                    form.appendChild(input);
+                });
+            });
+            document.body.appendChild(form);
+            form.submit();
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>

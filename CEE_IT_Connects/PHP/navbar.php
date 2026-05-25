@@ -10,7 +10,7 @@ $hideStudentNav = in_array($role, [
     'superadmin',
     'internship_admin',
     'adviser',
-    'hte adviser',
+    'hte_adviser',
     'internship_adviser'
 ]);
 
@@ -18,11 +18,23 @@ $roleMap = [
     'student' => 'student',
     'internship_adviser' => 'adviser',
     'HTE_adviser' => 'adviser',
+    'hte_adviser' => 'adviser',
     'adviser' => 'adviser',
     'internship_admin' => 'admin',
     'superadmin' => 'admin',
     'admin' => 'admin'
 ];
+
+$helpRoleMap = [
+    'student' => 'student',
+    'internship_adviser' => 'ojt_adviser',
+    'hte_adviser' => 'hte_adviser',
+    'adviser' => 'ojt_adviser',
+    'internship_admin' => 'intern_admin',
+    'superadmin' => 'sys_admin',
+    'admin' => 'sys_admin',
+];
+$currentRole = $helpRoleMap[$role] ?? 'student';
 
 $userType = $roleMap[$role] ?? 'student';
 
@@ -309,7 +321,7 @@ function timeAgo($datetime)
             text-decoration: underline;
         }
 
-        /* ── MOBILE ── */
+        /*susu*/
         @media (max-width: 768px) {
             .brand-text {
                 font-size: 13px;
@@ -479,6 +491,10 @@ function timeAgo($datetime)
                     <button class="btn-edit" onclick="window.location.href='personal-information.php'">
                         <i class="bi bi-pencil-square"></i> Edit Profile
                     </button>
+                    <a onclick="openHelpModal()" class="logout"
+                        style="margin-top:6px;color:#2255cc;cursor:pointer;display:flex;align-items:center;gap:6px;justify-content:center;">
+                        Help &amp; Guide
+                    </a>
                     <a href="logout.php" class="logout">Log Out?</a>
                 </div>
             </div>
@@ -494,28 +510,519 @@ function timeAgo($datetime)
         </div>
     </div>
 
+    <!-- ===================== HELP MODAL ===================== -->
+    <div id="helpModal"
+        style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:flex-start;justify-content:center;padding-top:40px;">
+        <div
+            style="background:#fff;border-radius:16px;width:min(720px,95vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+
+            <!-- Header -->
+            <div
+                style="display:flex;align-items:center;justify-content:space-between;padding:22px 28px 18px;border-bottom:1.5px solid #e8eaf0;flex-shrink:0;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div
+                        style="width:40px;height:40px;border-radius:10px;background:#eef1ff;display:flex;align-items:center;justify-content:center;">
+                        <i class="bi bi-question-circle-fill" style="color:#272f54;font-size:20px;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:17px;font-weight:700;color:#272f54;">Help &amp; User Guide</div>
+                        <div style="font-size:12px;color:#888;margin-top:1px;"> <?php
+                        $roleLabels = [
+                            'student' => 'Logged in as: Student',
+                            'ojt_adviser' => 'Logged in as: OJT / Internship Adviser',
+                            'hte_adviser' => 'Logged in as: HTE Adviser',
+                            'intern_admin' => 'Logged in as: Internship Admin',
+                            'sys_admin' => 'Logged in as: System Admin',
+                        ];
+                        echo htmlspecialchars($roleLabels[$currentRole] ?? 'User Guide');
+                        ?>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="closeHelpModal()"
+                    style="border:none;background:none;cursor:pointer;font-size:22px;color:#aaa;line-height:1;padding:4px 8px;">&times;</button>
+            </div>
+
+            <!-- Body -->
+            <div style="overflow-y:auto;padding:24px 28px;flex:1;">
+
+                <?php if ($currentRole === 'student'): ?>
+                    <!-- ======== STUDENT ======== -->
+                    <div style="margin-bottom:18px;">
+                        <div style="font-size:15px;font-weight:700;color:#272f54;margin-bottom:4px;">
+                            <i class="bi bi-mortarboard-fill" style="margin-right:6px;"></i>Student User Guide
+                        </div>
+                    </div>
+                    <?php
+                    $sections = [
+                        [
+                            'bi-funnel-fill',
+                            'View Internship Listings',
+                            [
+                                'Go to the <strong>Internships</strong> section from the navigation bar.',
+                                'Use the filter options to narrow results by preferred criteria (company classification, location, department).',
+                                'Browse the available internship opportunities.',
+                            ]
+                        ],
+                        [
+                            'bi-info-circle-fill',
+                            'View Opportunity Details',
+                            [
+                                'Click on any internship listing<strong> Read More</strong> button to open its full details.',
+                                'Review the complete, structured information including company, requirements, and schedule.',
+                                'Use the provided contact information to inquire directly with the company if needed.',
+                            ]
+                        ],
+                        [
+                            'bi-hand-thumbs-up-fill',
+                            'Express Interest in an Internship',
+                            [
+                                'Open the internship listing you are interested in.',
+                                'Click the <strong>Interest</strong> button.',
+                                'Confirm your application when prompted.',
+                            ]
+                        ],
+                        [
+                            'bi-file-earmark-text-fill',
+                            'View Internship Documentation',
+                            [
+                                'Go to the <strong>Applications</strong> section from the Monitor section to track documents.',
+                                'View all internship-related paperwork uploaded for your reference.',
+                            ]
+                        ],
+                        [
+                            'bi-file-earmark-arrow-down-fill',
+                            'Generate Automated Documents',
+                            [
+                                'Navigate to the <strong>Applications</strong> section.',
+                                'Click <strong>Preview</strong> or <strong>Download</strong> on the document type you need.',
+                            ]
+                        ],
+                        [
+                            'bi-geo-alt-fill',
+                            'View Map & Locate Partner Institutions',
+                            [
+                                'Open the <strong>Home</strong> or search in <strong>Internships</strong> section for company location.',
+                                'Browse partner company locations on the interactive map.',
+                                'Get navigation directions.',
+                            ]
+                        ],
+                        [
+                            'bi-person-lines-fill',
+                            'Submit Academic & Personal Information',
+                            [
+                                'Navigate to <strong>Profile</strong> or <strong>Edit Profile</strong>.',
+                                'Fill in or update your academic and personal details.',
+                                'Click <strong>Apply Changes</strong> to submit your information.',
+                            ]
+                        ],
+                        [
+                            'bi-card-checklist',
+                            'View Application Status',
+                            [
+                                'Go to <strong>Applications</strong> from the Monitor section.',
+                                'View the current status of each internship application.',
+                            ]
+                        ],
+                        [
+                            'bi-clipboard-check-fill',
+                            'View and Input Status',
+                            [
+                                'Go to the <strong>Hours</strong> section on the Monitor section.',
+                                'View and log hours rendered.',
+                            ]
+                        ],
+                        [
+                            'bi-door-open-fill',
+                            'View OJT Room & Content',
+                            [
+                                'Open your assigned <strong>OJT Room</strong> from the Monitor section.',
+                                'Read announcements posted by your OJT Adviser.',
+                            ]
+                        ],
+                        [
+                            'bi-bell-fill',
+                            'Receive Real-Time Notifications',
+                            [
+                                'Notifications appear automatically on the platform.',
+                                'You will be alerted for changes and postings.',
+                                'Click a notification to go directly to the relevant page.',
+                            ]
+                        ],
+                        [
+                            'bi-chat-dots-fill',
+                            'Message a User',
+                            [
+                                'Go to the <strong>Chats</strong> section from the sidebar of Monitor section.',
+                                'Select the user you want to contact.',
+                                'Type your message and click <strong>Send</strong>.',
+                            ]
+                        ],
+                    ];
+                    foreach ($sections as [$icon, $title, $steps]): ?>
+                        <div style="margin-bottom:16px;border:1px solid #e8eaf0;border-radius:12px;overflow:hidden;">
+                            <div
+                                style="background:#f4f6ff;padding:11px 16px;display:flex;align-items:center;gap:9px;border-bottom:1px solid #e8eaf0;">
+                                <i class="bi <?= $icon ?>" style="color:#272f54;font-size:15px;flex-shrink:0;"></i>
+                                <span style="font-weight:700;font-size:13.5px;color:#272f54;">
+                                    <?= $title ?>
+                                </span>
+                            </div>
+                            <div style="padding:12px 16px;">
+                                <ol style="margin:0;padding-left:18px;">
+                                    <?php foreach ($steps as $step): ?>
+                                        <li style="font-size:13px;color:#444;line-height:1.7;margin-bottom:2px;">
+                                            <?= $step ?>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ol>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+
+                <?php elseif ($currentRole === 'ojt_adviser'): ?>
+                    <!-- ======== OJT ADVISER ======== -->
+                    <div style="margin-bottom:18px;">
+                        <div style="font-size:15px;font-weight:700;color:#272f54;margin-bottom:4px;">
+                            <i class="bi bi-person-badge-fill" style="margin-right:6px;"></i>OJT Adviser User Guide
+                        </div>
+                    </div>
+                    <?php
+                    $sections = [
+                        // [
+                        //     'bi-grid-fill',
+                        //     'Create & Manage Virtual Rooms',
+                        //     [
+                        //         'Go to <strong>Rooms</strong> from the sidebar.',
+                        //         'Click <strong>Create Room</strong> and fill in the room details.',
+                        //         'Use the room dashboard to manage its content and archive rooms as needed.',
+                        //     ]
+                        // ],
+                        [
+                            'bi-people-fill',
+                            'Add Participants to a Room',
+                            [
+                                'Open an existing room from the Rooms list.',
+                                'Click <strong>Add Participants</strong>.',
+                                'Search for and select the students to add manually.',
+                                'Confirm to join them in the room.',
+                            ]
+                        ],
+                        [
+                            'bi-clock-history',
+                            'Monitor Rendered OJT Hours & Remarks',
+                            [
+                                'Go to the <strong>Status</strong> tab in the sidebar.',
+                                'View each student\'s total rendered OJT hours and progress bar.',
+                                'Check HTE Adviser remarks submitted for each student.',
+                            ]
+                        ],
+                        [
+                            'bi-megaphone-fill',
+                            'Post Announcements',
+                            [
+                                'Open the room where you want to post and type in the text box.',
+                                'Enter a title and compose your message using the text editor.',
+                                'Click <strong>Post Announcement</strong> to publish to all room participants.',
+                            ]
+                        ],
+                        [
+                            'bi-chat-left-text-fill',
+                            'Communicate with HTE Advisers and Students',
+                            [
+                                'Go to the <strong>Chats</strong> section.',
+                                'Select an HTE Adviser or student from the contact list.',
+                                'Type your message and click <strong>Send</strong> for real-time messaging.',
+                            ]
+                        ],
+                    ];
+                    foreach ($sections as [$icon, $title, $steps]): ?>
+                        <div style="margin-bottom:16px;border:1px solid #e8eaf0;border-radius:12px;overflow:hidden;">
+                            <div
+                                style="background:#f4f6ff;padding:11px 16px;display:flex;align-items:center;gap:9px;border-bottom:1px solid #e8eaf0;">
+                                <i class="bi <?= $icon ?>" style="color:#272f54;font-size:15px;flex-shrink:0;"></i>
+                                <span style="font-weight:700;font-size:13.5px;color:#272f54;">
+                                    <?= $title ?>
+                                </span>
+                            </div>
+                            <div style="padding:12px 16px;">
+                                <ol style="margin:0;padding-left:18px;">
+                                    <?php foreach ($steps as $step): ?>
+                                        <li style="font-size:13px;color:#444;line-height:1.7;margin-bottom:2px;">
+                                            <?= $step ?>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ol>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+
+                <?php elseif ($currentRole === 'hte_adviser'): ?>
+                    <!-- ======== HTE ADVISER ======== -->
+                    <div style="margin-bottom:18px;">
+                        <div style="font-size:15px;font-weight:700;color:#272f54;margin-bottom:4px;">
+                            <i class="bi bi-building" style="margin-right:6px;"></i>HTE Adviser User
+                            Guide
+                        </div>
+                        <p style="font-size:13px;color:#666;margin:0;line-height:1.6;">
+                            As an HTE Adviser, you are the on-site supervisor at the Host Training
+                            Establishment. Your main
+                            responsibilities involve evaluating students and updating their progress.
+                        </p>
+                    </div>
+                    <?php
+                    $sections = [
+                        [
+                            'bi-pencil-square',
+                            'Submit Remarks & Feedback on Students',
+                            [
+                                'From your dashboard, go to the <strong>Remarks</strong> section.',
+                                'Select or search the student you want to evaluate.',
+                                'Click <strong>Save</strong> to submit your evaluation.',
+                            ]
+                        ],
+                        [
+                            'bi-stopwatch-fill',
+                            'Confirm Student Rendered OJT Hours',
+                            [
+                                'Open the <strong>Status</strong> section from your dashboard.',
+                                'Select the student whose hours you want to update.',
+                                'Click <strong>Confirm</strong> to save the changes.',
+                            ]
+                        ],
+                        [
+                            'bi-chat-dots-fill',
+                            'Communicate with Students & OJT Advisers',
+                            [
+                                'Go to the <strong>Chats</strong> section.',
+                                'Select a student or an OJT Adviser from your contact list.',
+                                'Type your message and click <strong>Send</strong>.',
+                            ]
+                        ],
+                    ];
+                    foreach ($sections as [$icon, $title, $steps]): ?>
+                        <div style="margin-bottom:16px;border:1px solid #e8eaf0;border-radius:12px;overflow:hidden;">
+                            <div
+                                style="background:#f4f6ff;padding:11px 16px;display:flex;align-items:center;gap:9px;border-bottom:1px solid #e8eaf0;">
+                                <i class="bi <?= $icon ?>" style="color:#272f54;font-size:15px;flex-shrink:0;"></i>
+                                <span style="font-weight:700;font-size:13.5px;color:#272f54;">
+                                    <?= $title ?>
+                                </span>
+                            </div>
+                            <div style="padding:12px 16px;">
+                                <ol style="margin:0;padding-left:18px;">
+                                    <?php foreach ($steps as $step): ?>
+                                        <li style="font-size:13px;color:#444;line-height:1.7;margin-bottom:2px;">
+                                            <?= $step ?>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ol>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+
+                <?php elseif ($currentRole === 'intern_admin'): ?>
+                    <!-- ======== INTERNSHIP ADMIN ======== -->
+                    <div style="margin-bottom:18px;">
+                        <div style="font-size:15px;font-weight:700;color:#272f54;margin-bottom:4px;">
+                            <i class="bi bi-clipboard-data-fill" style="margin-right:6px;"></i>Internship Admin User Guide
+                        </div>
+                    </div>
+                    <?php
+                    $sections = [
+                        [
+                            'bi-briefcase-fill',
+                            'Post Internship Opportunities',
+                            [
+                                'Navigate to <strong>Postings</strong>.',
+                                'Click <strong>Add Internship Post</strong> and fill in all required details.',
+                                'Ensure complete and validated information.',
+                                'Click <strong>Create Posting</strong> to make it visible to students.',
+                            ]
+                        ],
+                        [
+                            'bi-eye-fill',
+                            'Monitor Students Who Expressed Interest',
+                            [
+                                'Open an internship posting.',
+                                'Go to the <strong>Interested Students</strong> tab.',
+                                'View the list of students who expressed interest in a company.',
+                                'Return with feedback if needed.'
+                            ]
+                        ],
+                        [
+                            'bi-megaphone-fill',
+                            'Update System Announcements',
+                            [
+                                'Navigate to the <strong>Announcements</strong> section.',
+                                'Compose your message and click <strong>Post Announcement</strong>.',
+                            ]
+                        ],
+                        [
+                            'bi-newspaper',
+                            'Manage Informational Content',
+                            [
+                                'Go to <strong>Management Announcements</strong> from the sidebar.',
+                                'Edit or delete informational articles and announcements.',
+                                'Click <strong>Save</strong> icon to make changes visible to users.',
+                            ]
+                        ],
+                        [
+                            'bi-card-checklist',
+                            'Track Student Applications & Documentation',
+                            [
+                                'Go to <strong>Documents</strong> from the sidebar.',
+                                'View each student\'s application and submitted documents.',
+                            ]
+                        ],
+                    ];
+                    foreach ($sections as [$icon, $title, $steps]): ?>
+                        <div style="margin-bottom:16px;border:1px solid #e8eaf0;border-radius:12px;overflow:hidden;">
+                            <div
+                                style="background:#f4f6ff;padding:11px 16px;display:flex;align-items:center;gap:9px;border-bottom:1px solid #e8eaf0;">
+                                <i class="bi <?= $icon ?>" style="color:#272f54;font-size:15px;flex-shrink:0;"></i>
+                                <span style="font-weight:700;font-size:13.5px;color:#272f54;">
+                                    <?= $title ?>
+                                </span>
+                            </div>
+                            <div style="padding:12px 16px;">
+                                <ol style="margin:0;padding-left:18px;">
+                                    <?php foreach ($steps as $step): ?>
+                                        <li style="font-size:13px;color:#444;line-height:1.7;margin-bottom:2px;">
+                                            <?= $step ?>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ol>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+
+                <?php elseif ($currentRole === 'sys_admin'): ?>
+                    <!-- ======== SYSTEM ADMIN ======== -->
+                    <div style="margin-bottom:18px;">
+                        <div style="font-size:15px;font-weight:700;color:#272f54;margin-bottom:4px;">
+                            <i class="bi bi-shield-lock-fill" style="margin-right:6px;"></i>System Admin User
+                            Guide
+                        </div>
+                        <p style="font-size:13px;color:#666;margin:0;line-height:1.6;">
+                            As a System Admin, you have full platform oversight —
+                            managing users, monitoring all activity,
+                            and ensuring system integrity and compliance.
+                        </p>
+                    </div>
+                    <?php
+                    $sections = [
+                        [
+                            'bi-bar-chart-line-fill',
+                            'Monitor Overall Internship Activities',
+                            [
+                                'Go to the <strong>Dashboard</strong> for a system-wide overview.',
+                                'View internship postings, students interested, and announcements.',
+                            ]
+                        ],
+                        [
+                            'bi-person-gear',
+                            'Create Admin, Adviser, and Student Accounts',
+                            [
+                                'Go to <strong>Add (user role)</strong> from the sidebar.',
+                                'Click <strong>Create Account</strong> and select the <strong>Internship Admin</strong> role.',
+                                'Fill in the required details and click <strong>Save</strong>.',
+                            ]
+                        ],
+                        [
+                            'bi-people-fill',
+                            'Change Roles of All Admin Accounts',
+                            [
+                                'Go to <strong>Change Roles</strong>.',
+                                'Edit role of any admin user account if they are an Internship Admin or a System Admin.',
+                                'Assign or update roles and access permissions per user.',
+                            ]
+                        ],
+                        [
+                            'bi-layout-text-sidebar-reverse',
+                            'Access All User Activities and Actions',
+                            [
+                                'Use the sidebar to navigate between all activities in the system.',
+                                'Review user actions, internship postings, and announcements.',
+                            ]
+                        ]
+                    ];
+                    foreach ($sections as [$icon, $title, $steps]): ?>
+                        <div style="margin-bottom:16px;border:1px solid #e8eaf0;border-radius:12px;overflow:hidden;">
+                            <div
+                                style="background:#f4f6ff;padding:11px 16px;display:flex;align-items:center;gap:9px;border-bottom:1px solid #e8eaf0;">
+                                <i class="bi <?= $icon ?>" style="color:#272f54;font-size:15px;flex-shrink:0;"></i>
+                                <span style="font-weight:700;font-size:13.5px;color:#272f54;">
+                                    <?= $title ?>
+                                </span>
+                            </div>
+                            <div style="padding:12px 16px;">
+                                <ol style="margin:0;padding-left:18px;">
+                                    <?php foreach ($steps as $step): ?>
+                                        <li style="font-size:13px;color:#444;line-height:1.7;margin-bottom:2px;">
+                                            <?= $step ?>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ol>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+
+                <!-- Log Out — always shown for all roles -->
+                <div
+                    style="margin-top:10px;background:#fff8f0;border:1px solid #ffd8a8;border-radius:12px;padding:14px 18px;display:flex;align-items:flex-start;gap:12px;">
+                    <i class="bi bi-box-arrow-right"
+                        style="color:#c46a00;font-size:20px;margin-top:1px;flex-shrink:0;"></i>
+                    <div>
+                        <div style="font-weight:700;font-size:13.5px;color:#7a3f00;margin-bottom:4px;">
+                            Logging Out</div>
+                        <ol style="margin:0;padding-left:18px;">
+                            <li style="font-size:13px;color:#a05500;line-height:1.7;">
+                                Click your <strong>profile
+                                    icon</strong> at the top-right
+                                corner of the page.</li>
+                            <li style="font-size:13px;color:#a05500;line-height:1.7;">
+                                The profile dropdown will appear
+                                with your name and email.</li>
+                            <li style="font-size:13px;color:#a05500;line-height:1.7;">
+                                Click <strong>Log Out?</strong> at
+                                the bottom of the dropdown.</li>
+                            <li style="font-size:13px;color:#a05500;line-height:1.7;">
+                                You will be redirected to the
+                                login page. Always log out on shared
+                                or public devices.</li>
+                        </ol>
+                    </div>
+                </div>
+
+            </div><!-- end body -->
+
+            <!-- Footer -->
+            <div
+                style="padding:16px 28px;border-top:1.5px solid #e8eaf0;display:flex;justify-content:flex-end;flex-shrink:0;">
+                <button onclick="closeHelpModal()"
+                    style="padding:9px 24px;border-radius:8px;border:1px solid #d0d3e0;background:#fff;color:#272f54;font-size:13px;font-weight:700;cursor:pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MOBILE DROPDOWN MENU -->
     <?php if (!$hideStudentNav): ?>
-        <div id="mobileMenu" style="
-            display: none;
-            position: absolute;
-            top: 70px; left: 0;
-            width: 100%;
-            background: #2c3e67;
-            z-index: 999;
-            padding: 10px 0;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);">
-            <a href="index.php" style="display:block;padding:14px 24px;color:white;text-decoration:none;font-weight:600;
-                <?= ($page == 'home') ? 'background:#ff6b2c;border-radius:8px;margin:4px 12px;' : '' ?>">
+        <div id="mobileMenu"
+            style="display: none;position: absolute;top: 70px; left: 0;width: 100%;background: #2c3e67;z-index: 999;padding: 10px 0;box-shadow: 0 8px 20px rgba(0,0,0,0.3);">
+            <a href=" index.php" style="display:block;padding:14px 24px;color:white;text-decoration:none;font-weight:600;
+            <?= ($page == 'home') ? 'background:#ff6b2c;border-radius:8px;margin:4px 12px;' : '' ?>">
                 <i class="fa-solid fa-house me-2"></i> Home
             </a>
             <a href="applied-internship-programs.php" style="display:block;padding:14px 24px;color:white;text-decoration:none;font-weight:600;
-                <?= ($page == 'opportunity') ? 'background:#ff6b2c;border-radius:8px;margin:4px 12px;' : '' ?>">
+            <?= ($page == 'opportunity') ? 'background:#ff6b2c;border-radius:8px;margin:4px 12px;' : '' ?>">
                 <i class="fa-solid fa-briefcase me-2"></i> Internships
             </a>
             <a href="announcement.php" style="display:block;padding:14px 24px;color:white;text-decoration:none;font-weight:600;
-                <?= ($page == 'announcements') ? 'background:#ff6b2c;border-radius:8px;margin:4px 12px;' : '' ?>">
-                <i class="fa-solid fa-bullhorn me-2"></i> Announcements
+            <?= ($page == 'announcements') ? 'background:#ff6b2c;border-radius:8px;margin:4px 12px;' : '' ?>">
+                <i class="fa-solid fa-bullhorn me-2"></i>
+                Announcements
             </a>
         </div>
     <?php endif; ?>
@@ -579,4 +1086,17 @@ function timeAgo($datetime)
             }
         });
     }
+    function openHelpModal() {
+        document.getElementById('helpModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        var pd = document.getElementById('profileDrop');
+        if (pd) pd.classList.remove('active');
+    }
+    function closeHelpModal() {
+        document.getElementById('helpModal').style.display = 'none';
+        document.body.style.overflow = '';
+    }
+    document.getElementById('helpModal').addEventListener('click', function (e) {
+        if (e.target === this) closeHelpModal();
+    });
 </script>

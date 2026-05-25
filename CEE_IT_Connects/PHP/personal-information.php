@@ -10,14 +10,13 @@ $roleLower = strtolower($roleRaw);
 $roleMap = [
     'student' => 'student',
     'internship_adviser' => 'adviser',
-    'HTE_adviser' => 'adviser',
     'hte_adviser' => 'adviser',
     'adviser' => 'adviser',
     'internship_admin' => 'admin',
     'superadmin' => 'admin',
     'admin' => 'admin',
 ];
-$userType = $roleMap[$roleRaw] ?? $roleMap[$roleLower] ?? 'student';
+$userType = $roleMap[$roleLower] ?? 'student';
 
 // Fetch the correct row 
 function getUser(PDO $pdo, string $type, int $id): array
