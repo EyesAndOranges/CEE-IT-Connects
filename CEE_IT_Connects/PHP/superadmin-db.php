@@ -244,6 +244,104 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: superadmin.php?deleted=1");
         exit();
     }
+    if (isset($_POST['action']) && in_array($_POST['action'], ['approve', 'reject'])) {
+
+        $action = $_POST['action'];
+        $submission_id = (int) ($_POST['submission_id'] ?? 0);
+        $student_id = (int) ($_POST['student_id'] ?? 0);
+        $room_id = (int) ($_POST['room_id'] ?? 0);
+        $redirect = "superadmin.php?section=supervisor_requests";
+
+        $stmt = $pdo->prepare("SELECT * FROM student_hte_supervisor_submissions WHERE id = ?");
+        $stmt->execute([$submission_id]);
+        $sub = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$sub) {
+            $_SESSION['error'] = 'Submission not found.';
+            header("Location: $redirect");
+            exit;
+        }
+
+        if ($action === 'approve') {
+
+            $tempPassword = 12345;//bin2hex(random_bytes(5));
+            $hashedPassword = password_hash($tempPassword, PASSWORD_DEFAULT);
+
+            // Insert into the shared advisers table as an HTE supervisor role
+            // Change 'hte_supervisor' below to match your actual adviser_role enum value
+            $insertStmt = $pdo->prepare("
+    INSERT INTO advisers
+        (full_name, email, password_hash, role, internship_id, created_at)
+    VALUES (?, ?, ?, 'HTE_adviser', ?, NOW())
+");
+            $insertStmt->execute([
+                $sub['full_name'],
+                $sub['email'],
+                $hashedPassword,
+                $sub['internship_id'],
+            ]);
+
+            $updateStmt = $pdo->prepare("
+                UPDATE student_hte_supervisor_submissions
+                SET status = 'approved', reviewed_by = ?, reviewed_at = NOW()
+                WHERE id = ?
+            ");
+            $updateStmt->execute([$adviser_id, $submission_id]);
+
+            $_SESSION['success'] =
+                "Supervisor account created for {$sub['full_name']}. Temporary password: {$tempPassword}";
+
+            header("Location: $redirect");
+            exit;
+        } else {
+
+            $note = trim($_POST['rejection_note'] ?? '');
+
+            $updateStmt = $pdo->prepare("
+                UPDATE student_hte_supervisor_submissions
+                SET status = 'rejected', reviewed_by = ?, reviewed_at = NOW(), rejection_note = ?
+                WHERE id = ?
+            ");
+            $updateStmt->execute([$adviser_id, $note, $submission_id]);
+
+            $_SESSION['success'] = 'Submission returned to student.';
+        }
+
+        header("Location: $redirect");
+        exit;
+    }
+    if (isset($_POST['save_program_hours'])) {
+        $programs = $_POST['program'] ?? [];
+        $hours = $_POST['required_hours'] ?? [];
+
+        $updateStmt = $pdo->prepare("
+        UPDATE internships
+        SET required_hours = ?
+        WHERE program = ?
+    ");
+
+        $updatedCount = 0;
+        foreach ($programs as $i => $prog) {
+            $prog = trim($prog);
+            $hrs = max(1, (int) ($hours[$i] ?? 486));
+            if ($prog !== '') {
+                $updateStmt->execute([$hrs, $prog]);
+                $updatedCount += $updateStmt->rowCount();
+            }
+        }
+
+        $pdo->prepare("
+        INSERT INTO audits (user_id, roles, activity, activity_date)
+        VALUES (?, 'superadmin', ?, NOW())
+    ")->execute([
+                    $_SESSION['user_id'],
+                    "Updated required OJT hours for " . count($programs) . " program(s), affecting {$updatedCount} internship(s)"
+                ]);
+
+        $_SESSION['success'] = "Required hours updated for {$updatedCount} internship(s).";
+        header("Location: superadmin.php?section=ojt_hours");
+        exit;
+    }
 }
 
 ?>

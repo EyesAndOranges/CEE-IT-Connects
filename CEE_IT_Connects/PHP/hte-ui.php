@@ -58,26 +58,13 @@ $adviserStmt = $pdo->prepare("SELECT internship_id FROM advisers WHERE id = ?");
 $adviserStmt->execute([$adviser_id]);
 $adviserInternshipId = $adviserStmt->fetchColumn();
 
-// Get required hours from internships.duration instead of rooms
-$requiredHours = 486; // fallback
-$rhStmt = $pdo->prepare("
-    SELECT r.required_hours 
-    FROM rooms r
-    JOIN room_members rm ON rm.room_id = r.id
-    JOIN internship_bookmarks ib ON ib.student_id = rm.user_id
-    WHERE ib.internship_id = ?
-      AND rm.user_type = 'student'
-    LIMIT 1
-");
-$rhStmt->execute([$adviserInternshipId]);
-$requiredHours = $rhStmt->fetchColumn() ?: 486;
-
 // Fetch all students bookmarked to this adviser's internship
 $roomStatusesStmt = $pdo->prepare("
     SELECT
         s.id,
         s.full_name,
         i.company,
+        r.required_hours,
         COALESCE(
             SUM(
                 CASE WHEN oh.m_in IS NOT NULL AND oh.m_out IS NOT NULL
@@ -94,9 +81,11 @@ $roomStatusesStmt = $pdo->prepare("
     FROM students s
     JOIN internship_bookmarks ib ON ib.student_id = s.id
     JOIN internships i ON i.id = ib.internship_id
+    JOIN room_members rm ON rm.user_id = s.id AND rm.user_type = 'student'
+    JOIN rooms r ON r.id = rm.room_id
     LEFT JOIN ojt_hours oh ON oh.user_id = s.id
     WHERE ib.internship_id = ?
-    GROUP BY s.id, s.full_name, i.company
+    GROUP BY s.id, s.full_name, i.company, r.required_hours
 ");
 $roomStatusesStmt->execute([$adviserInternshipId]);
 $roomStatuses = $roomStatusesStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1231,6 +1220,7 @@ $page = 'messages';
                             <?php
                             $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22'];
                             foreach ($roomStatuses as $s):
+                                $requiredHours = $s['required_hours'] ?: 486;
                                 $progressWidth = min(round(($s['total_hours'] / $requiredHours) * 100, 2), 100);
                                 $avatarColor = $avatarColors[crc32($s['full_name']) % count($avatarColors)];
                                 ?>
@@ -1253,7 +1243,7 @@ $page = 'messages';
                                             <?= htmlspecialchars($s['company']) ?>
                                         <?php endif; ?>
                                     </td>
-                                    <td><strong><?= $s['total_hours'] ?></strong> / <?= $requiredHours ?></td>
+                                    <td><strong><?= round($s['total_hours'], 2) ?></strong> / <?= $requiredHours ?></td>
                                     <td>
                                         <div style="display:flex; align-items:center; gap:8px;">
                                             <div class="progress-bar-bg">
@@ -2110,7 +2100,7 @@ $page = 'messages';
                                 'position:fixed;bottom:24px;right:24px;background:#065f46;color:#fff;' +
                                 'padding:14px 22px;border-radius:10px;font-size:14px;font-weight:600;z-index:9999;' +
                                 'box-shadow:0 4px 20px rgba(0,0,0,.2);';
-                            toast.textContent = '✓ Supervisor evaluation submitted and PDF downloaded!';
+                            toast.textContent = 'Supervisor evaluation submitted and PDF downloaded!';
                             document.body.appendChild(toast);
                             setTimeout(() => toast.remove(), 5000);
 

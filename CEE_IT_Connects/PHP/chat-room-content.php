@@ -99,8 +99,14 @@ $stmt = $pdo->prepare("
 $stmt->execute([$room_id]);
 $statuses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$rhStmt = $pdo->prepare("SELECT required_hours FROM rooms WHERE id = ?");
-$rhStmt->execute([$room_id]);
+$rhStmt = $pdo->prepare("
+    SELECT COALESCE(i.required_hours, 486)
+    FROM internship_bookmarks ib
+    JOIN internships i ON i.id = ib.internship_id
+    WHERE ib.student_id = ?
+    LIMIT 1
+");
+$rhStmt->execute([$_SESSION['user_id']]);
 $requiredHours = $rhStmt->fetchColumn() ?: 486;
 
 $backLink = getDashboardByRole($_SESSION['role']);
@@ -598,11 +604,14 @@ $backLink = getDashboardByRole($_SESSION['role']);
             background: #e5b8d8;
             cursor: not-allowed;
         }
+
         /*susu - DESKTOP CHAT SCROLL*/
         @media (min-width: 769px) {
-            html, body {
+
+            html,
+            body {
                 height: 100vh;
-                overflow: hidden; 
+                overflow: hidden;
             }
 
             .main-content {
@@ -615,13 +624,13 @@ $backLink = getDashboardByRole($_SESSION['role']);
             .chat-container {
                 display: flex;
                 flex-direction: column;
-                height: calc(100vh - 320px); 
+                height: calc(100vh - 320px);
                 position: relative;
             }
 
             .chat-messages {
                 flex: 1 1 auto;
-                overflow-y: auto !important; 
+                overflow-y: auto !important;
                 max-height: 100%;
             }
 
@@ -665,12 +674,12 @@ $backLink = getDashboardByRole($_SESSION['role']);
             }
 
             .chat-container {
-                height: calc(100vh - 90px) !important; 
+                height: calc(100vh - 90px) !important;
                 border-radius: 0;
             }
 
             .chat-messages {
-                flex: 1 1 auto; 
+                flex: 1 1 auto;
             }
         }
     </style>

@@ -301,6 +301,29 @@ $studentListStmt = $pdo->query("
     ORDER BY s.full_name ASC
 ");
 $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$supReqStmt = $pdo->query("
+    SELECT
+        shss.*,
+        s.full_name AS student_name,
+        s.student_id AS student_no,
+        s.program
+    FROM student_hte_supervisor_submissions shss
+    JOIN students s ON shss.student_id = s.id
+    ORDER BY
+        CASE shss.status WHEN 'pending' THEN 0 WHEN 'rejected' THEN 1 ELSE 2 END,
+        shss.submitted_at DESC
+");
+$supervisorRequests = $supReqStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$programHoursStmt = $pdo->query("
+    SELECT program, required_hours
+    FROM internships
+    WHERE program IS NOT NULL AND program <> ''
+    GROUP BY program, required_hours
+    ORDER BY program ASC
+");
+$programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -729,7 +752,7 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                 gap: 4px !important;
             }
 
-            .row.g-3.mb-4 .card-body .d-flex > div:first-child {
+            .row.g-3.mb-4 .card-body .d-flex>div:first-child {
                 flex: 1 !important;
             }
 
@@ -749,6 +772,7 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                 align-self: flex-start !important;
                 margin-top: 4px !important;
             }
+
             .row.g-3.mb-4 .card-body .rounded-3 i {
                 font-size: 10px !important;
             }
@@ -794,7 +818,7 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                 letter-spacing: 0 !important;
                 margin-bottom: 4px !important;
                 white-space: normal !important;
-                line-height: 1.1 !important;	
+                line-height: 1.1 !important;
                 word-break: break-word !important;
             }
 
@@ -878,30 +902,30 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
     <?php include 'navbar.php'; ?>
 
     <?php if (isset($_SESSION['success'])): ?>
-                <div class="alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
-                    style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
-                    <i class="bi bi-check-circle-fill me-2"></i><?= $_SESSION['success'] ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-                <?php unset($_SESSION['success']); ?>
+        <div class="alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
+            style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
+            <i class="bi bi-check-circle-fill me-2"></i><?= $_SESSION['success'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['success']); ?>
     <?php endif; ?>
 
     <?php if (isset($_SESSION['info'])): ?>
-                <div class="alert alert-info alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
-                    style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
-                    <i class="bi bi-info-circle-fill me-2"></i><?= $_SESSION['info'] ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-                <?php unset($_SESSION['info']); ?>
+        <div class="alert alert-info alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
+            style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
+            <i class="bi bi-info-circle-fill me-2"></i><?= $_SESSION['info'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['info']); ?>
     <?php endif; ?>
 
     <?php if (isset($_SESSION['error'])): ?>
-                <div class="alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
-                    style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
-                    <i class="bi bi-x-circle-fill me-2"></i><?= $_SESSION['error'] ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-                <?php unset($_SESSION['error']); ?>
+        <div class="alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
+            style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
+            <i class="bi bi-x-circle-fill me-2"></i><?= $_SESSION['error'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
 
     <div class="layout">
@@ -931,6 +955,13 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
             </a>
             <a href="#" onclick="showSection(event, 'assign_adviser')">
                 <i class="bi bi-person-lines-fill me-2"></i> Assign Adviser
+            </a>
+            <a href="#" onclick="showSection(event, 'supervisor_requests')">
+                <i class="bi bi-person-badge me-2"></i> Supervisor Requests
+            </a>
+            <a href="#" onclick="showSection(event, 'ojt_hours')" data-tooltip="OJT Hours">
+                <i class="bi bi-clock-history me-2"></i>
+                <span class="nav-label">OJT Hours</span>
             </a>
         </div>
 
@@ -1014,41 +1045,41 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                     <div class="card-body px-4 pb-4 pt-2">
                         <?php if (empty($recentInternships)): ?>
-                                    <p class="text-muted small mb-0">No internships posted yet.</p>
+                            <p class="text-muted small mb-0">No internships posted yet.</p>
                         <?php else: ?>
-                                    <div class="table-responsive">
-                                        <table id="table-internships" class="table table-hover align-middle mb-0"
-                                            style="font-size:14px;">
-                                            <thead>
-                                                <tr
-                                                    style="color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">
-                                                    <th class="border-0 pb-2 fw-semibold">Title</th>
-                                                    <th class="border-0 pb-2 fw-semibold">Company</th>
-                                                    <th class="border-0 pb-2 fw-semibold">Location</th>
-                                                    <th class="border-0 pb-2 fw-semibold">Posted</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php foreach ($recentInternships as $ri): ?>
-                                                            <tr>
-                                                                <td class="fw-semibold" style="color:#272f54;">
-                                                                    <?= htmlspecialchars($ri['title']) ?>
-                                                                </td>
-                                                                <td><?= htmlspecialchars($ri['company']) ?></td>
-                                                                <td class="text-muted"><i
-                                                                        class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($ri['location']) ?>
-                                                                </td>
-                                                                <td>
-                                                                    <span class="badge rounded-pill px-3"
-                                                                        style="background:#f0f4ff;color:#272f54;font-weight:500;font-size:12px;">
-                                                                        <?= date("M d, Y", strtotime($ri['created_at'])) ?>
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
+                            <div class="table-responsive">
+                                <table id="table-internships" class="table table-hover align-middle mb-0"
+                                    style="font-size:14px;">
+                                    <thead>
+                                        <tr
+                                            style="color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">
+                                            <th class="border-0 pb-2 fw-semibold">Title</th>
+                                            <th class="border-0 pb-2 fw-semibold">Company</th>
+                                            <th class="border-0 pb-2 fw-semibold">Location</th>
+                                            <th class="border-0 pb-2 fw-semibold">Posted</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($recentInternships as $ri): ?>
+                                            <tr>
+                                                <td class="fw-semibold" style="color:#272f54;">
+                                                    <?= htmlspecialchars($ri['title']) ?>
+                                                </td>
+                                                <td><?= htmlspecialchars($ri['company']) ?></td>
+                                                <td class="text-muted"><i
+                                                        class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($ri['location']) ?>
+                                                </td>
+                                                <td>
+                                                    <span class="badge rounded-pill px-3"
+                                                        style="background:#f0f4ff;color:#272f54;font-weight:500;font-size:12px;">
+                                                        <?= date("M d, Y", strtotime($ri['created_at'])) ?>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -1065,36 +1096,36 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
                             <div id="table-interested" class="card-body px-4 pb-4 pt-2">
                                 <?php if (empty($recentInterested)): ?>
-                                            <p class="text-muted small mb-0">No student interest recorded yet.</p>
+                                    <p class="text-muted small mb-0">No student interest recorded yet.</p>
                                 <?php else: ?>
-                                            <div class="d-flex flex-column gap-3">
-                                                <?php foreach ($recentInterested as $ri): ?>
-                                                            <div class="d-flex align-items-center gap-3">
-                                                                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 fw-bold"
-                                                                    style="width:38px;height:38px;background:#eef1ff;color:#272f54;font-size:13px;">
-                                                                    <?= strtoupper(substr($ri['full_name'], 0, 1)) ?>
-                                                                </div>
-                                                                <div class="flex-grow-1 overflow-hidden">
-                                                                    <p class="fw-semibold mb-0 text-truncate"
-                                                                        style="color:#272f54;font-size:14px;">
-                                                                        <?= htmlspecialchars($ri['full_name']) ?>
-                                                                    </p>
-                                                                    <p class="text-muted mb-0 text-truncate" style="font-size:12px;">
-                                                                        <?= htmlspecialchars($ri['email']) ?>
-                                                                    </p>
-                                                                </div>
-                                                                <div class="text-end flex-shrink-0">
-                                                                    <span class="badge rounded-pill px-2"
-                                                                        style="background:#f5f5f5;color:#555;font-size:11px;font-weight:500;">
-                                                                        <?= htmlspecialchars($ri['company']) ?>
-                                                                    </span>
-                                                                    <p class="text-muted mb-0 mt-1" style="font-size:11px;">
-                                                                        <?= date("M d", strtotime($ri['created_at'])) ?>
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                <?php endforeach; ?>
+                                    <div class="d-flex flex-column gap-3">
+                                        <?php foreach ($recentInterested as $ri): ?>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 fw-bold"
+                                                    style="width:38px;height:38px;background:#eef1ff;color:#272f54;font-size:13px;">
+                                                    <?= strtoupper(substr($ri['full_name'], 0, 1)) ?>
+                                                </div>
+                                                <div class="flex-grow-1 overflow-hidden">
+                                                    <p class="fw-semibold mb-0 text-truncate"
+                                                        style="color:#272f54;font-size:14px;">
+                                                        <?= htmlspecialchars($ri['full_name']) ?>
+                                                    </p>
+                                                    <p class="text-muted mb-0 text-truncate" style="font-size:12px;">
+                                                        <?= htmlspecialchars($ri['email']) ?>
+                                                    </p>
+                                                </div>
+                                                <div class="text-end flex-shrink-0">
+                                                    <span class="badge rounded-pill px-2"
+                                                        style="background:#f5f5f5;color:#555;font-size:11px;font-weight:500;">
+                                                        <?= htmlspecialchars($ri['company']) ?>
+                                                    </span>
+                                                    <p class="text-muted mb-0 mt-1" style="font-size:11px;">
+                                                        <?= date("M d", strtotime($ri['created_at'])) ?>
+                                                    </p>
+                                                </div>
                                             </div>
+                                        <?php endforeach; ?>
+                                    </div>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -1110,34 +1141,34 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
                             <div id="table-announcements" class="card-body px-4 pb-4 pt-2">
                                 <?php if (empty($recentAnnouncements)): ?>
-                                            <p class="text-muted small mb-0">No announcements yet.</p>
+                                    <p class="text-muted small mb-0">No announcements yet.</p>
                                 <?php else: ?>
-                                            <div class="d-flex flex-column gap-3">
-                                                <?php foreach ($recentAnnouncements as $a):
-                                                    $catColors = [
-                                                        'news' => ['bg' => '#e6f1fb', 'color' => '#0c447c'],
-                                                        'updates' => ['bg' => '#eaf3de', 'color' => '#27500a'],
-                                                        'FAQs' => ['bg' => '#faeeda', 'color' => '#633806'],
-                                                    ];
-                                                    $c = $catColors[$a['category']] ?? ['bg' => '#f0f0f0', 'color' => '#444'];
-                                                    ?>
-                                                            <div class="d-flex align-items-start gap-3">
-                                                                <span class="badge rounded-pill px-3 py-2 flex-shrink-0"
-                                                                    style="background:<?= $c['bg'] ?>;color:<?= $c['color'] ?>;font-size:11px;font-weight:600;">
-                                                                    <?= htmlspecialchars(ucfirst($a['category'])) ?>
-                                                                </span>
-                                                                <div class="flex-grow-1 overflow-hidden">
-                                                                    <p class="fw-semibold mb-0 text-truncate"
-                                                                        style="color:#272f54;font-size:14px;">
-                                                                        <?= htmlspecialchars($a['title']) ?>
-                                                                    </p>
-                                                                    <p class="text-muted mb-0" style="font-size:12px;">
-                                                                        <?= date("M d, Y", strtotime($a['created_at'])) ?>
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                <?php endforeach; ?>
+                                    <div class="d-flex flex-column gap-3">
+                                        <?php foreach ($recentAnnouncements as $a):
+                                            $catColors = [
+                                                'news' => ['bg' => '#e6f1fb', 'color' => '#0c447c'],
+                                                'updates' => ['bg' => '#eaf3de', 'color' => '#27500a'],
+                                                'FAQs' => ['bg' => '#faeeda', 'color' => '#633806'],
+                                            ];
+                                            $c = $catColors[$a['category']] ?? ['bg' => '#f0f0f0', 'color' => '#444'];
+                                            ?>
+                                            <div class="d-flex align-items-start gap-3">
+                                                <span class="badge rounded-pill px-3 py-2 flex-shrink-0"
+                                                    style="background:<?= $c['bg'] ?>;color:<?= $c['color'] ?>;font-size:11px;font-weight:600;">
+                                                    <?= htmlspecialchars(ucfirst($a['category'])) ?>
+                                                </span>
+                                                <div class="flex-grow-1 overflow-hidden">
+                                                    <p class="fw-semibold mb-0 text-truncate"
+                                                        style="color:#272f54;font-size:14px;">
+                                                        <?= htmlspecialchars($a['title']) ?>
+                                                    </p>
+                                                    <p class="text-muted mb-0" style="font-size:12px;">
+                                                        <?= date("M d, Y", strtotime($a['created_at'])) ?>
+                                                    </p>
+                                                </div>
                                             </div>
+                                        <?php endforeach; ?>
+                                    </div>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -1215,10 +1246,10 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                         <select name="internship_id" id="internshipSelect">
                             <option value="" selected>Select Internship</option>
                             <?php foreach ($internships as $internship): ?>
-                                        <option value="<?= $internship['id'] ?>">
-                                            <?= htmlspecialchars($internship['company']) ?> —
-                                            <?= htmlspecialchars($internship['title']) ?>
-                                        </option>
+                                <option value="<?= $internship['id'] ?>">
+                                    <?= htmlspecialchars($internship['company']) ?> —
+                                    <?= htmlspecialchars($internship['title']) ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -1245,21 +1276,21 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                     </thead>
                     <tbody>
                         <?php foreach ($users as $u): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($u['name']) ?></td>
-                                        <td><?= htmlspecialchars($u['email']) ?></td>
-                                        <td><?= htmlspecialchars($u['role']) ?></td>
-                                        <td>
-                                            <form method="POST" action="superadmin-db.php"
-                                                onsubmit="return confirm('Are you sure you want to delete this user?')">
-                                                <input type="hidden" name="id" value="<?= $u['id'] ?>">
-                                                <input type="hidden" name="source" value="<?= $u['source'] ?>">
-                                                <button type="submit" name="delete" class="btn-delete">
-                                                    <i class="bi bi-trash-fill"></i> Delete
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
+                            <tr>
+                                <td><?= htmlspecialchars($u['name']) ?></td>
+                                <td><?= htmlspecialchars($u['email']) ?></td>
+                                <td><?= htmlspecialchars($u['role']) ?></td>
+                                <td>
+                                    <form method="POST" action="superadmin-db.php"
+                                        onsubmit="return confirm('Are you sure you want to delete this user?')">
+                                        <input type="hidden" name="id" value="<?= $u['id'] ?>">
+                                        <input type="hidden" name="source" value="<?= $u['source'] ?>">
+                                        <button type="submit" name="delete" class="btn-delete">
+                                            <i class="bi bi-trash-fill"></i> Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -1282,21 +1313,21 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                         </thead>
                         <tbody>
                             <?php foreach ($admins as $admin): ?>
-                                        <tr>
-                                            <td><?= htmlspecialchars($admin['name']) ?></td>
-                                            <td><?= htmlspecialchars($admin['email']) ?></td>
-                                            <td>
-                                                <input type="hidden" name="admin_id[]" value="<?= $admin['id'] ?>">
-                                                <select name="role[]" data-original="<?= $admin['role'] ?>" required>
-                                                    <option value="null" disabled <?= $admin['role'] !== 'superadmin' && $admin['role'] !== 'internship_admin' ? 'selected' : '' ?>>
-                                                        None
-                                                    </option>
-                                                    <option value="superadmin" <?= $admin['role'] == 'superadmin' ? 'selected' : '' ?>>
-                                                        System admin</option>
-                                                    <option value="internship_admin" <?= $admin['role'] == 'internship_admin' ? 'selected' : '' ?>>Internship Admin</option>
-                                                </select>
-                                            </td>
-                                        </tr>
+                                <tr>
+                                    <td><?= htmlspecialchars($admin['name']) ?></td>
+                                    <td><?= htmlspecialchars($admin['email']) ?></td>
+                                    <td>
+                                        <input type="hidden" name="admin_id[]" value="<?= $admin['id'] ?>">
+                                        <select name="role[]" data-original="<?= $admin['role'] ?>" required>
+                                            <option value="null" disabled <?= $admin['role'] !== 'superadmin' && $admin['role'] !== 'internship_admin' ? 'selected' : '' ?>>
+                                                None
+                                            </option>
+                                            <option value="superadmin" <?= $admin['role'] == 'superadmin' ? 'selected' : '' ?>>
+                                                System admin</option>
+                                            <option value="internship_admin" <?= $admin['role'] == 'internship_admin' ? 'selected' : '' ?>>Internship Admin</option>
+                                        </select>
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -1329,12 +1360,12 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                     </thead>
                     <tbody id="monitor-tbody">
                         <?php foreach ($activityLogs as $log): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($log['name']) ?></td>
-                                        <td><?= htmlspecialchars($log['roles']) ?></td>
-                                        <td><?= htmlspecialchars($log['activity']) ?></td>
-                                        <td><?= htmlspecialchars($log['activity_date']) ?></td>
-                                    </tr>
+                            <tr>
+                                <td><?= htmlspecialchars($log['name']) ?></td>
+                                <td><?= htmlspecialchars($log['roles']) ?></td>
+                                <td><?= htmlspecialchars($log['activity']) ?></td>
+                                <td><?= htmlspecialchars($log['activity_date']) ?></td>
+                            </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -1417,51 +1448,51 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                     }
                     ?>
                     <?php if (empty($csvRows)): ?>
-                                <p class="text-muted">No CSV file found. Please upload one first.</p>
+                        <p class="text-muted">No CSV file found. Please upload one first.</p>
                     <?php else: ?>
-                                <p class="text-muted small mb-3">Editing: <strong><?= htmlspecialchars($activeFile) ?></strong></p>
-                                <form method="POST" action="auto-register-save-csv.php">
-                                    <input type="hidden" name="edit_csv">
-                                    <?php foreach ($csvRows[0] as $colIndex => $headerCell): ?>
-                                                <input type="hidden" name="headers[<?= $colIndex ?>]"
-                                                    value="<?= htmlspecialchars($headerCell) ?>">
-                                    <?php endforeach; ?>
-                                    <table class="table table-bordered" id="csv-table">
-                                        <thead>
-                                            <tr>
-                                                <?php foreach ($csvRows[0] as $headerCell): ?>
-                                                            <th><?= htmlspecialchars($headerCell) ?></th>
-                                                <?php endforeach; ?>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="csv-tbody">
-                                            <?php foreach ($csvRows as $rowIndex => $row): ?>
-                                                        <?php if ($rowIndex === 0)
-                                                            continue; ?>
-                                                        <tr>
-                                                            <?php foreach ($row as $colIndex => $cell): ?>
-                                                                        <td>
-                                                                            <input type="text" name="csv[<?= $rowIndex ?>][<?= $colIndex ?>]"
-                                                                                value="<?= htmlspecialchars($cell) ?>" class="form-control">
-                                                                        </td>
-                                                            <?php endforeach; ?>
-                                                        </tr>
+                        <p class="text-muted small mb-3">Editing: <strong><?= htmlspecialchars($activeFile) ?></strong></p>
+                        <form method="POST" action="auto-register-save-csv.php">
+                            <input type="hidden" name="edit_csv">
+                            <?php foreach ($csvRows[0] as $colIndex => $headerCell): ?>
+                                <input type="hidden" name="headers[<?= $colIndex ?>]"
+                                    value="<?= htmlspecialchars($headerCell) ?>">
+                            <?php endforeach; ?>
+                            <table class="table table-bordered" id="csv-table">
+                                <thead>
+                                    <tr>
+                                        <?php foreach ($csvRows[0] as $headerCell): ?>
+                                            <th><?= htmlspecialchars($headerCell) ?></th>
+                                        <?php endforeach; ?>
+                                    </tr>
+                                </thead>
+                                <tbody id="csv-tbody">
+                                    <?php foreach ($csvRows as $rowIndex => $row): ?>
+                                        <?php if ($rowIndex === 0)
+                                            continue; ?>
+                                        <tr>
+                                            <?php foreach ($row as $colIndex => $cell): ?>
+                                                <td>
+                                                    <input type="text" name="csv[<?= $rowIndex ?>][<?= $colIndex ?>]"
+                                                        value="<?= htmlspecialchars($cell) ?>" class="form-control">
+                                                </td>
                                             <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                    <input type="hidden" id="col-count" value="<?= count($csvRows[0]) ?>">
-                                    <input type="hidden" id="row-count" value="<?= count($csvRows) ?>">
-                                    <div class="d-flex gap-2 mt-3">
-                                        <button type="button" class="btn btn-success" onclick="addRow()">
-                                            <i class="bi bi-plus-circle"></i> Add Row
-                                        </button>
-                                        <div style="flex:1; text-align:right;">
-                                            <button type="submit" class="submit-btn">Save CSV</button>
-                                            <button type="button" class="submit-btn btn-danger"
-                                                onclick="showSection(event, 'student_register')">Back</button>
-                                        </div>
-                                    </div>
-                                </form>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                            <input type="hidden" id="col-count" value="<?= count($csvRows[0]) ?>">
+                            <input type="hidden" id="row-count" value="<?= count($csvRows) ?>">
+                            <div class="d-flex gap-2 mt-3">
+                                <button type="button" class="btn btn-success" onclick="addRow()">
+                                    <i class="bi bi-plus-circle"></i> Add Row
+                                </button>
+                                <div style="flex:1; text-align:right;">
+                                    <button type="submit" class="submit-btn">Save CSV</button>
+                                    <button type="button" class="submit-btn btn-danger"
+                                        onclick="showSection(event, 'student_register')">Back</button>
+                                </div>
+                            </div>
+                        </form>
                     <?php endif; ?>
                 </div>
             </div>
@@ -1485,9 +1516,9 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                             <option value="">All Advisers</option>
                             <option value="unassigned">Unassigned</option>
                             <?php foreach ($adviserList as $adv): ?>
-                                        <option value="<?= htmlspecialchars($adv['full_name']) ?>">
-                                            <?= htmlspecialchars($adv['full_name']) ?>
-                                        </option>
+                                <option value="<?= htmlspecialchars($adv['full_name']) ?>">
+                                    <?= htmlspecialchars($adv['full_name']) ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -1509,67 +1540,218 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                     </thead>
                     <tbody id="assign-tbody">
                         <?php foreach ($studentList as $st): ?>
-                                    <tr data-adviser="<?= htmlspecialchars(strtolower($st['adviser_name'] ?? '')) ?>"
-                                        data-name="<?= htmlspecialchars(strtolower($st['full_name'])) ?>">
-                                        <td>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
-                                                    style="width:34px;height:34px;background:#eef1ff;color:#272f54;font-size:12px;">
-                                                    <?= strtoupper(substr($st['full_name'], 0, 1)) ?>
-                                                </div>
-                                                <?= htmlspecialchars($st['full_name']) ?>
-                                            </div>
-                                        </td>
-                                        <td><?= htmlspecialchars($st['email']) ?></td>
-                                        <td>
-                                            <?php if ($st['adviser_name']): ?>
-                                                        <span class="badge rounded-pill px-3"
-                                                            style="background:#eef1ff;color:#272f54;font-size:12px;">
-                                                            <?= htmlspecialchars($st['adviser_name']) ?>
-                                                        </span>
-                                            <?php else: ?>
-                                                        <span class="badge rounded-pill px-3"
-                                                            style="background:#f8d7da;color:#721c24;font-size:12px;">
-                                                            Unassigned
-                                                        </span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td><?= $st['room_name'] ? htmlspecialchars($st['room_name']) : '—' ?></td>
-                                        <td>
-                                            <form method="POST" id="assign-form-<?= $st['id'] ?>">
-                                                <input type="hidden" name="student_id" value="<?= $st['id'] ?>">
-                                                <input type="hidden" name="current_room_id" value="<?= $st['room_id'] ?? '' ?>">
-                                                <select name="adviser_id" class="assign-select" <?= $st['adviser_name'] ? 'disabled' : '' ?>>
-                                                    <option value="">— Select Adviser —</option>
-                                                    <?php foreach ($adviserList as $adv): ?>
-                                                                <?php if (!$adv['room_id'])
-                                                                    continue; ?>
-                                                                <option value="<?= $adv['id'] ?>" <?= ($st['room_id'] && $adv['room_id'] == $st['room_id']) ? 'selected' : '' ?>>
-                                                                    <?= htmlspecialchars($adv['full_name']) ?>
-                                                                    (<?= htmlspecialchars($adv['room_name']) ?>)
-                                                                </option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            </form>
-                                        </td>
-                                        <td>
-                                            <?php if ($st['adviser_name']): ?>
-                                                        <span class="badge rounded-pill px-3"
-                                                            style="background:#eaf3de;color:#27500a;font-size:12px;font-weight:500;">
-                                                            <i class="bi bi-check-circle-fill me-1"></i> Assigned
-                                                        </span>
-                                            <?php else: ?>
-                                                        <button type="submit" form="assign-form-<?= $st['id'] ?>" name="assign_adviser"
-                                                            class="assign-btn">
-                                                            <i class="bi bi-person-check me-1"></i> Assign
-                                                        </button>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
+                            <tr data-adviser="<?= htmlspecialchars(strtolower($st['adviser_name'] ?? '')) ?>"
+                                data-name="<?= htmlspecialchars(strtolower($st['full_name'])) ?>">
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                                            style="width:34px;height:34px;background:#eef1ff;color:#272f54;font-size:12px;">
+                                            <?= strtoupper(substr($st['full_name'], 0, 1)) ?>
+                                        </div>
+                                        <?= htmlspecialchars($st['full_name']) ?>
+                                    </div>
+                                </td>
+                                <td><?= htmlspecialchars($st['email']) ?></td>
+                                <td>
+                                    <?php if ($st['adviser_name']): ?>
+                                        <span class="badge rounded-pill px-3"
+                                            style="background:#eef1ff;color:#272f54;font-size:12px;">
+                                            <?= htmlspecialchars($st['adviser_name']) ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge rounded-pill px-3"
+                                            style="background:#f8d7da;color:#721c24;font-size:12px;">
+                                            Unassigned
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= $st['room_name'] ? htmlspecialchars($st['room_name']) : '—' ?></td>
+                                <td>
+                                    <form method="POST" id="assign-form-<?= $st['id'] ?>">
+                                        <input type="hidden" name="student_id" value="<?= $st['id'] ?>">
+                                        <input type="hidden" name="current_room_id" value="<?= $st['room_id'] ?? '' ?>">
+                                        <select name="adviser_id" class="assign-select" <?= $st['adviser_name'] ? 'disabled' : '' ?>>
+                                            <option value="">— Select Adviser —</option>
+                                            <?php foreach ($adviserList as $adv): ?>
+                                                <?php if (!$adv['room_id'])
+                                                    continue; ?>
+                                                <option value="<?= $adv['id'] ?>" <?= ($st['room_id'] && $adv['room_id'] == $st['room_id']) ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($adv['full_name']) ?>
+                                                    (<?= htmlspecialchars($adv['room_name']) ?>)
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </form>
+                                </td>
+                                <td>
+                                    <?php if ($st['adviser_name']): ?>
+                                        <span class="badge rounded-pill px-3"
+                                            style="background:#eaf3de;color:#27500a;font-size:12px;font-weight:500;">
+                                            <i class="bi bi-check-circle-fill me-1"></i> Assigned
+                                        </span>
+                                    <?php else: ?>
+                                        <button type="submit" form="assign-form-<?= $st['id'] ?>" name="assign_adviser"
+                                            class="assign-btn">
+                                            <i class="bi bi-person-check me-1"></i> Assign
+                                        </button>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
+
+            <!-- SUPERVISOR REQUESTS -->
+            <div id="supervisor_requests" class="section sysAdm-section">
+                <div class="sysAdm-header">
+                    <h2>HTE Supervisor Requests</h2>
+                    <p>Review and approve HTE supervisor account requests from students across all rooms.</p>
+                </div>
+
+                <?php if (empty($supervisorRequests)): ?>
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-person-tie fs-1 d-block mb-2"></i>
+                        No supervisor requests yet.
+                    </div>
+                <?php else: ?>
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                        <?php foreach ($supervisorRequests as $req):
+                            $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22'];
+                            $avatarColor = $avatarColors[crc32($req['student_name']) % count($avatarColors)];
+                            $statusStyles = [
+                                'pending' => ['bg' => '#fffbeb', 'border' => '#fde68a', 'color' => '#92400e', 'label' => 'Pending Review'],
+                                'approved' => ['bg' => '#f0fdf4', 'border' => '#bbf7d0', 'color' => '#065f46', 'label' => 'Approved'],
+                                'rejected' => ['bg' => '#fef2f2', 'border' => '#fecaca', 'color' => '#dc2626', 'label' => 'Returned'],
+                            ];
+                            $st = $statusStyles[$req['status']] ?? $statusStyles['pending'];
+                            ?>
+                            <div style="background:white; border:1px solid #eee; border-radius:12px;
+                            padding:18px 20px; box-shadow:0 1px 4px rgba(0,0,0,.04);">
+
+                                <!-- Top row -->
+                                <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+                                    <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:200px;">
+                                        <div style="width:40px;height:40px;border-radius:50%;background:<?= $avatarColor ?>;
+                                        color:white;display:flex;align-items:center;justify-content:center;
+                                        font-weight:700;font-size:16px;flex-shrink:0;">
+                                            <?= strtoupper(substr($req['student_name'], 0, 1)) ?>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight:600;font-size:14px;">
+                                                <?= htmlspecialchars($req['student_name']) ?>
+                                            </div>
+                                            <div style="font-size:12px;color:#888;">
+                                                <?= htmlspecialchars($req['student_no']) ?> &middot;
+                                                <?= htmlspecialchars($req['program']) ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span style="padding:4px 12px; border-radius:99px; font-size:11px; font-weight:600;
+                                     background:<?= $st['bg'] ?>; color:<?= $st['color'] ?>;
+                                     border:1px solid <?= $st['border'] ?>; white-space:nowrap; align-self:center;">
+                                        <?= $st['label'] ?>
+                                    </span>
+                                </div>
+
+                                <!-- Supervisor details -->
+                                <div
+                                    style="margin-top:14px; display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+                                gap:10px; background:#f9fafb; border-radius:8px; padding:12px 14px; border:1px solid #f0f0f0;">
+                                    <div>
+                                        <div
+                                            style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">
+                                            Supervisor Name</div>
+                                        <div style="font-size:13px;font-weight:600;"><?= htmlspecialchars($req['full_name']) ?>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div
+                                            style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">
+                                            Email</div>
+                                        <div style="font-size:13px;"><?= htmlspecialchars($req['email'] ?? '—') ?></div>
+                                    </div>
+                                    <div>
+                                        <div
+                                            style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">
+                                            Contact</div>
+                                        <div style="font-size:13px;"><?= htmlspecialchars($req['contact_number'] ?? '—') ?>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div
+                                            style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">
+                                            Submitted</div>
+                                        <div style="font-size:13px;"><?= date('M d, Y', strtotime($req['submitted_at'])) ?>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Actions -->
+                                <?php if ($req['status'] === 'pending'): ?>
+                                    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                                        <form action="superadmin-db.php" method="POST" style="margin:0;">
+                                            <input type="hidden" name="submission_id" value="<?= $req['id'] ?>">
+                                            <input type="hidden" name="student_id" value="<?= $req['student_id'] ?>">
+                                            <input type="hidden" name="action" value="approve">
+                                            <button type="submit" style="display:inline-flex;align-items:center;gap:6px;
+                                    padding:8px 16px; border-radius:8px; border:none; cursor:pointer;
+                                    background:#16a34a; color:white; font-size:13px; font-weight:500;
+                                    font-family:inherit; transition:filter .15s;"
+                                                onmouseover="this.style.filter='brightness(.9)'" onmouseout="this.style.filter=''">
+                                                <i class="bi bi-check-circle"></i> Approve & Create Account
+                                            </button>
+                                        </form>
+                                        <button onclick="toggleRejectSupAdmin(<?= $req['id'] ?>)" style="display:inline-flex;align-items:center;gap:6px;
+                                       padding:8px 16px; border-radius:8px; cursor:pointer;
+                                       background:white; color:#dc2626; font-size:13px; font-weight:500;
+                                       border:1.5px solid #fca5a5; font-family:inherit; transition:filter .15s;"
+                                            onmouseover="this.style.filter='brightness(.95)'" onmouseout="this.style.filter=''">
+                                            <i class="bi bi-x-circle"></i> Return to Student
+                                        </button>
+                                    </div>
+
+                                    <div id="reject-sup-admin-<?= $req['id'] ?>" style="display:none; margin-top:10px;">
+                                        <form action="adviser-supervisor-action.php" method="POST">
+                                            <input type="hidden" name="submission_id" value="<?= $req['id'] ?>">
+                                            <input type="hidden" name="student_id" value="<?= $req['student_id'] ?>">
+                                            <input type="hidden" name="action" value="reject">
+                                            <textarea name="rejection_note" rows="2"
+                                                placeholder="Reason for returning (optional)..." style="width:100%; padding:8px 12px; border:1.5px solid #fca5a5;
+                                           border-radius:8px; font-size:13px; font-family:inherit;
+                                           outline:none; resize:vertical; margin-bottom:6px;"></textarea>
+                                            <button type="submit" style="padding:7px 14px; border-radius:8px; border:none;
+                                    background:#dc2626; color:white; font-size:13px; font-weight:500;
+                                    font-family:inherit; cursor:pointer;">
+                                                <i class="bi bi-send me-1"></i> Confirm Return
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                <?php elseif ($req['status'] === 'approved'): ?>
+                                    <div
+                                        style="margin-top:10px; font-size:12px; color:#16a34a; display:flex; align-items:center; gap:6px;">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                        Account created &middot; Approved <?= date('M d, Y', strtotime($req['reviewed_at'])) ?>
+                                    </div>
+
+                                <?php elseif ($req['status'] === 'rejected'): ?>
+                                    <div
+                                        style="margin-top:10px; font-size:12px; color:#dc2626; display:flex; align-items:center; gap:6px;">
+                                        <i class="bi bi-x-circle-fill"></i>
+                                        Returned to student &middot; <?= date('M d, Y', strtotime($req['reviewed_at'])) ?>
+                                        <?php if (!empty($req['rejection_note'])): ?>
+                                            &middot; <em><?= htmlspecialchars($req['rejection_note']) ?></em>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+
             <!-- CSV ASSIGN ADVISER MODAL -->
             <div class="modal fade" id="csvAssignModal" tabindex="-1">
                 <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -1620,6 +1802,89 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- OJT HOURS -->
+            <div id="ojt_hours" class="section sysAdm-section">
+                <div class="sysAdm-header">
+                    <h2>Required OJT Hours per Program</h2>
+                    <p>
+                        Set the required number of OJT hours per program. Updates apply to
+                        all internships sharing that program name. Advisers cannot override these values.
+                    </p>
+                </div>
+
+                <?php if (empty($programHoursList)): ?>
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        No programs found. Make sure internships have a program field set.
+                    </div>
+                <?php else: ?>
+
+                    <form method="POST" action="superadmin-db.php">
+                        <div style="background:white; border:1px solid #e5e7eb; border-radius:10px;
+                                    overflow:hidden; margin-bottom:24px;">
+                            <table class="sysAdm-table">
+                                <thead>
+                                    <tr>
+                                        <th>Program</th>
+                                        <th style="width:220px;">Required Hours</th>
+                                        <th style="width:200px;">Internships Affected</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $countStmt = $pdo->query("
+                                        SELECT program, COUNT(*) AS total
+                                        FROM internships
+                                        WHERE program IS NOT NULL AND program <> ''
+                                        GROUP BY program
+                                    ");
+                                    $programCounts = [];
+                                    foreach ($countStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                                        $programCounts[$row['program']] = $row['total'];
+                                    }
+                                    ?>
+                                    <?php foreach ($programHoursList as $ph): ?>
+                                        <tr>
+                                            <td>
+                                                <input type="hidden" name="program[]"
+                                                    value="<?= htmlspecialchars($ph['program']) ?>">
+                                                <span style="font-weight:500; color:#272f54;">
+                                                    <?= htmlspecialchars($ph['program']) ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <input type="number" name="required_hours[]"
+                                                    value="<?= (int) $ph['required_hours'] ?>" min="1" max="9999" required
+                                                    style="width:120px; padding:7px 10px;
+                                          border:1.5px solid #e5e7eb; border-radius:8px;
+                                          font-size:13px; font-family:inherit;
+                                          outline:none; text-align:center;
+                                          transition:border-color .2s;" onfocus="this.style.borderColor='#4f51a8'"
+                                                    onblur="this.style.borderColor='#e5e7eb'">
+                                                <span style="font-size:12px; color:#9ca3af; margin-left:6px;">hrs</span>
+                                            </td>
+                                            <td>
+                                                <span style="font-size:13px; color:#555;">
+                                                    <?= (int) ($programCounts[$ph['program']] ?? 0) ?>
+                                                    internship(s) will be updated
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="display:flex; justify-content:flex-end;">
+                            <button type="submit" name="save_program_hours" class="btn-update">
+                                <i class="bi bi-floppy2 me-1"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+
+                <?php endif; ?>
             </div>
         </div><!-- /.main-content -->
     </div><!-- /.layout -->
@@ -1863,6 +2128,21 @@ $studentList = $studentListStmt->fetchAll(PDO::FETCH_ASSOC);
             document.body.appendChild(form);
             form.submit();
         }
+        function toggleRejectSupAdmin(id) {
+            const el = document.getElementById('reject-sup-admin-' + id);
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('section') === 'ojt_hours') {
+                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                const sec = document.getElementById('ojt_hours');
+                if (sec) sec.classList.add('active');
+                document.querySelectorAll('.sidebar a').forEach(l => l.classList.remove('active'));
+                const link = document.querySelector('.sidebar a[onclick*="ojt_hours"]');
+                if (link) link.classList.add('active');
+            }
+        });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

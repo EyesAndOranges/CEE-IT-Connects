@@ -71,29 +71,13 @@ if (!isset($_GET['room_id'])) {
 $current_room_id = $_GET['room_id'];
 $section = $_GET['section'] ?? '';
 
-$supReqStmt = $pdo->prepare("
-    SELECT
-        shss.*,
-        s.full_name AS student_name,
-        s.student_id AS student_no,
-        s.program
-    FROM student_hte_supervisor_submissions shss
-    JOIN students s ON shss.student_id = s.id
-    JOIN room_members rm ON s.id = rm.user_id AND rm.user_type = 'student'
-    WHERE rm.room_id = ?
-    ORDER BY
-        CASE shss.status WHEN 'pending' THEN 0 WHEN 'rejected' THEN 1 ELSE 2 END,
-        shss.submitted_at DESC
-");
-$supReqStmt->execute([$current_room_id]);
-$supervisorRequests = $supReqStmt->fetchAll(PDO::FETCH_ASSOC);
-
 // Load statuses for the status section
 $stmt = $pdo->prepare("
     SELECT
         s.id,
         s.full_name,
         COALESCE(i.company, oa.company_name) AS company,
+        COALESCE(i.required_hours, 486),
         COALESCE((
     SELECT ROUND(SUM(
         GREATEST(0, EXTRACT(EPOCH FROM (h.m_out - h.m_in)) / 3600) +
@@ -129,7 +113,7 @@ $stmt = $pdo->prepare("
             'medical_cert','internship_plan','vicinity_map','oath','ojt_started'
         )
     WHERE r.id = ?
-    GROUP BY s.id, s.full_name, i.company, oa.company_name
+    GROUP BY s.id, s.full_name, i.company, oa.company_name, i.required_hours
 ");
 $stmt->execute([$current_room_id]);
 $statuses = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -147,8 +131,17 @@ $appStmt = $pdo->prepare("
         s.student_id AS student_no,
         s.program,
         i.location,
-        -- Aggregate checklist as JSON
-        JSON_OBJECT_AGG(sp.step_key, sp.is_done) FILTER (WHERE sp.step_key IS NOT NULL) AS checklist
+        -- Aggregate checklist as JSON with both is_done and file_path
+        COALESCE(
+            JSON_OBJECT_AGG(
+                sp.step_key,
+                JSON_BUILD_OBJECT(
+                    'done', sp.is_done,
+                    'file_path', sp.file_path
+                )
+            ) FILTER (WHERE sp.step_key IS NOT NULL),
+            '{}'::json
+        ) AS checklist
     FROM ojt_applications oa
     JOIN students s ON oa.student_id = s.id
     JOIN room_members rm ON s.id = rm.user_id AND rm.user_type = 'student'
@@ -1211,23 +1204,6 @@ $page = 'messages';
                         style="background:#ff6b2c;font-size:10px;"><?= $pCount ?></span>
                 <?php endif; ?>
             </a>
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=supervisor_requests"
-                class="<?= $section === 'supervisor_requests' ? 'active' : '' ?>">
-                <i class="fa-solid fa-user-tie me-2"></i> Supervisor Requests
-                <?php
-                $supPendingStmt = $pdo->prepare("
-                    SELECT COUNT(*) FROM student_hte_supervisor_submissions shss
-                    JOIN room_members rm ON shss.student_id = rm.user_id AND rm.user_type = 'student'
-                    WHERE rm.room_id = ? AND shss.status = 'pending'
-                ");
-                $supPendingStmt->execute([$current_room_id]);
-                $supPCount = $supPendingStmt->fetchColumn();
-                if ($supPCount > 0):
-                    ?>
-                    <span class="ms-auto badge rounded-pill"
-                        style="background:#ff6b2c;font-size:10px;"><?= $supPCount ?></span>
-                <?php endif; ?>
-            </a>
             <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=chats"
                 class="<?= $section === 'chats' ? 'active' : '' ?>">
                 <i class="fa-solid fa-comments me-2"></i> Chats
@@ -1255,32 +1231,22 @@ $page = 'messages';
                 <h4 class="fw-bold mb-1">OJT Status</h4>
                 <p class="text-muted mb-3" style="font-size:.85rem;">Monitor student progress on their OJT program</p>
 
-                <?php
-                // Fetch current required hours for this room
-                $rhStmt = $pdo->prepare("SELECT required_hours FROM rooms WHERE id = ?");
-                $rhStmt->execute([$current_room_id]);
-                $requiredHours = $rhStmt->fetchColumn() ?: 486;
-                ?>
-
                 <!-- Adviser: Set Required Hours -->
-                <div
-                    style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+                <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;
+            align-items:center; justify-content:space-between;">
+
                     <div class="search-box">
                         <i class="fa-solid fa-magnifying-glass"></i>
                         <input type="text" id="searchInput" placeholder="Search student" oninput="filterTable()">
                     </div>
-                    <form method="POST" action="ojt-required-hours.php" style="display:flex; align-items:center; gap:8px;">
-                        <input type="hidden" name="room_id" value="<?= $current_room_id ?>">
-                        <label style="font-size:13px; color:#555; font-weight:500; white-space:nowrap;">
-                            Required OJT Hours:
-                        </label>
-                        <input type="number" name="required_hours" value="<?= $requiredHours ?>" min="1" style="width:70px; border:1.5px solid #e5e7eb; border-radius:8px;
-                           padding:6px 8px; font-size:13px; text-align:center; outline:none;">
-                        <button type="submit" class="btn btn-sm"
-                            style="background:#ff6b2c; color:white; border-radius:8px; font-size:13px; font-weight:600;">
-                            <i class="fa fa-save me-1"></i> Save
-                        </button>
-                    </form>
+
+                    <div style="display:flex; align-items:center; gap:8px; padding:8px 14px;
+                background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px;
+                font-size:13px; color:#1e40af;">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Required OJT hours are set per program by the System Administrator.
+                    </div>
+
                 </div>
 
 
@@ -1292,7 +1258,7 @@ $page = 'messages';
                                 <th>COMPANY</th>
                                 <th>HOURS</th>
                                 <th>PROGRESS</th>
-                                <!-- <th>HTE REMARKS</th> -->
+                                <th>ACTIONS</th>
                             </tr>
                         </thead>
                         <tbody id="all-students-tbody">
@@ -1304,6 +1270,8 @@ $page = 'messages';
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($statuses as $s):
+                                    // required_hours now comes from the student's matched internship
+                                    $requiredHours = !empty($s['required_hours']) ? (int) $s['required_hours'] : 486;
                                     $progressWidth = min(round(($s['total_hours'] / $requiredHours) * 100, 2), 100);
                                     $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22'];
                                     $avatarColor = $avatarColors[crc32($s['full_name']) % count($avatarColors)];
@@ -1327,7 +1295,10 @@ $page = 'messages';
                                                 <?= htmlspecialchars($s['company']) ?>
                                             <?php endif; ?>
                                         </td>
-                                        <td><strong><?= $s['total_hours'] ?></strong> / <?= $requiredHours ?></td>
+                                        <td>
+                                            <strong><?= $s['total_hours'] ?></strong>
+                                            <span style="color:#aaa; font-size:12px;">/ <?= $requiredHours ?> hrs</span>
+                                        </td>
                                         <td>
                                             <div style="display:flex; align-items:center; gap:8px;">
                                                 <div class="progress-bar-bg">
@@ -1336,7 +1307,26 @@ $page = 'messages';
                                                 <span><?= $progressWidth ?>%</span>
                                             </div>
                                         </td>
-                                        <!-- <td><?//= htmlspecialchars($s['latest_remarks'] ?? '—') ?></td> -->
+                                        <td>
+                                            <?php
+                                            $supEvalStmt = $pdo->prepare("SELECT id FROM ojt_evaluations_supervisor WHERE student_id = ?");
+                                            $supEvalStmt->execute([$s['id']]);
+                                            $hasSupEval = (bool) $supEvalStmt->fetchColumn();
+                                            ?>
+                                            <?php if ($hasSupEval): ?>
+                                                <a href="ojt-evaluation-download.php?student_id=<?= $s['id'] ?>" target="_blank" style="display:inline-flex; align-items:center; gap:5px; padding:5px 10px;
+                              background:#dbeafe; color:#1e40af; border-radius:6px; font-size:11px;
+                              font-weight:600; border:1px solid #93c5fd; text-decoration:none; white-space:nowrap;">
+                                                    <i class="fa fa-file-pdf"></i> Supervisor Eval
+                                                </a>
+                                            <?php else: ?>
+                                                <span style="display:inline-flex; align-items:center; gap:5px; padding:5px 10px;
+                                 background:#f3f4f6; color:#9ca3af; border-radius:6px; font-size:11px;
+                                 font-weight:600; white-space:nowrap; border:1px solid #e5e7eb;">
+                                                    <i class="fa fa-file-pdf"></i> Supervisor Eval
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -1405,7 +1395,7 @@ $page = 'messages';
                             $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22'];
                             $avatarColor = $avatarColors[crc32($app['full_name']) % count($avatarColors)];
                             $checklist = json_decode($app['checklist'] ?? '{}', true) ?: [];
-                            $doneCount = count(array_filter($checklist));
+                            $doneCount = count(array_filter($checklist, fn($v) => !empty($v['done'])));
                             $totalCount = count($stepLabels);
                             $progressPct = $totalCount > 0 ? round(($doneCount / $totalCount) * 100) : 0;
                             ?>
@@ -1473,12 +1463,38 @@ $page = 'messages';
                                 <!-- Checklist Pills -->
                                 <div class="checklist-grid">
                                     <?php foreach ($stepLabels as $key => $label):
-                                        $done = !empty($checklist[$key]);
+                                        $entry = $checklist[$key] ?? null;
+                                        $done = !empty($entry['done']);
+                                        $file_path = $entry['file_path'] ?? null;
                                         ?>
-                                        <span class="checklist-pill <?= $done ? 'done' : 'pending' ?>">
-                                            <i class="fa <?= $done ? 'fa-circle-check' : 'fa-circle' ?>" style="font-size:10px;"></i>
-                                            <?= $label ?>
-                                        </span>
+
+                                        <?php if ($done && $file_path): ?>
+                                            <!-- Clickable — downloads the uploaded proof -->
+                                            <a href="<?= htmlspecialchars($file_path) ?>" target="_blank" download
+                                                title="Download proof for <?= htmlspecialchars($label) ?>" class="checklist-pill done"
+                                                style="text-decoration:none; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                                                <i class="fa fa-circle-check" style="font-size:10px;"></i>
+                                                <?= $label ?>
+                                                <i class="fa fa-download" style="font-size:9px; opacity:.7; margin-left:2px;"></i>
+                                            </a>
+
+                                        <?php elseif ($done): ?>
+                                            <!-- Done but no file (legacy rows before upload was required) -->
+                                            <span class="checklist-pill done" title="Marked done — no file attached"
+                                                style="display:inline-flex; align-items:center; gap:4px;">
+                                                <i class="fa fa-circle-check" style="font-size:10px;"></i>
+                                                <?= $label ?>
+                                            </span>
+
+                                        <?php else: ?>
+                                            <!-- Not done -->
+                                            <span class="checklist-pill pending" style="display:inline-flex; align-items:center; gap:4px;">
+                                                <i class="fa fa-circle" style="font-size:10px;"></i>
+                                                <?= $label ?>
+                                            </span>
+
+                                        <?php endif; ?>
+
                                     <?php endforeach; ?>
                                 </div>
 
@@ -1486,176 +1502,6 @@ $page = 'messages';
                         <?php endforeach; ?>
                     </div>
 
-                <?php endif; ?>
-            </div>
-        <?php elseif ($section === 'supervisor_requests'): ?>
-            <div>
-                <h4 class="fw-bold mb-1">HTE Supervisor Requests</h4>
-                <p class="text-muted mb-3" style="font-size:.85rem;">
-                    Review and approve HTE supervisor account requests from your students.
-                    Approving will create a supervisor account they can use to log student hours.
-                </p>
-
-                <?php if (empty($supervisorRequests)): ?>
-                    <div class="text-center text-muted py-5">
-                        <i class="fa fa-user-tie fa-2x mb-2 d-block"></i>
-                        No supervisor requests yet.
-                    </div>
-                <?php else: ?>
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <?php foreach ($supervisorRequests as $req):
-                            $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22'];
-                            $avatarColor = $avatarColors[crc32($req['student_name']) % count($avatarColors)];
-                            $statusStyles = [
-                                'pending' => ['bg' => '#fffbeb', 'border' => '#fde68a', 'color' => '#92400e', 'label' => 'Pending Review'],
-                                'approved' => ['bg' => '#f0fdf4', 'border' => '#bbf7d0', 'color' => '#065f46', 'label' => 'Approved'],
-                                'rejected' => ['bg' => '#fef2f2', 'border' => '#fecaca', 'color' => '#dc2626', 'label' => 'Returned'],
-                            ];
-                            $st = $statusStyles[$req['status']] ?? $statusStyles['pending'];
-                            ?>
-                            <div style="background:white; border:1px solid #eee; border-radius:12px;
-                        padding:18px 20px; box-shadow:0 1px 4px rgba(0,0,0,.04);">
-
-                                <!-- Top row -->
-                                <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap;">
-
-                                    <!-- Student info -->
-                                    <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:200px;">
-                                        <div style="width:40px;height:40px;border-radius:50%;background:<?= $avatarColor ?>;
-                                    color:white;display:flex;align-items:center;justify-content:center;
-                                    font-weight:700;font-size:16px;flex-shrink:0;">
-                                            <?= strtoupper(substr($req['student_name'], 0, 1)) ?>
-                                        </div>
-                                        <div>
-                                            <div style="font-weight:600;font-size:14px;">
-                                                <?= htmlspecialchars($req['student_name']) ?>
-                                            </div>
-                                            <div style="font-size:12px;color:#888;">
-                                                <?= htmlspecialchars($req['student_no']) ?> &middot;
-                                                <?= htmlspecialchars($req['program']) ?>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Status badge -->
-                                    <span style="padding:4px 12px; border-radius:99px; font-size:11px; font-weight:600;
-                                 background:<?= $st['bg'] ?>; color:<?= $st['color'] ?>;
-                                 border:1px solid <?= $st['border'] ?>; white-space:nowrap; align-self:center;">
-                                        <?= $st['label'] ?>
-                                    </span>
-                                </div>
-
-                                <!-- Supervisor details -->
-                                <div style="margin-top:14px; display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
-                            gap:10px; background:#f9fafb; border-radius:8px; padding:12px 14px;
-                            border:1px solid #f0f0f0;">
-                                    <div>
-                                        <div
-                                            style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">
-                                            Supervisor Name
-                                        </div>
-                                        <div style="font-size:13px;font-weight:600;">
-                                            <?= htmlspecialchars($req['full_name']) ?>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div
-                                            style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">
-                                            Email
-                                        </div>
-                                        <div style="font-size:13px;">
-                                            <?= htmlspecialchars($req['email'] ?? '—') ?>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div
-                                            style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">
-                                            Contact
-                                        </div>
-                                        <div style="font-size:13px;">
-                                            <?= htmlspecialchars($req['contact_number'] ?? '—') ?>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div
-                                            style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">
-                                            Submitted
-                                        </div>
-                                        <div style="font-size:13px;">
-                                            <?= date('M d, Y', strtotime($req['submitted_at'])) ?>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Actions (only for pending) -->
-                                <?php if ($req['status'] === 'pending'): ?>
-                                    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                                        <!-- Approve -->
-                                        <form action="ojt-rooms-db.php" method="POST" style="margin:0;">
-                                            <input type="hidden" name="submission_id" value="<?= $req['id'] ?>">
-                                            <input type="hidden" name="student_id" value="<?= $req['student_id'] ?>">
-                                            <input type="hidden" name="room_id" value="<?= $current_room_id ?>">
-                                            <input type="hidden" name="action" value="approve">
-                                            <button type="submit" style="display:inline-flex;align-items:center;gap:6px;
-                                padding:8px 16px; border-radius:8px; border:none; cursor:pointer;
-                                background:#16a34a; color:white; font-size:13px; font-weight:500;
-                                font-family:inherit; transition:filter .15s;"
-                                                onmouseover="this.style.filter='brightness(.9)'" onmouseout="this.style.filter=''">
-                                                <i class="fa fa-circle-check"></i> Approve & Create Account
-                                            </button>
-                                        </form>
-
-                                        <!-- Reject toggle -->
-                                        <button onclick="toggleRejectSup(<?= $req['id'] ?>)" style="display:inline-flex;align-items:center;gap:6px;
-                                   padding:8px 16px; border-radius:8px; cursor:pointer;
-                                   background:white; color:#dc2626; font-size:13px; font-weight:500;
-                                   border:1.5px solid #fca5a5; font-family:inherit; transition:filter .15s;"
-                                            onmouseover="this.style.filter='brightness(.95)'" onmouseout="this.style.filter=''">
-                                            <i class="fa fa-circle-xmark"></i> Return to Student
-                                        </button>
-                                    </div>
-
-                                    <!-- Reject form (hidden by default) -->
-                                    <div id="reject-sup-<?= $req['id'] ?>" style="display:none; margin-top:10px;">
-                                        <form action="adviser-supervisor-action.php" method="POST">
-                                            <input type="hidden" name="submission_id" value="<?= $req['id'] ?>">
-                                            <input type="hidden" name="student_id" value="<?= $req['student_id'] ?>">
-                                            <input type="hidden" name="room_id" value="<?= $current_room_id ?>">
-                                            <input type="hidden" name="action" value="reject">
-                                            <textarea name="rejection_note" rows="2" placeholder="Reason for returning (optional)..."
-                                                style="width:100%; padding:8px 12px; border:1.5px solid #fca5a5;
-                                                    border-radius:8px; font-size:13px; font-family:inherit;
-                                                    outline:none; resize:vertical; margin-bottom:6px;"></textarea>
-                                            <button type="submit" style="padding:7px 14px; border-radius:8px; border:none;
-                                                background:#dc2626; color:white; font-size:13px; font-weight:500;
-                                                font-family:inherit; cursor:pointer;">
-                                                <i class="fa fa-paper-plane me-1"></i> Confirm Return
-                                            </button>
-                                        </form>
-                                        <i class="fa fa-circle-xmark"></i> Close
-                                    </div>
-
-                                <?php elseif ($req['status'] === 'approved'): ?>
-                                    <div
-                                        style="margin-top:10px; font-size:12px; color:#16a34a; display:flex; align-items:center; gap:6px;">
-                                        <i class="fa fa-circle-check"></i>
-                                        Account created &middot; Approved <?= date('M d, Y', strtotime($req['reviewed_at'])) ?>
-                                    </div>
-
-                                <?php elseif ($req['status'] === 'rejected'): ?>
-                                    <div
-                                        style="margin-top:10px; font-size:12px; color:#dc2626; display:flex; align-items:center; gap:6px;">
-                                        <i class="fa fa-circle-xmark"></i>
-                                        Returned to student &middot; <?= date('M d, Y', strtotime($req['reviewed_at'])) ?>
-                                        <?php if (!empty($req['rejection_note'])): ?>
-                                            &middot; <em><?= htmlspecialchars($req['rejection_note']) ?></em>
-                                        <?php endif; ?>
-                                    </div>
-                                <?php endif; ?>
-
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
                 <?php endif; ?>
             </div>
 
@@ -1882,12 +1728,6 @@ $page = 'messages';
                 setTimeout(() => alert.remove(), 300);
             }
         }, 4000);
-
-        function toggleRejectSup(id) {
-            const el = document.getElementById('reject-sup-' + id);
-            el.style.display = el.style.display === 'none' ? 'block' : 'none';
-        }
-
         // Status table search
         function filterTable() {
             const search = document.getElementById('searchInput')?.value.toLowerCase() ?? '';

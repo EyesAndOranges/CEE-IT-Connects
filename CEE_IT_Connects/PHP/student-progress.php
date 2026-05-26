@@ -14,28 +14,88 @@ $action = $_POST['action'] ?? '';
 if ($action === 'mark_step') {
     $step_key = $_POST['step_key'] ?? '';
     $allowed_steps = [
+        'medical_cert',
         'hte_form',
+        'acceptance_letter',
+        'company_profile',
         'addendum',
         'reco_letter',
         'waiver',
-        'medical_cert',
         'internship_plan',
         'vicinity_map',
-        'oath'
+        'oath',
     ];
 
-    if (in_array($step_key, $allowed_steps)) {
-        $upsert = $pdo->prepare("
-            INSERT INTO student_progress (student_id, step_key, is_done, updated_at)
-            VALUES (:sid, :key, TRUE, NOW())
-            ON CONFLICT (student_id, step_key)
-            DO UPDATE SET is_done = TRUE, updated_at = NOW()
-        ");
-        $upsert->execute([':sid' => $student_id, ':key' => $step_key]);
-        $_SESSION['success'] = "Step marked as complete.";
-    } else {
+    if (!in_array($step_key, $allowed_steps)) {
         $_SESSION['error'] = "Invalid step.";
+        header('Location: application-progress.php');
+        exit;
     }
+
+    // ── Handle file upload ────────────────────────────────────────────────────
+    $file_path = null;
+    $allowed_types = ['image/jpeg', 'image/png', 'application/pdf'];
+
+    if (empty($_FILES['proof_file']['tmp_name'])) {
+        $_SESSION['error'] = "Please attach proof before marking as done.";
+        header('Location: application-progress.php');
+        exit;
+    }
+
+    $file = $_FILES['proof_file'];
+
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        $_SESSION['error'] = "Upload error. Please try again.";
+        header('Location: application-progress.php');
+        exit;
+    }
+
+    if (!in_array($file['type'], $allowed_types)) {
+        $_SESSION['error'] = "Only PNG, JPG, or PDF files are allowed.";
+        header('Location: application-progress.php');
+        exit;
+    }
+
+    if ($file['size'] > 5 * 1024 * 1024) {
+        $_SESSION['error'] = "File must be under 5MB.";
+        header('Location: application-progress.php');
+        exit;
+    }
+
+    $upload_dir = __DIR__ . '/uploads/checklist/';
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0775, true);
+    }
+
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $filename = $student_id . '_' . $step_key . '_' . time() . '.' . $ext;
+    $dest = $upload_dir . $filename;
+
+    if (!move_uploaded_file($file['tmp_name'], $dest)) {
+        $_SESSION['error'] = "Upload failed. Please try again.";
+        header('Location: application-progress.php');
+        exit;
+    }
+
+    $file_path = 'uploads/checklist/' . $filename;
+
+    // ── Upsert progress with file path ────────────────────────────────────────
+    $upsert = $pdo->prepare("
+        INSERT INTO student_progress (student_id, step_key, is_done, file_path, updated_at)
+        VALUES (:sid, :key, TRUE, :fp, NOW())
+        ON CONFLICT (student_id, step_key)
+        DO UPDATE SET
+            is_done    = TRUE,
+            file_path  = EXCLUDED.file_path,
+            updated_at = NOW()
+    ");
+    $upsert->execute([
+        ':sid' => $student_id,
+        ':key' => $step_key,
+        ':fp' => $file_path,
+    ]);
+
+    $_SESSION['success'] = "Step marked as complete.";
 
 } elseif ($action === 'confirm_ojt') {
     $company_name = trim($_POST['company_name'] ?? '');
@@ -90,7 +150,6 @@ if ($action === 'mark_step') {
 } elseif ($action === 'cancel_application') {
     $bookmark_id = (int) ($_POST['bookmark_id'] ?? 0);
 
-    // Verify the bookmark belongs to this student
     $checkStmt = $pdo->prepare("
         SELECT id FROM internship_bookmarks
         WHERE id = ? AND student_id = ?
@@ -103,11 +162,27 @@ if ($action === 'mark_step') {
         exit;
     }
 
-    // Delete the bookmark
     $pdo->prepare("DELETE FROM internship_bookmarks WHERE id = ? AND student_id = ?")
         ->execute([$bookmark_id, $student_id]);
 
-    // Reset internship-specific checklist steps
+    // Delete uploaded proof files from disk before resetting progress
+    $filesStmt = $pdo->prepare("
+        SELECT file_path FROM student_progress
+        WHERE student_id = ?
+        AND step_key IN (
+            'hte_form', 'addendum', 'reco_letter', 'waiver',
+            'internship_plan', 'vicinity_map', 'oath', 'ojt_started'
+        )
+        AND file_path IS NOT NULL
+    ");
+    $filesStmt->execute([$student_id]);
+    foreach ($filesStmt->fetchAll(PDO::FETCH_COLUMN) as $fp) {
+        $full = __DIR__ . '/' . $fp;
+        if (file_exists($full)) {
+            unlink($full);
+        }
+    }
+
     $pdo->prepare("
         DELETE FROM student_progress
         WHERE student_id = ?
@@ -117,7 +192,6 @@ if ($action === 'mark_step') {
         )
     ")->execute([$student_id]);
 
-    // Reset HTE supervisor submission
     $pdo->prepare("DELETE FROM student_hte_supervisor_submissions WHERE student_id = ?")
         ->execute([$student_id]);
 

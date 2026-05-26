@@ -1,7 +1,7 @@
 <?php
 session_start();
 require 'db.php';
-
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 if (!isset($_SESSION['user_id'])) {
     die("Not logged in");
 }
@@ -32,16 +32,19 @@ if ($studentProgram !== $internship['program']) {
 $stmt = $pdo->prepare("DELETE FROM internship_bookmarks WHERE id = ? AND student_id = ?");
 
 $stmt->execute([$_POST['bookmark_id'], $_SESSION['user_id']]);
-$stmt = $pdo->prepare("
+try {
+    $stmt = $pdo->prepare("
     INSERT INTO internship_bookmarks (student_id, internship_id, created_at)
     VALUES (:student_id, :internship_id, NOW())
     ON CONFLICT (student_id, internship_id)
     DO UPDATE SET created_at = NOW()
 ");
-$stmt->execute([
-    ':student_id' => $student_id,
-    ':internship_id' => $internship_id,
-]);
-
+    $stmt->execute([
+        ':student_id' => $student_id,
+        ':internship_id' => $internship_id,
+    ]);
+} catch (PDOException $e) {
+    die("INSERT failed: " . $e->getMessage());
+}
 header("Location: applied-Internship-programs.php?bookmarked=1");
 exit;

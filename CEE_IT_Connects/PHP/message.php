@@ -245,8 +245,14 @@ $colors = ['#d63ba5', '#1abc9c', '#3498db', '#9b59b6'];
 $color = $colors[array_rand($colors)];
 $page = 'messages';
 
-$rhStmt = $pdo->prepare("SELECT required_hours FROM rooms WHERE id = ?");
-$rhStmt->execute([$current_room_id]);
+$rhStmt = $pdo->prepare("
+    SELECT COALESCE(i.required_hours, 486)
+    FROM internship_bookmarks ib
+    JOIN internships i ON i.id = ib.internship_id
+    WHERE ib.student_id = ?
+    LIMIT 1
+");
+$rhStmt->execute([$_SESSION['user_id']]);
 $requiredHours = $rhStmt->fetchColumn() ?: 486;
 ?>
 <!DOCTYPE html>
@@ -1545,7 +1551,8 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                         <div
                             style="background:#d9d9d9; border:1px solid #ababab; border-radius:8px; padding:1rem; margin-left:5px;">
                             <div style="letter-spacing:.05em; color:#29335C;">REMAINING HOURS</div>
-                            <div id="ojt-sum-remaining" style="font-size:20px; font-weight:500; color:#29335C;">486h 0m
+                            <div id="ojt-sum-remaining" style="font-size:20px; font-weight:500; color:#29335C;">
+                                <?= $requiredHours ?>h 0m
                             </div>
                         </div>
                     </div>
@@ -1767,7 +1774,7 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                             CEIT-OJTF-011 · Pamantasan ng Lungsod ng Valenzuela
                         </div>
                         <h5 class="modal-title fw-bold mb-0" style="font-size:1.2rem;">
-                            🎉 Congratulations! You've Completed Your OJT Hours
+                            Congratulations! You've Completed Your OJT Hours
                         </h5>
                         <div style="font-size:13px; opacity:.8; margin-top:4px;">
                             Please complete the Student's Evaluation of Internship before proceeding.
@@ -2213,8 +2220,6 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
         // TRACK RENDERED HOURS
         const OJT_REQUIRED_HOURS = <?= (int) $requiredHours ?>;
         const OJT_DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-        const OJT_REQUIRED_HOURS_KEY = 'ojt_required_hours';
-        let ojtWeeks = [];
         let ojtWeekCounter = 0;
         let ojtUnsavedChanges = {};
 
@@ -2335,24 +2340,6 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
         }
 
         document.addEventListener('DOMContentLoaded', ojtInit);
-
-        function ojtRequiredHoursChanged(el) {
-            let value = parseFloat(el.value);
-            if (!value || value < 1) { value = 1; el.value = value; }
-            localStorage.setItem(OJT_REQUIRED_HOURS_KEY, value);
-            ojtRecalcAll();
-        }
-
-        function ojtLoadRequiredHours() {
-            const saved = localStorage.getItem(OJT_REQUIRED_HOURS_KEY);
-            if (saved) {
-                const parsed = parseFloat(saved);
-                if (parsed > 0) {
-                    const input = document.getElementById('ojt-required-hrs');
-                    if (input) input.value = parsed;
-                }
-            }
-        }
 
         function ojtCloneWeekTemplate(id, wIdx) {
             const template = document.getElementById('ojt-week-template');
@@ -2614,17 +2601,6 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
 
         document.addEventListener('DOMContentLoaded', ojtInit);
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const input = document.getElementById('ojt-required-hrs');
-            if (input) {
-                input.value = <?= (int) $requiredHours ?>;
-                input.setAttribute('readonly', true);
-                input.style.pointerEvents = 'none';
-                input.style.background = '#f3f4f6';
-            }
-            // Remove localStorage override since value now comes from DB
-            localStorage.removeItem('ojt_required_hours');
-        });
     </script>
 </body>
 
