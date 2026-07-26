@@ -2,6 +2,17 @@
 session_start();
 require 'auth.php';
 require 'db.php';
+
+require_once __DIR__ . '/../phpmailer-master/src/PHPMailer.php';
+require_once __DIR__ . '/../phpmailer-master/src/SMTP.php';
+require_once __DIR__ . '/../phpmailer-master/src/Exception.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
+
+// echo realpath(__DIR__ . '/../Sources/forms/CEIT-OJTF-010_Supervisors_Evaluation_of_Student_Intern.pdf');
+// die();
 $current_room_id = $_GET['room_id'] ?? null;
 $section = $_GET['section'] ?? '';
 $adviser_id = $_SESSION['user_id'];
@@ -64,7 +75,7 @@ $roomStatusesStmt = $pdo->prepare("
         s.id,
         s.full_name,
         i.company,
-        r.required_hours,
+        i.required_hours,
         COALESCE(
             SUM(
                 CASE WHEN oh.m_in IS NOT NULL AND oh.m_out IS NOT NULL
@@ -82,10 +93,9 @@ $roomStatusesStmt = $pdo->prepare("
     JOIN internship_bookmarks ib ON ib.student_id = s.id
     JOIN internships i ON i.id = ib.internship_id
     JOIN room_members rm ON rm.user_id = s.id AND rm.user_type = 'student'
-    JOIN rooms r ON r.id = rm.room_id
-    LEFT JOIN ojt_hours oh ON oh.user_id = s.id
+    LEFT JOIN ojt_hours oh ON oh.user_id = s.id AND oh.user_type = 'student'
     WHERE ib.internship_id = ?
-    GROUP BY s.id, s.full_name, i.company, r.required_hours
+    GROUP BY s.id, s.full_name, i.company, i.required_hours
 ");
 $roomStatusesStmt->execute([$adviserInternshipId]);
 $roomStatuses = $roomStatusesStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -203,6 +213,92 @@ function getRoomChatName($pdo, $id, $type)
 $colors = ['#d63ba5', '#1abc9c', '#3498db', '#9b59b6'];
 $color = $colors[array_rand($colors)];
 $page = 'messages';
+
+$supAssignStmt = $pdo->prepare("
+    SELECT ss.*
+    FROM student_supervisors ss
+    JOIN internship_bookmarks ib ON ib.student_id = ss.student_id
+    WHERE ib.internship_id = ?
+");
+$supAssignStmt->execute([$adviserInternshipId]);
+$supAssignments = [];
+foreach ($supAssignStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $supAssignments[$row['student_id']] = $row;
+}
+
+foreach ($roomStatuses as $s) {
+    $required = $s['required_hours'] ?: 486;
+    if ($s['total_hours'] < $required)
+        continue;
+
+    // Check if supervisor is assigned and email not yet sent
+    $supCheck = $pdo->prepare("
+        SELECT student_id, supervisor_email, eval_sent_at
+        FROM student_supervisors
+        WHERE student_id = ? AND supervisor_email IS NOT NULL AND eval_sent_at IS NULL
+    ");
+    $supCheck->execute([$s['id']]);
+    $pendingSup = $supCheck->fetch(PDO::FETCH_ASSOC);
+
+    if ($pendingSup) {
+        // Trigger the send via internal HTTP call or direct function
+        // Since send-eval-email.php uses session/auth, call the logic directly here:
+        $supRow = $pdo->prepare("
+            SELECT ss.supervisor_name, ss.supervisor_email, ss.eval_token,
+                   st.full_name AS student_name
+            FROM student_supervisors ss
+            JOIN students st ON st.id = ss.student_id
+            WHERE ss.student_id = ?
+        ");
+        $supRow->execute([$s['id']]);
+        $sup = $supRow->fetch(PDO::FETCH_ASSOC);
+
+        if ($sup) {
+            $baseUrl = rtrim((isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'], '/');
+            $evalUrl = $baseUrl . '/supervisor-eval-form.php?token=' . urlencode($sup['eval_token']);
+            $pdfPath = realpath(__DIR__ . '/../Sources/forms/CEIT-OJTF-010_Supervisors_Evaluation_of_Student_Intern.pdf');
+
+            if ($pdfPath && file_exists($pdfPath)) {
+
+
+
+                // $htmlBody = "Dear <strong>{$sup['supervisor_name']}</strong>,<br><br>"
+                //     . "Student intern <strong>{$sup['student_name']}</strong> has completed their required OJT hours. "
+                //     . "Please fill out the attached evaluation form or <a href='{$evalUrl}'>click here</a> to complete it online.";
+
+                $mail = new PHPMailer(true);
+                try {
+                    $mail->isSMTP();
+                    $mail->Host = 'smtp.gmail.com';
+                    $mail->SMTPAuth = true;
+                    $mail->Username = 'jamesherold25@gmail.com';  // ← your Gmail
+                    $mail->Password = 'vyfc kawx ctvz cwqf';     // ← App Password
+                    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                    $mail->Port = 587;
+
+                    $mail->setFrom('jamesherold25@gmail.com', 'PLV OJT System');
+                    $mail->addAddress($sup['supervisor_email'], $sup['supervisor_name']);
+                    $mail->Subject = "Evaluation Request — {$sup['student_name']}";
+                    $mail->isHTML(true);
+                    $mail->Body = $htmlBody;
+                    $mail->addAttachment($pdfPath, 'CEIT-OJTF-010_Supervisors_Evaluation.pdf');
+
+                    $mail->send();
+
+                    $pdo->prepare("UPDATE student_supervisors SET eval_sent_at = NOW() WHERE student_id = ?")
+                        ->execute([$s['id']]);
+
+                } catch (Exception $e) {
+                    file_put_contents(
+                        __DIR__ . '/mail_debug.log',
+                        date('Y-m-d H:i:s') . " | Auto-send error for student {$s['id']}: " . $mail->ErrorInfo . "\n",
+                        FILE_APPEND
+                    );
+                }
+            }
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1255,65 +1351,103 @@ $page = 'messages';
                                     <td>
                                         <div style="display:flex; flex-direction:column; gap:6px;">
 
-                                            <!-- Student Evaluation Form -->
+                                            <!-- ① Student Evaluation -->
                                             <?php
-                                            $hasStudentEval = false;
                                             $seStmt = $pdo->prepare("SELECT id FROM ojt_evaluations_student WHERE student_id = ?");
                                             $seStmt->execute([$s['id']]);
                                             $hasStudentEval = (bool) $seStmt->fetchColumn();
                                             ?>
                                             <?php if ($hasStudentEval): ?>
                                                 <a href="ojt-evaluation-download.php?student_id=<?= $s['id'] ?>" target="_blank"
-                                                    style="display:inline-flex; align-items:center; gap:5px; padding:5px 10px;
-                                                        background:#dbeafe; color:#1e40af; border-radius:6px; font-size:11px;
-                                                        font-weight:600; text-decoration:none; white-space:nowrap;
-                                                        border:1px solid #93c5fd; transition:filter .15s;"
-                                                    onmouseover="this.style.filter='brightness(.93)'"
-                                                    onmouseout="this.style.filter=''">
+                                                    style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+                      background:#dbeafe;color:#1e40af;border-radius:6px;font-size:11px;
+                      font-weight:600;text-decoration:none;white-space:nowrap;
+                      border:1px solid #93c5fd;">
                                                     <i class="fa fa-file-pdf"></i> Student Eval
                                                 </a>
                                             <?php else: ?>
-                                                <span
-                                                    style="display:inline-flex; align-items:center; gap:5px; padding:5px 10px;
-                                                        background:#f3f4f6; color:#9ca3af; border-radius:6px; font-size:11px;
-                                                        font-weight:600; white-space:nowrap; border:1px solid #e5e7eb;">
+                                                <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+                         background:#f3f4f6;color:#9ca3af;border-radius:6px;font-size:11px;
+                         font-weight:600;white-space:nowrap;border:1px solid #e5e7eb;">
                                                     <i class="fa fa-file-pdf"></i> Student Eval
                                                 </span>
                                             <?php endif; ?>
 
-                                            <!-- Supervisor Evaluation Form -->
+                                            <!-- ② Assign / Edit Supervisor -->
                                             <?php
-                                            $supEvalStmt = $pdo->prepare("
-                                                SELECT id
-                                                FROM ojt_evaluations_supervisor
-                                                WHERE student_id = ?
-                                            ");
+                                            $sup = $supAssignments[$s['id']] ?? null;
+                                            $hasSup = !empty($sup);
+                                            ?>
+                                            <button type="button" onclick="openAssignSupModal(
+                <?= $s['id'] ?>,
+                '<?= htmlspecialchars(addslashes($s['full_name'])) ?>',
+                '<?= htmlspecialchars(addslashes($sup['supervisor_name'] ?? '')) ?>',
+                '<?= htmlspecialchars(addslashes($sup['supervisor_email'] ?? '')) ?>',
+                '<?= htmlspecialchars(addslashes($sup['department_note'] ?? '')) ?>'
+            )" style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+                   background:<?= $hasSup ? '#d1fae5' : '#fef3c7' ?>;
+                   color:<?= $hasSup ? '#065f46' : '#92400e' ?>;
+                   border-radius:6px;font-size:11px;font-weight:600;
+                   border:1px solid <?= $hasSup ? '#6ee7b7' : '#fde68a' ?>;
+                   cursor:pointer;white-space:nowrap;">
+                                                <i class="fa <?= $hasSup ? 'fa-user-check' : 'fa-user-plus' ?>"></i>
+                                                <?= $hasSup ? 'Supervisor Set' : 'Assign Supervisor' ?>
+                                            </button>
+
+                                            <?php if ($hasSup): ?>
+                                                <span style="font-size:10px;color:#6b7280;padding:2px 6px;background:#f9fafb;
+                         border:1px solid #e5e7eb;border-radius:4px;white-space:nowrap;
+                         overflow:hidden;text-overflow:ellipsis;max-width:160px;display:inline-block;"
+                                                    title="<?= htmlspecialchars($sup['supervisor_email']) ?>">
+                                                    <?= htmlspecialchars($sup['supervisor_email']) ?>
+                                                </span>
+                                            <?php endif; ?>
+
+                                            <!-- ③ Supervisor Eval -->
+                                            <?php
+                                            $supEvalStmt = $pdo->prepare("SELECT id FROM ojt_evaluations_supervisor WHERE student_id = ?");
                                             $supEvalStmt->execute([$s['id']]);
                                             $hasSupEval = (bool) $supEvalStmt->fetchColumn();
                                             ?>
 
                                             <?php if ($hasSupEval): ?>
-
-                                                <!-- PDF download after submission -->
                                                 <a href="ojt-evaluation-download.php?student_id=<?= $s['id'] ?>" target="_blank"
                                                     style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
-                                                    background:#dbeafe;color:#1e40af;border-radius:6px;font-size:11px;
-                                                    font-weight:600;border:1px solid #93c5fd;cursor:pointer;">
-
-                                                    <i class="fa fa-file-pdf"></i>
-                                                    Supervisor Eval
+                      background:#dbeafe;color:#1e40af;border-radius:6px;font-size:11px;
+                      font-weight:600;border:1px solid #93c5fd;cursor:pointer;text-decoration:none;">
+                                                    <i class="fa fa-file-pdf"></i> Supervisor Eval
                                                 </a>
 
+                                            <?php elseif ($hasSup): ?>
+                                                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                                                    <button type="button"
+                                                        onclick="sendEvalEmail(<?= $s['id'] ?>, '<?= htmlspecialchars(addslashes($sup['supervisor_name'])) ?>', '<?= htmlspecialchars(addslashes($sup['supervisor_email'])) ?>')"
+                                                        id="send-email-btn-<?= $s['id'] ?>" style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+                           background:#ede9fe;color:#5b21b6;border-radius:6px;font-size:11px;
+                           font-weight:600;border:1px solid #c4b5fd;cursor:pointer;white-space:nowrap;">
+                                                        <i class="fa fa-envelope"></i>
+                                                        <?= $sup['eval_sent_at'] ? 'Resend Email' : 'Send Eval Email' ?>
+                                                    </button>
+                                                    <button type="button" onclick="openSupEvalModal(<?= $s['id'] ?>)" style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+                           background:#dbeafe;color:#1e40af;border-radius:6px;font-size:11px;
+                           font-weight:600;border:1px solid #93c5fd;cursor:pointer;white-space:nowrap;">
+                                                        <i class="fa fa-file-pen"></i> Fill Manually
+                                                    </button>
+                                                </div>
+                                                <?php if ($sup['eval_sent_at']): ?>
+                                                    <span style="font-size:10px;color:#6b7280;">
+                                                        <i class="fa fa-clock" style="margin-right:2px;"></i>
+                                                        Sent <?= date('M d, g:i A', strtotime($sup['eval_sent_at'])) ?>
+                                                    </span>
+                                                <?php endif; ?>
+
                                             <?php else: ?>
-
-                                                <button type="button" onclick="openSupEvalModal(<?= $s['id'] ?>)" style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
-                                                    background:#dbeafe;color:#1e40af;border-radius:6px;font-size:11px;font-weight:600;
-                                                    border:1px solid #93c5fd;cursor:pointer;white-space:nowrap;">
-
-                                                    <i class="fa fa-file-pen"></i>
-                                                    Fill Supervisor Eval
-                                                </button>
-
+                                                <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+                         background:#f3f4f6;color:#9ca3af;border-radius:6px;font-size:11px;
+                         font-weight:600;white-space:nowrap;border:1px solid #e5e7eb;"
+                                                    title="Assign a supervisor first">
+                                                    <i class="fa fa-file-pen"></i> Supervisor Eval
+                                                </span>
                                             <?php endif; ?>
 
                                         </div>
@@ -1969,6 +2103,77 @@ $page = 'messages';
         </div>
     </div>
 
+    <!-- Supervisor Assign Modal -->
+
+    <div class="modal fade" id="assignSupModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
+            <div class="modal-content" style="border-radius:16px;overflow:hidden;">
+
+                <div class="modal-header"
+                    style="background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;padding:18px 24px;">
+                    <div>
+                        <div
+                            style="font-size:10px;letter-spacing:.12em;opacity:.7;text-transform:uppercase;margin-bottom:3px;">
+                            HTE Supervisor Assignment
+                        </div>
+                        <h5 class="modal-title fw-bold mb-0" style="font-size:1.05rem;">
+                            Assign Supervisor for <span id="assignSup_studentName"></span>
+                        </h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body" style="padding:24px 28px;background:#f8f9fb;">
+                    <form id="assignSupForm">
+                        <input type="hidden" name="student_id" id="assignSup_studentId">
+
+                        <div class="mb-3">
+                            <label style="font-size:11px;color:#64748b;font-weight:700;
+                                      text-transform:uppercase;letter-spacing:.05em;">
+                                Supervisor Full Name <span style="color:#dc2626;">*</span>
+                            </label>
+                            <input type="text" name="supervisor_name" id="assignSup_name" class="form-control mt-1"
+                                placeholder="e.g. Juan dela Cruz" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label style="font-size:11px;color:#64748b;font-weight:700;
+                                      text-transform:uppercase;letter-spacing:.05em;">
+                                Supervisor Email <span style="color:#dc2626;">*</span>
+                            </label>
+                            <input type="email" name="supervisor_email" id="assignSup_email" class="form-control mt-1"
+                                placeholder="supervisor@company.com" required>
+                            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+                                The evaluation form link will be sent to this address.
+                            </div>
+                        </div>
+
+                        <div class="mb-1">
+                            <label style="font-size:11px;color:#64748b;font-weight:700;
+                                      text-transform:uppercase;letter-spacing:.05em;">
+                                Department / Note <span style="color:#94a3b8;font-weight:400;">(optional)</span>
+                            </label>
+                            <input type="text" name="department_note" id="assignSup_dept" class="form-control mt-1"
+                                placeholder="e.g. Finance Dept, Design Team">
+                        </div>
+
+                        <div id="assignSup_error" style="display:none;color:#dc2626;font-size:12px;margin-top:10px;">
+                        </div>
+                    </form>
+                </div>
+
+                <div class="modal-footer" style="background:#f8f9fb;padding:14px 24px;gap:8px;">
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-sm fw-semibold px-4" id="assignSupSaveBtn"
+                        style="background:#2563eb;color:#fff;border-radius:8px;">
+                        <i class="fa fa-save me-1"></i> Save Supervisor
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function showSection(sectionId, e) {
@@ -2091,7 +2296,7 @@ $page = 'messages';
 
                             /* open download in new tab */
                             if (studentId) {
-                                window.open('ojt-supervisor-evaluation-download.php?student_id=' + studentId, '_blank');
+                                window.open('ojt-evaluation-download.php?student_id=' + studentId, '_blank');
                             }
 
                             /* success toast */
@@ -2122,6 +2327,91 @@ $page = 'messages';
                 });
             }
         });
+        function openAssignSupModal(studentId, studentName, supName, supEmail, supDept) {
+            document.getElementById('assignSup_studentId').value = studentId;
+            document.getElementById('assignSup_studentName').textContent = studentName;
+            document.getElementById('assignSup_name').value = supName || '';
+            document.getElementById('assignSup_email').value = supEmail || '';
+            document.getElementById('assignSup_dept').value = supDept || '';
+            document.getElementById('assignSup_error').style.display = 'none';
+            new bootstrap.Modal(document.getElementById('assignSupModal')).show();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+
+            /* Save supervisor */
+            document.getElementById('assignSupSaveBtn')?.addEventListener('click', async function () {
+                const form = document.getElementById('assignSupForm');
+                const errEl = document.getElementById('assignSup_error');
+                errEl.style.display = 'none';
+
+                if (!form.checkValidity()) { form.reportValidity(); return; }
+
+                this.disabled = true;
+                this.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Saving…';
+
+                try {
+                    const res = await fetch('assign-supervisor.php', {
+                        method: 'POST',
+                        body: new FormData(form)
+                    });
+                    const json = await res.json();
+
+                    if (json.success) {
+                        bootstrap.Modal.getInstance(
+                            document.getElementById('assignSupModal'))?.hide();
+                        location.reload();
+                    } else {
+                        errEl.textContent = json.message || 'Save failed.';
+                        errEl.style.display = 'block';
+                        this.disabled = false;
+                        this.innerHTML = '<i class="fa fa-save me-1"></i> Save Supervisor';
+                    }
+                } catch {
+                    errEl.textContent = 'Network error. Please try again.';
+                    errEl.style.display = 'block';
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fa fa-save me-1"></i> Save Supervisor';
+                }
+            });
+
+        });
+
+        /* ── SEND EVAL EMAIL ── */
+        async function sendEvalEmail(studentId, supName, supEmail) {
+            const btn = document.getElementById('send-email-btn-' + studentId);
+            if (!btn) return;
+
+            const orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Sending…';
+
+            try {
+                const fd = new FormData();
+                fd.append('student_id', studentId);
+                fd.append('supervisor_name', supName);
+                fd.append('supervisor_email', supEmail);
+
+                const res = await fetch('send-eval-email.php', { method: 'POST', body: fd });
+                const json = await res.json();
+
+                if (json.success) {
+                    btn.style.background = '#d1fae5';
+                    btn.style.color = '#065f46';
+                    btn.style.borderColor = '#6ee7b7';
+                    btn.innerHTML = '<i class="fa fa-check me-1"></i> Email Sent!';
+                    setTimeout(() => location.reload(), 1800);
+                } else {
+                    alert('Failed to send: ' + (json.message || 'Unknown error'));
+                    btn.disabled = false;
+                    btn.innerHTML = orig;
+                }
+            } catch {
+                alert('Network error. Please try again.');
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            }
+        }
     </script>
 </body>
 

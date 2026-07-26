@@ -101,6 +101,104 @@ $stmt = $pdo->prepare("
 $stmt->execute(['uid' => $_SESSION['user_id']]);
 $chatUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+$chatStudentsStmt = $pdo->prepare("
+    SELECT
+        s.id          AS user_id,
+        s.full_name,
+        'student'     AS user_type
+    FROM students s
+    JOIN room_members rm
+        ON s.id = rm.user_id
+       AND rm.user_type = 'student'
+    WHERE rm.room_id = ?
+    ORDER BY s.full_name
+");
+$chatStudentsStmt->execute([$current_room_id]);
+$chatStudents = $chatStudentsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$chatHteAdvisersStmt = $pdo->prepare("
+    SELECT DISTINCT
+        a.id          AS user_id,
+        a.full_name,
+        'adviser'     AS user_type
+    FROM advisers a
+    JOIN internship_bookmarks ib
+        ON a.internship_id = ib.internship_id
+    WHERE ib.student_id = ?
+      AND a.role = 'HTE_adviser'
+    ORDER BY a.full_name
+");
+$chatHteAdvisersStmt->execute([$_SESSION['user_id']]);
+$chatHteAdvisers = $chatHteAdvisersStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$roomAdviserStmt = $pdo->prepare("
+    SELECT
+        a.id          AS user_id,
+        a.full_name,
+        'adviser'     AS user_type
+    FROM advisers a
+    JOIN room_members rm_adviser
+        ON a.id = rm_adviser.user_id
+       AND rm_adviser.user_type = 'adviser'
+    JOIN room_members rm_student
+        ON rm_adviser.room_id = rm_student.room_id
+    WHERE rm_student.user_id = ?
+      AND rm_student.user_type = 'student'
+    ORDER BY a.full_name
+");
+$roomAdviserStmt->execute([$_SESSION['user_id']]);
+$roomAdvisers = $roomAdviserStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$chatSection_id = $_GET['chat_id'] ?? null;
+$chatSection_type = $_GET['chat_type'] ?? null;
+$chatMessages = [];
+
+if ($chatSection_id && $current_section === 'chats') {
+    $msgStmt = $pdo->prepare("
+        SELECT m.*,
+               COALESCE(s.full_name, a.full_name) AS sender_name
+        FROM   messages m
+        LEFT JOIN students s ON m.sender_id = s.id AND m.sender_type = 'student'
+        LEFT JOIN advisers a ON m.sender_id = a.id AND m.sender_type = 'adviser'
+        WHERE
+            (m.sender_id = ? AND m.sender_type = 'student'
+             AND m.receiver_id = ? AND m.receiver_type = ?)
+            OR
+            (m.sender_id = ? AND m.sender_type = ?
+             AND m.receiver_id = ? AND m.receiver_type = 'student')
+        ORDER BY m.created_at ASC
+    ");
+    $msgStmt->execute([
+        $_SESSION['user_id'],
+        $chatSection_id,
+        $chatSection_type,
+        $chatSection_id,
+        $chatSection_type,
+        $_SESSION['user_id'],
+    ]);
+    $chatMessages = $msgStmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+$chatLookup = [];
+foreach ($chatUsers as $cu) {
+    $key = $cu['chat_user_id'] . '-' . $cu['chat_user_type'];
+    $chatLookup[$key] = $cu;
+}
+
+// Helper – get display name for the open chat header
+function getRoomChatName($pdo, $id, $type)
+{
+    $tbl = ($type === 'student') ? 'students' : 'advisers';
+    $col = ($tbl === 'admins') ? 'name' : 'full_name';
+    $stmt = $pdo->prepare("SELECT full_name FROM {$tbl} WHERE id = ?");
+    $stmt->execute([$id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row['full_name'] ?? 'Unknown';
+}
+
+$avatarPalette = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22', '#e74c3c', '#16a085'];
+
+
 $messages = [];
 
 $hasProgressStmt = $pdo->prepare("
@@ -672,6 +770,466 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
 
         .ojt-add-btn:hover {
             background: #f8fafc;
+        }
+
+        .rc-wrap {
+            display: flex;
+            height: calc(100vh - 70px);
+            margin: -24px;
+            /* cancel .main padding */
+            overflow: hidden;
+            background: #f5f6fa;
+        }
+
+        /* ── LEFT PANEL – contact list ── */
+        .rc-list {
+            width: 290px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border-right: 1px solid #ebebeb;
+            overflow: hidden;
+        }
+
+        .rc-list-head {
+            padding: 18px 18px 10px;
+            flex-shrink: 0;
+        }
+
+        .rc-list-head h5 {
+            font-weight: 700;
+            font-size: 16px;
+            margin: 0 0 12px;
+            color: #1a1a2e;
+        }
+
+        .rc-search {
+            position: relative;
+        }
+
+        .rc-search input {
+            width: 100%;
+            padding: 8px 14px 8px 36px;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 22px;
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color .2s;
+            background: #f9fafb;
+        }
+
+        .rc-search input:focus {
+            border-color: #ff6b2c;
+            background: #fff;
+        }
+
+        .rc-search i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .rc-entries {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 12px;
+        }
+
+        .rc-entries::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .rc-entries::-webkit-scrollbar-thumb {
+            background: #eee;
+            border-radius: 4px;
+        }
+
+        .rc-divider {
+            padding: 8px 18px 4px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .7px;
+            text-transform: uppercase;
+            color: #b0b0b0;
+            background: #fafafa;
+            border-bottom: 1px solid #f0f0f0;
+            border-top: 1px solid #f0f0f0;
+            margin-top: 4px;
+        }
+
+        .rc-entry {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 11px 18px;
+            text-decoration: none;
+            color: inherit;
+            border-bottom: 1px solid #f8f8f8;
+            transition: background .15s;
+            cursor: pointer;
+        }
+
+        .rc-entry:hover {
+            background: #fdf6f3;
+        }
+
+        .rc-entry.active {
+            background: #fff3ec;
+            border-left: 3px solid #ff6b2c;
+        }
+
+        .rc-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 15px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .rc-meta {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .rc-name {
+            font-weight: 600;
+            font-size: 13.5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #1a1a2e;
+        }
+
+        .rc-preview {
+            font-size: 11.5px;
+            color: #aaa;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+
+        .rc-badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        /* ── RIGHT PANEL – message area ── */
+        .rc-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #fcfcfd;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .rc-header {
+            padding: 14px 22px;
+            border-bottom: 1px solid #ebebeb;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, .04);
+        }
+
+        .rc-header-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .rc-header-name {
+            font-weight: 700;
+            font-size: 14.5px;
+            color: #1a1a2e;
+        }
+
+        .rc-header-sub {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 1px;
+        }
+
+        /* messages body */
+        .rc-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 22px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .rc-body::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .rc-body::-webkit-scrollbar-thumb {
+            background: #ddd;
+            border-radius: 4px;
+        }
+
+        .rc-day-sep {
+            text-align: center;
+            font-size: 11px;
+            color: #ccc;
+            position: relative;
+            margin: 6px 0;
+        }
+
+        .rc-day-sep::before,
+        .rc-day-sep::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: #f0f0f0;
+        }
+
+        .rc-day-sep::before {
+            left: 0;
+        }
+
+        .rc-day-sep::after {
+            right: 0;
+        }
+
+        .rc-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .rc-row.me {
+            flex-direction: row-reverse;
+        }
+
+        .rc-row-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .rc-bwrap {
+            max-width: 65%;
+        }
+
+        .rc-sender {
+            font-size: 11px;
+            color: #bbb;
+            margin-bottom: 3px;
+            padding-left: 3px;
+        }
+
+        .rc-row.me .rc-sender {
+            text-align: right;
+            padding-left: 0;
+            padding-right: 3px;
+        }
+
+        .rc-bubble {
+            padding: 9px 15px;
+            border-radius: 18px;
+            font-size: 13.5px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .rc-row:not(.me) .rc-bubble {
+            background: #fff;
+            border: 1px solid #ece8e8;
+            border-bottom-left-radius: 4px;
+            color: #222;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
+        }
+
+        .rc-row.me .rc-bubble {
+            background: linear-gradient(135deg, #ff6b2c, #ff8c55);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 2px 8px rgba(255, 107, 44, .3);
+        }
+
+        .rc-time {
+            font-size: 10.5px;
+            color: #ccc;
+            margin-top: 4px;
+            padding-left: 3px;
+        }
+
+        .rc-row.me .rc-time {
+            text-align: right;
+            padding-left: 0;
+            padding-right: 3px;
+        }
+
+        /* empty state */
+        .rc-empty {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #ccc;
+            gap: 10px;
+        }
+
+        .rc-empty i {
+            font-size: 2.5rem;
+        }
+
+        .rc-empty p {
+            font-size: 14px;
+            margin: 0;
+        }
+
+        /* input bar */
+        .rc-inputbar {
+            border-top: 1px solid #ebebeb;
+            background: #fff;
+            padding: 12px 18px;
+            flex-shrink: 0;
+        }
+
+        .rc-inputrow {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .rc-inputrow textarea {
+            flex: 1;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 24px;
+            padding: 10px 18px;
+            font-size: 13.5px;
+            line-height: 1.4;
+            max-height: 100px;
+            overflow-y: auto;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            background: #f9fafb;
+        }
+
+        .rc-inputrow textarea:focus {
+            border-color: #ff6b2c;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(255, 107, 44, .08);
+        }
+
+        .rc-send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b2c, #ff8c55);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(255, 107, 44, .35);
+            transition: filter .15s, transform .1s;
+        }
+
+        .rc-send-btn:hover {
+            filter: brightness(.92);
+            transform: scale(1.05);
+        }
+
+        .rc-send-btn:disabled {
+            background: #ffc5a8;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── mobile tweaks ── */
+        @media (max-width: 768px) {
+            .rc-wrap {
+                margin: -15px;
+                height: calc(100vh - 70px);
+            }
+
+            .rc-list {
+                width: 100%;
+                position: absolute;
+                z-index: 10;
+                height: 100%;
+                transition: transform .3s ease;
+            }
+
+            .rc-list.slide-out {
+                transform: translateX(-100%);
+            }
+
+            .rc-panel {
+                width: 100%;
+            }
+
+            .rc-mobile-back {
+                display: flex !important;
+                align-items: center;
+                gap: 10px;
+                padding: 12px 16px;
+                border-bottom: 1px solid #eee;
+                background: #fff;
+                flex-shrink: 0;
+            }
+
+            .rc-mobile-back button {
+                background: none;
+                border: none;
+                font-size: 1.1rem;
+                color: #ff6b2c;
+                cursor: pointer;
+                padding: 0;
+            }
+
+            .rc-mobile-back span {
+                font-weight: 700;
+                font-size: 14px;
+            }
+        }
+
+        .rc-mobile-back {
+            display: none;
         }
 
         @media (max-width: 768px) {
@@ -1247,159 +1805,192 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
     <!-- CHATS SECTION -->
     <div id="chats" class="section <?= $current_section === 'chats' ? 'active' : '' ?>">
         <div class="main">
-            <div class="chat-container">
-                <div class="chat-slide-track" id="chatSlideTrack">
+            <div class="rc-wrap">
 
-                    <!-- Panel 1: Chat list -->
-                    <div class="chat-panel-screen">
-                        <div class="chat-list">
-                            <div class="p-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <h3><strong>Chats</strong></h3>
-                                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleNewChat()"
-                                        title="New Chat" id="new-chat-btn">
-                                        <i class="fa-solid fa-pen-to-square"></i>
+                <!-- ── LEFT: contact list ── -->
+                <div class="rc-list" id="rcList">
+
+                    <div class="rc-list-head">
+                        <h5><i class="fa-solid fa-comments me-2" style="color:#ff6b2c;"></i>Chats</h5>
+                        <div class="rc-search">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" placeholder="Search by name…" id="rcSearchInput"
+                                oninput="rcFilterContacts()">
+                        </div>
+                    </div>
+
+                    <div class="rc-entries" id="rcEntries">
+
+                        <!-- Students -->
+                        <div class="rc-divider">Students</div>
+                        <?php foreach ($chatStudents as $u):
+                            $key = $u['user_id'] . '-student';
+                            $preview = $chatLookup[$key]['last_message'] ?? 'No messages yet';
+                            $bg = $avatarPalette[crc32($u['full_name']) % count($avatarPalette)];
+                            $active = ($chatSection_id == $u['user_id'] && $chatSection_type === 'student');
+                            ?>
+                            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=chats&chat_id=<?= $u['user_id'] ?>&chat_type=student"
+                                class="rc-entry <?= $active ? 'active' : '' ?>"
+                                data-rcname="<?= strtolower(htmlspecialchars($u['full_name'])) ?>"
+                                onclick="rcMobileOpenChat(this)">
+                                <div class="rc-avatar" style="background:<?= $bg ?>;">
+                                    <?= strtoupper(substr($u['full_name'], 0, 1)) ?>
+                                </div>
+                                <div class="rc-meta">
+                                    <div class="rc-name"><?= htmlspecialchars($u['full_name']) ?></div>
+                                    <div class="rc-preview"><?= htmlspecialchars(mb_substr($preview, 0, 42)) ?></div>
+                                </div>
+                                <span class="rc-badge" style="background:#dbeafe;color:#1e40af;">Student</span>
+                            </a>
+                        <?php endforeach; ?>
+
+                        <?php if (empty($chatStudents)): ?>
+                            <div style="padding:14px 18px;font-size:12px;color:#bbb;">No students in this room yet.</div>
+                        <?php endif; ?>
+
+                        <div class="rc-divider">My Adviser</div>
+                        <?php foreach ($roomAdvisers as $u):
+                            $key = $u['user_id'] . '-adviser';
+                            $preview = $chatLookup[$key]['last_message'] ?? 'No messages yet'; // note: chatLookup won't have 'last_message' directly, see below
+                            $bg = $avatarPalette[crc32($u['full_name']) % count($avatarPalette)];
+                            $active = ($current_chat_id == $u['user_id'] && $current_chat_type === 'adviser');
+                            ?>
+                            <a href="?section=chats&room_id=<?= $current_room_id ?>&chat_id=<?= $u['user_id'] ?>&chat_type=adviser"
+                                class="rc-entry <?= $active ? 'active' : '' ?>"
+                                data-rcname="<?= strtolower(htmlspecialchars($u['full_name'])) ?>"
+                                onclick="rcMobileOpenChat(this)">
+                                <div class="rc-avatar" style="background:<?= $bg ?>;">
+                                    <?= strtoupper(substr($u['full_name'], 0, 1)) ?>
+                                </div>
+                                <div class="rc-meta">
+                                    <div class="rc-name"><?= htmlspecialchars($u['full_name']) ?></div>
+                                    <div class="rc-preview"><?= htmlspecialchars(mb_substr($preview, 0, 42)) ?></div>
+                                </div>
+                                <span class="rc-badge" style="background:#dbeafe;color:#1e40af;">Adviser</span>
+                            </a>
+                        <?php endforeach; ?>
+
+                        <!-- HTE Supervisors -->
+                        <?php if (!empty($chatHteAdvisers)): ?>
+                            <div class="rc-divider" style="margin-top:4px;">HTE Supervisors</div>
+                            <?php foreach ($chatHteAdvisers as $u):
+                                $key = $u['user_id'] . '-adviser';
+                                $preview = $chatLookup[$key]['last_message'] ?? 'No messages yet';
+                                $bg = $avatarPalette[crc32($u['full_name']) % count($avatarPalette)];
+                                $active = ($current_chat_id == $u['user_id'] && $current_chat_type === 'adviser');
+                                ?>
+                                <a href="?section=chats&room_id=<?= $current_room_id ?>&chat_id=<?= $u['user_id'] ?>&chat_type=adviser"
+                                    class="rc-entry <?= $active ? 'active' : '' ?>"
+                                    data-rcname="<?= strtolower(htmlspecialchars($u['full_name'])) ?>"
+                                    onclick="rcMobileOpenChat(this)">
+                                    <div class="rc-avatar" style="background:<?= $bg ?>;">
+                                        <?= strtoupper(substr($u['full_name'], 0, 1)) ?>
+                                    </div>
+                                    <div class="rc-meta">
+                                        <div class="rc-name"><?= htmlspecialchars($u['full_name']) ?></div>
+                                        <div class="rc-preview"><?= htmlspecialchars(mb_substr($preview, 0, 42)) ?></div>
+                                    </div>
+                                    <span class="rc-badge" style="background:#d1fae5;color:#065f46;">HTE</span>
+                                </a>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
+                    </div><!-- /rc-entries -->
+                </div><!-- /rc-list -->
+
+                <!-- ── RIGHT: message panel ── -->
+                <div class="rc-panel" id="rcPanel">
+
+                    <?php if ($chatSection_id): ?>
+
+                        <?php
+                        $openName = getRoomChatName($pdo, $chatSection_id, $chatSection_type);
+                        $openBg = $avatarPalette[crc32($openName) % count($avatarPalette)];
+                        $isHte = ($chatSection_type === 'adviser');
+                        $roleLabel = $isHte ? 'HTE / Co-Adviser' : 'Student';
+                        ?>
+
+                        <!-- Mobile back arrow -->
+                        <div class="rc-mobile-back" id="rcMobileBack">
+                            <button onclick="rcMobileGoBack()"><i class="fa-solid fa-arrow-left"></i></button>
+                            <span><?= htmlspecialchars($openName) ?></span>
+                        </div>
+
+                        <!-- Header -->
+                        <div class="rc-header">
+                            <div class="rc-header-avatar" style="background:<?= $openBg ?>;">
+                                <?= strtoupper(substr($openName, 0, 1)) ?>
+                            </div>
+                            <div>
+                                <div class="rc-header-name"><?= htmlspecialchars($openName) ?></div>
+                                <div class="rc-header-sub"><?= $roleLabel ?></div>
+                            </div>
+                        </div>
+
+                        <!-- Messages -->
+                        <div class="rc-body" id="rcBody">
+                            <?php if (empty($chatMessages)): ?>
+                                <div style="margin:auto;text-align:center;color:#ccc;">
+                                    <i class="fa-regular fa-comment-dots fa-2x d-block mb-2"></i>
+                                    <span style="font-size:13px;">No messages yet — say hello!</span>
+                                </div>
+                            <?php else:
+                                $lastDay = '';
+                                foreach ($chatMessages as $msg):
+                                    $currentUserType = getUserType($_SESSION['role']);
+                                    $isMe = ($msg['sender_id'] == $_SESSION['user_id'] && $msg['sender_type'] === $currentUserType);
+                                    $bubBg = $avatarPalette[crc32($msg['sender_name'] ?? '') % count($avatarPalette)];
+                                    $msgDay = date('F j, Y', strtotime($msg['created_at']));
+                                    if ($msgDay !== $lastDay):
+                                        $lastDay = $msgDay;
+                                        ?>
+                                        <div class="rc-day-sep"><?= $msgDay ?></div>
+                                    <?php endif; ?>
+                                    <div class="rc-row <?= $isMe ? 'me' : '' ?>">
+                                        <?php if (!$isMe): ?>
+                                            <div class="rc-row-avatar" style="background:<?= $bubBg ?>;">
+                                                <?= strtoupper(substr($msg['sender_name'] ?? '?', 0, 1)) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="rc-bwrap">
+                                            <?php if (!$isMe): ?>
+                                                <div class="rc-sender"><?= htmlspecialchars($msg['sender_name'] ?? '') ?></div>
+                                            <?php endif; ?>
+                                            <div class="rc-bubble"><?= nl2br(htmlspecialchars($msg['message'])) ?></div>
+                                            <div class="rc-time"><?= date('g:i A', strtotime($msg['created_at'])) ?></div>
+                                        </div>
+                                    </div>
+                                <?php endforeach;
+                            endif; ?>
+                        </div>
+
+                        <!-- Input -->
+                        <div class="rc-inputbar">
+                            <form method="POST" action="message-db.php" id="rcForm">
+                                <input type="hidden" name="receiver_id" value="<?= htmlspecialchars($chatSection_id) ?>">
+                                <input type="hidden" name="receiver_type"
+                                    value="<?= htmlspecialchars($chatSection_type) ?>">
+                                <input type="hidden" name="redirect"
+                                    value="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=chats&chat_id=<?= $chatSection_id ?>&chat_type=<?= $chatSection_type ?>">
+                                <div class="rc-inputrow">
+                                    <textarea name="message" id="rcTextarea" rows="1" placeholder="Type a message…" required
+                                        onkeydown="rcEnterSend(event)"></textarea>
+                                    <button type="submit" class="rc-send-btn" id="rcSendBtn">
+                                        <i class="fa-solid fa-paper-plane"></i>
                                     </button>
                                 </div>
-
-                                <input type="text" id="chat-search" class="form-control form-control-sm mt-2"
-                                    placeholder="Search conversations..." oninput="filterChats()">
-
-                                <div id="new-chat-panel" style="display:none; margin-top:10px;">
-                                    <input type="text" id="user-search-input" class="form-control form-control-sm"
-                                        placeholder="Search all users..." oninput="searchAllUsers()">
-                                    <div id="user-search-results" class="mt-1 border rounded"
-                                        style="background:#fff; max-height:220px; overflow-y:auto; font-size:13px;">
-                                    </div>
-                                </div>
-
-                                <div id="chat-users-list">
-                                    <div>
-                                        <?php foreach ($chatUsers as $chat): ?>
-                                            <?php
-                                            $other_id = $chat['chat_user_id'];
-                                            $other_type = $chat['chat_user_type'];
-                                            $name = getUserName($pdo, $other_id, $other_type);
-                                            ?>
-                                            <a href="?chat_id=<?= $other_id ?>&chat_type=<?= $other_type ?>&section=chats"
-                                                class="d-block text-decoration-none text-dark mb-2 chat-user-entry"
-                                                data-name="<?= strtolower(htmlspecialchars($name)) ?>">
-                                                <div class="chat-user-item d-flex align-items-center p-3 border-bottom
-                                                    <?= ($current_chat_id == $other_id) ? 'bg-light' : '' ?>">
-                                                    <div class="avatar-circle me-3"></div>
-                                                    <div>
-                                                        <div class="fw-bold"><?= htmlspecialchars($name) ?></div>
-                                                        <small class="text-muted">Click to open chat</small>
-                                                    </div>
-                                                </div>
-                                            </a>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Panel 2: Message area -->
-                    <div class="chat-panel-screen">
-                        <div class="mobile-chat-header">
-                            <button class="mobile-back-btn" onclick="mobileChatBack()">
-                                <i class="fa-solid fa-arrow-left"></i>
-                            </button>
-                            <span class="chat-name" id="mobileChatName">
-                                <?php if ($current_chat_id): ?>
-                                    <?= getUserName($pdo, $current_chat_id, $current_chat_type) ?>
-                                <?php endif; ?>
-                            </span>
-                            <button class="mobile-info-btn" onclick="mobileChatInfo()">
-                                <i class="fa-solid fa-circle-info"></i>
-                            </button>
-                        </div>
-
-                        <div class="message-area">
-                            <div class="p-3 border-bottom">
-                                <strong id="desktopChatName">
-                                    <?php if ($current_chat_id): ?>
-                                        <?= getUserName($pdo, $current_chat_id, $current_chat_type) ?>
-                                    <?php endif; ?>
-                                </strong>
-                            </div>
-
-                            <div class="message-content">
-                                <?php foreach ($messages as $msg): ?>
-                                    <?php $isMe = $msg['sender_id'] == $_SESSION['user_id']; ?>
-                                    <div class="bubble <?= $isMe ? 'outgoing' : 'incoming' ?>">
-                                        <small><?= getUserName($pdo, $msg['sender_id'], $msg['sender_type']) ?></small><br>
-                                        <?= htmlspecialchars($msg['message']) ?>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-
-                            <form method="POST" action="message-db.php" class="p-3 border-top d-flex">
-                                <input type="hidden" name="receiver_id" value="<?= $current_chat_id ?>">
-                                <input type="hidden" name="receiver_type" value="<?= $current_chat_type ?>">
-                                <input type="text" name="message" class="form-control me-2"
-                                    placeholder="Type message..." required>
-                                <button class="btn btn-primary">Send</button>
                             </form>
                         </div>
-                    </div>
 
-                    <!-- Panel 3: Profile sidebar -->
-                    <div class="chat-panel-screen">
-                        <div class="mobile-profile-header">
-                            <button class="mobile-back-btn" onclick="mobileProfileBack()">
-                                <i class="fa-solid fa-arrow-left"></i>
-                            </button>
-                            <span class="fw-bold">Profile Info</span>
+                    <?php else: ?>
+                        <div class="rc-empty">
+                            <i class="fa-regular fa-comments"></i>
+                            <p>Select a conversation to get started</p>
                         </div>
+                    <?php endif; ?>
 
-                        <div class="profile-sidebar">
-                            <div class="big-avatar"></div>
-
-                            <?php if ($current_chat_id): ?>
-                                <?php $profile = getUserProfile($pdo, $current_chat_id, $current_chat_type); ?>
-                                <h5 class="fw-bold"><?= htmlspecialchars($profile['full_name']) ?></h5>
-                                <div class="w-100 text-start mt-3" style="font-size:0.85rem;">
-                                    <div class="mb-3">
-                                        <i class="fa-solid fa-envelope me-2 text-muted"></i>
-                                        <?= htmlspecialchars($profile['email'] ?? 'No email') ?>
-                                    </div>
-                                </div>
-                            <?php else: ?>
-                                <h5 class="fw-bold">No chat selected</h5>
-                            <?php endif; ?>
-
-                            <div class="media-tabs" id="profileTabs">
-                                <div class="tab-item active-tab" onclick="switchTab('media')">Media</div>
-                                <div class="tab-item" onclick="switchTab('files')">Files</div>
-                                <div class="tab-indicator" id="tabIndicator"></div>
-                            </div>
-
-                            <div class="tab-content-area">
-                                <div id="mediaPane" class="content-pane active-pane">
-                                    <div class="media-grid">
-                                        <div class="media-box"></div>
-                                        <div class="media-box" style="background:#666;"></div>
-                                        <div class="media-box" style="background:#999;"></div>
-                                    </div>
-                                </div>
-                                <div id="filesPane" class="content-pane">
-                                    <div class="mt-2" style="width:100%; align-self:stretch;">
-                                        <div class="py-2 border-bottom small d-flex align-items-center gap-2">
-                                            <i class="fa-solid fa-file-pdf text-danger"></i> Internship_Form.pdf
-                                        </div>
-                                        <div class="py-2 border-bottom small d-flex align-items-center gap-2">
-                                            <i class="fa-solid fa-file-word text-primary"></i> Resume_Draft.docx
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
+                </div><!-- /rc-panel -->
+            </div><!-- /rc-wrap -->
         </div>
     </div>
 
@@ -1760,6 +2351,7 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
             <?php endif; ?>
         </div>
     </div>
+
     <!-- ===== OJT COMPLETION EVALUATION MODAL ===== -->
     <div class="modal fade" id="ojtEvalModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -2601,6 +3193,62 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
 
         document.addEventListener('DOMContentLoaded', ojtInit);
 
+        function rcFilterContacts() {
+            const q = document.getElementById('rcSearchInput').value.toLowerCase().trim();
+            document.querySelectorAll('#rcEntries .rc-entry').forEach(el => {
+                el.style.display = (el.dataset.rcname || '').includes(q) ? '' : 'none';
+            });
+        }
+
+        /* ── auto-scroll to bottom ── */
+        (function () {
+            const b = document.getElementById('rcBody');
+            if (b) b.scrollTop = b.scrollHeight;
+        })();
+
+        /* ── send on Enter (Shift+Enter = newline) ── */
+        function rcEnterSend(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const ta = document.getElementById('rcTextarea');
+                const btn = document.getElementById('rcSendBtn');
+                if (ta && ta.value.trim()) {
+                    btn.disabled = true;
+                    document.getElementById('rcForm').submit();
+                }
+            }
+        }
+
+        /* ── auto-resize textarea ── */
+        (function () {
+            const ta = document.getElementById('rcTextarea');
+            if (!ta) return;
+            ta.addEventListener('input', () => {
+                ta.style.height = 'auto';
+                ta.style.height = Math.min(ta.scrollHeight, 100) + 'px';
+            });
+        })();
+
+        /* ── mobile: slide list out when a chat is opened ── */
+        function rcMobileOpenChat(el) {
+            if (window.innerWidth <= 768) {
+                document.getElementById('rcList').classList.add('slide-out');
+                document.getElementById('rcMobileBack') && (document.getElementById('rcMobileBack').style.display = 'flex');
+            }
+        }
+        function rcMobileGoBack() {
+            document.getElementById('rcList').classList.remove('slide-out');
+        }
+
+        /* On mobile with a chat already open, slide list away immediately */
+        (function () {
+            <?php if ($chatSection_id && $section === 'chats'): ?>
+                if (window.innerWidth <= 768) {
+                    const list = document.getElementById('rcList');
+                    if (list) list.classList.add('slide-out');
+                }
+            <?php endif; ?>
+        })();
     </script>
 </body>
 
