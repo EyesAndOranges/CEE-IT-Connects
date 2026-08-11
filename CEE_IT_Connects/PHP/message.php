@@ -153,6 +153,9 @@ $chatSection_id = $_GET['chat_id'] ?? null;
 $chatSection_type = $_GET['chat_type'] ?? null;
 $chatMessages = [];
 
+// var_dump($current_user_type, $_SESSION['role'], $chatSection_id, $chatSection_type);
+// exit;
+
 if ($chatSection_id && $current_section === 'chats') {
     $msgStmt = $pdo->prepare("
         SELECT m.*,
@@ -161,20 +164,22 @@ if ($chatSection_id && $current_section === 'chats') {
         LEFT JOIN students s ON m.sender_id = s.id AND m.sender_type = 'student'
         LEFT JOIN advisers a ON m.sender_id = a.id AND m.sender_type = 'adviser'
         WHERE
-            (m.sender_id = ? AND m.sender_type = 'student'
+            (m.sender_id = ? AND m.sender_type = ?
              AND m.receiver_id = ? AND m.receiver_type = ?)
             OR
             (m.sender_id = ? AND m.sender_type = ?
-             AND m.receiver_id = ? AND m.receiver_type = 'student')
+             AND m.receiver_id = ? AND m.receiver_type = ?)
         ORDER BY m.created_at ASC
     ");
     $msgStmt->execute([
         $_SESSION['user_id'],
+        $current_user_type,
         $chatSection_id,
         $chatSection_type,
         $chatSection_id,
         $chatSection_type,
         $_SESSION['user_id'],
+        $current_user_type,
     ]);
     $chatMessages = $msgStmt->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -1125,8 +1130,23 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
 
         .rc-inputrow {
             display: flex;
-            align-items: flex-end;
+            align-items: center;
             gap: 10px;
+        }
+
+        .rc-attach-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background .15s;
+        }
+
+        .rc-attach-btn:hover {
+            background: #f3f4f6;
         }
 
         .rc-inputrow textarea {
@@ -1178,6 +1198,84 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
             box-shadow: none;
             cursor: not-allowed;
             transform: none;
+        }
+
+        .rc-attach-preview {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            background: #f3f4f6;
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+
+        .rc-attach-thumb-wrap {
+            position: relative;
+            width: 52px;
+            height: 52px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rc-attach-thumb-wrap img,
+        .rc-attach-thumb-wrap video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .rc-attach-remove {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #dc2626;
+            color: #fff;
+            border: none;
+            font-size: 11px;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rc-attach-filename {
+            font-size: 12px;
+            color: #555;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 180px;
+        }
+
+        .rc-msg-delete {
+            background: none;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 12px;
+            opacity: 0;
+            align-self: center;
+            padding: 4px;
+            transition: opacity .15s, color .15s;
+        }
+
+        .rc-row.me:hover .rc-msg-delete {
+            opacity: 1;
+        }
+
+        .rc-msg-delete:hover {
+            color: #dc2626;
         }
 
         /* ── mobile tweaks ── */
@@ -1829,7 +1927,7 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                             $bg = $avatarPalette[crc32($u['full_name']) % count($avatarPalette)];
                             $active = ($chatSection_id == $u['user_id'] && $chatSection_type === 'student');
                             ?>
-                            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=chats&chat_id=<?= $u['user_id'] ?>&chat_type=student"
+                            <a href="?room_id=<?= $current_room_id ?>&section=chats&chat_id=<?= $u['user_id'] ?>&chat_type=student"
                                 class="rc-entry <?= $active ? 'active' : '' ?>"
                                 data-rcname="<?= strtolower(htmlspecialchars($u['full_name'])) ?>"
                                 onclick="rcMobileOpenChat(this)">
@@ -1956,9 +2054,47 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                                             <?php if (!$isMe): ?>
                                                 <div class="rc-sender"><?= htmlspecialchars($msg['sender_name'] ?? '') ?></div>
                                             <?php endif; ?>
-                                            <div class="rc-bubble"><?= nl2br(htmlspecialchars($msg['message'])) ?></div>
+                                            <div class="rc-bubble">
+                                                <?php if (!empty($msg['message'])): ?>
+                                                    <?= nl2br(htmlspecialchars($msg['message'])) ?>
+                                                <?php endif; ?>
+
+                                                <?php if (!empty($msg['attachment_path'])): ?>
+                                                    <div class="rc-attachment"
+                                                        style="<?= !empty($msg['message']) ? 'margin-top:8px;' : '' ?>">
+                                                        <?php if ($msg['attachment_type'] === 'image'): ?>
+                                                            <a href="<?= htmlspecialchars($msg['attachment_path']) ?>" target="_blank">
+                                                                <img src="<?= htmlspecialchars($msg['attachment_path']) ?>" alt="attachment"
+                                                                    style="max-width:220px; border-radius:10px; display:block;">
+                                                            </a>
+
+                                                        <?php elseif ($msg['attachment_type'] === 'video'): ?>
+                                                            <video controls style="max-width:240px; border-radius:10px;">
+                                                                <source src="<?= htmlspecialchars($msg['attachment_path']) ?>">
+                                                                Your browser does not support video playback.
+                                                            </video>
+
+                                                        <?php else: /* pdf or doc */ ?>
+                                                            <a href="<?= htmlspecialchars($msg['attachment_path']) ?>" target="_blank"
+                                                                style="display:flex; align-items:center; gap:8px; padding:8px 12px;
+                                                                        background:#fff; border:1px solid #e5e7eb; border-radius:10px;
+                                                                        text-decoration:none; color:#333; font-size:12.5px;">
+                                                                <i class="fa-solid <?= $msg['attachment_type'] === 'pdf' ? 'fa-file-pdf' : 'fa-file-word' ?>"
+                                                                    style="font-size:18px; color:<?= $msg['attachment_type'] === 'pdf' ? '#dc2626' : '#2563eb' ?>;"></i>
+                                                                <span><?= htmlspecialchars($msg['attachment_name']) ?></span>
+                                                            </a>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
                                             <div class="rc-time"><?= date('g:i A', strtotime($msg['created_at'])) ?></div>
                                         </div>
+                                        <?php if ($isMe): ?>
+                                            <button type="button" class="rc-msg-delete"
+                                                onclick="rcDeleteMessage(<?= $msg['id'] ?>, this)" title="Delete message">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                 <?php endforeach;
                             endif; ?>
@@ -1966,15 +2102,36 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
 
                         <!-- Input -->
                         <div class="rc-inputbar">
-                            <form method="POST" action="message-db.php" id="rcForm">
+                            <form method="POST" action="message-db.php" id="rcForm" enctype="multipart/form-data">
                                 <input type="hidden" name="receiver_id" value="<?= htmlspecialchars($chatSection_id) ?>">
                                 <input type="hidden" name="receiver_type"
                                     value="<?= htmlspecialchars($chatSection_type) ?>">
                                 <input type="hidden" name="redirect"
-                                    value="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=chats&chat_id=<?= $chatSection_id ?>&chat_type=<?= $chatSection_type ?>">
+                                    value="Message.php?room_id=<?= $current_room_id ?>&section=chats&chat_id=<?= $chatSection_id ?>&chat_type=<?= $chatSection_type ?>">
+
+                                <!-- attachment preview (shown via JS when a file is picked) -->
+                                <div id="rcAttachPreview" class="rc-attach-preview" style="display:none;">
+                                    <div class="rc-attach-thumb-wrap">
+                                        <img id="rcAttachThumbImg" style="display:none;">
+                                        <video id="rcAttachThumbVideo" style="display:none;" muted></video>
+                                        <div id="rcAttachThumbIcon" style="display:none;"></div>
+                                        <button type="button" class="rc-attach-remove"
+                                            onclick="rcClearAttachment()">×</button>
+                                    </div>
+                                    <span id="rcAttachName" class="rc-attach-filename"></span>
+                                </div>
+
                                 <div class="rc-inputrow">
-                                    <textarea name="message" id="rcTextarea" rows="1" placeholder="Type a message…" required
+                                    <label for="rcAttachInput" class="rc-attach-btn"
+                                        style="cursor:pointer; display:flex; align-items:center; padding:0 6px;">
+                                        <i class="fa-solid fa-paperclip" style="font-size:16px;color:#888;"></i>
+                                    </label>
+                                    <input type="file" id="rcAttachInput" name="attachment" style="display:none;"
+                                        accept=".pdf,.doc,.docx,image/*,video/*" onchange="rcShowAttachment(this)">
+
+                                    <textarea name="message" id="rcTextarea" rows="1" placeholder="Type a message…"
                                         onkeydown="rcEnterSend(event)"></textarea>
+
                                     <button type="submit" class="rc-send-btn" id="rcSendBtn">
                                         <i class="fa-solid fa-paper-plane"></i>
                                     </button>
@@ -2173,8 +2330,8 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                             <div class="ojt-week-header">
                                 <div class="d-flex align-items-center gap-2">
                                     <input class="ojt-week-label" type="text"
-                                        value="<?= htmlspecialchars($week['week_label']) ?>"
-                                        readonly style="background:transparent; border:none; font-weight:600; text-align:left;">
+                                        value="<?= htmlspecialchars($week['week_label']) ?>" readonly
+                                        style="background:transparent; border:none; font-weight:600; text-align:left;">
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
                                     <span class="ojt-total-chip ojt-week-total"
@@ -2695,6 +2852,95 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
     </div><!-- end of eval modal-->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+
+
+        async function rcDeleteMessage(id, btn) {
+            if (!confirm('Delete this message? This cannot be undone.')) return;
+            try {
+                const res = await fetch('message-delete.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ message_id: id })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const row = btn.closest('.rc-row');
+                    if (row) row.remove();
+                } else {
+                    alert(data.message || 'Failed to delete message.');
+                }
+            } catch (err) {
+                alert('Network error while deleting message.');
+            }
+        }
+
+        function rcShowAttachment(input) {
+            const preview = document.getElementById('rcAttachPreview');
+            const nameEl = document.getElementById('rcAttachName');
+            const imgEl = document.getElementById('rcAttachThumbImg');
+            const vidEl = document.getElementById('rcAttachThumbVideo');
+            const iconEl = document.getElementById('rcAttachThumbIcon');
+
+            imgEl.style.display = 'none';
+            vidEl.style.display = 'none';
+            iconEl.style.display = 'none';
+            imgEl.src = '';
+            vidEl.src = '';
+
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const maxMB = 25;
+                if (file.size > maxMB * 1024 * 1024) {
+                    alert(`File too large. Max ${maxMB}MB.`);
+                    input.value = '';
+                    preview.style.display = 'none';
+                    return;
+                }
+
+                const url = URL.createObjectURL(file);
+
+                if (file.type.startsWith('image/')) {
+                    imgEl.src = url;
+                    imgEl.style.display = 'block';
+                } else if (file.type.startsWith('video/')) {
+                    vidEl.src = url;
+                    vidEl.style.display = 'block';
+                } else {
+                    let icon = 'fa-file';
+                    if (/\.pdf$/i.test(file.name)) icon = 'fa-file-pdf';
+                    else if (/\.docx?$/i.test(file.name)) icon = 'fa-file-word';
+                    iconEl.innerHTML = `<i class="fa-solid ${icon}" style="font-size:20px;color:#888;"></i>`;
+                    iconEl.style.display = 'flex';
+                }
+
+                nameEl.textContent = file.name;
+                preview.style.display = 'flex';
+            }
+        }
+
+        function rcClearAttachment() {
+            document.getElementById('rcAttachInput').value = '';
+            document.getElementById('rcAttachPreview').style.display = 'none';
+        }
+
+        /* ── send on Enter (Shift+Enter = newline) ── */
+        function rcEnterSend(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const ta = document.getElementById('rcTextarea');
+                const fileInput = document.getElementById('rcAttachInput');
+                const btn = document.getElementById('rcSendBtn');
+                const hasText = ta && ta.value.trim();
+                const hasFile = fileInput && fileInput.files.length > 0;
+                if (hasText || hasFile) {
+                    btn.disabled = true;
+                    document.getElementById('rcForm').submit();
+                }
+            }
+        }
+
+
+
         function showSection(event, sectionId, el) {
             if (event) event.preventDefault();
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
@@ -3224,19 +3470,6 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
             if (b) b.scrollTop = b.scrollHeight;
         })();
 
-        /* ── send on Enter (Shift+Enter = newline) ── */
-        function rcEnterSend(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                const ta = document.getElementById('rcTextarea');
-                const btn = document.getElementById('rcSendBtn');
-                if (ta && ta.value.trim()) {
-                    btn.disabled = true;
-                    document.getElementById('rcForm').submit();
-                }
-            }
-        }
-
         /* ── auto-resize textarea ── */
         (function () {
             const ta = document.getElementById('rcTextarea');
@@ -3260,11 +3493,11 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
 
         /* On mobile with a chat already open, slide list away immediately */
         (function () {
-            <?php if ($chatSection_id && $section === 'chats'): ?>
-                if (window.innerWidth <= 768) {
-                    const list = document.getElementById('rcList');
-                    if (list) list.classList.add('slide-out');
-                }
+            <?php if ($chatSection_id && $current_section === 'chats'): ?>
+                    if (window.innerWidth <= 768) {
+                        const list = document.getElementById('rcList');
+                        if (list) list.classList.add('slide-out');
+                    }
             <?php endif; ?>
         })();
     </script>

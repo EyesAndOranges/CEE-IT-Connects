@@ -95,7 +95,8 @@ function timeAgo($datetime)
     <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body, html {
+        body,
+        html {
             font-family: 'Poppins', sans-serif;
         }
 
@@ -363,7 +364,20 @@ function timeAgo($datetime)
     <div class="container-fluid px-3">
 
         <!-- Logo + Brand -->
-        <a class="navbar-brand d-flex align-items-center" href="index.php">
+        <a class="navbar-brand d-flex align-items-center" href="<?php if ($role == 'students') {
+            echo 'index.php';
+        } else if ($role == 'superadmin' || $role == 'sys_admin' || $role == 'admin') {
+            echo 'superadmin.php';
+        } else if ($role == 'internship_admin') {
+            echo 'internship-ui.php';
+        } else if ($role == 'hte_adviser') {
+            echo 'hte-ui.php';
+        } else if ($role == 'internship_adviser') {
+            echo 'ojt-rooms.php';
+        } else {
+            echo 'index.php';
+        }
+        ?>">
             <img src="../Sources/CEE IT Connects Logo.png" class="nav-logo">
             <span class="brand-text ms-1">CEE IT CONNECTS</span>
         </a>
