@@ -33,6 +33,58 @@ $now = new DateTime();
             background-repeat: no-repeat;
             background-attachment: fixed;
         }
+
+        .listing {
+            position: relative;
+        }
+
+        .phone-dropdown {
+            display: none;          
+            position: absolute;     
+            /* top: 100%;    */
+            right: 10px;
+            background: white;
+            margin-top: 6px;
+            border-radius: 10px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+            padding: 10px 14px;
+            z-index: 20; 
+            width: max-content;
+        }
+
+        .phone-dropdown.show {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .phone-dropdown a {
+            font-size: 13px;
+            color: #272f54;
+            text-decoration: none;
+            padding: 4px 6px;
+            border-radius: 6px;
+            transition: background 0.15s ease;
+        }
+
+        .phone-dropdown a:hover {
+            background: #f1f5f9;
+        }
+
+        /* dims/blurs everything behind the popup while it's open */
+        .phone-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            z-index: 15; 
+        }
+
+        .phone-backdrop.show {
+            display: block;
+        }
     </style>
 </head>
 
@@ -250,23 +302,33 @@ $now = new DateTime();
             });
         }
 
-        // Accepts numbers as a parameter (first code's approach — cleaner than data-attribute)
-        function toggleNumbers(iconEl, numbers) {
-            const dropdown = iconEl.closest('.listing').querySelector('.phone-dropdown');
-            if (dropdown.style.display === 'block') {
-                dropdown.style.display = 'none';
-                dropdown.innerHTML = '';
-            } else {
-                const nums = numbers.split(',');
-                dropdown.innerHTML = nums.map(num =>
-                    `<div style="padding:4px 0;cursor:pointer;"
-                        onclick="copyNumber('${num.trim()}'); closeDropdown();">
-                        ${num.trim()}
-                    </div>`
-                ).join('');
-                dropdown.style.display = 'block';
+        function toggleNumbers(iconEl, numbersStr) {
+            const listing = iconEl.closest('.listing');
+            const dropdown = listing.querySelector('.phone-dropdown');
+
+            document.querySelectorAll('.phone-dropdown.show').forEach(d => {
+                if (d !== dropdown) d.classList.remove('show');
+            });
+
+            // toggle this one
+            const isOpen = dropdown.classList.contains('show');
+            dropdown.classList.toggle('show', !isOpen);
+
+            if (!isOpen) {
+                const numbers = numbersStr.split(/[,;/]/).map(n => n.trim()).filter(Boolean);
+                dropdown.innerHTML = numbers
+                    .map(num => `<a href="tel:${num}">${num}</a>`)
+                    .join('');
             }
+
+            event.stopPropagation();
         }
+
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('.phone-dropdown') && !e.target.classList.contains('fa-phone')) {
+                document.querySelectorAll('.phone-dropdown.show').forEach(d => d.classList.remove('show'));
+            }
+        });
 
         function closeDropdown() {
             document.querySelectorAll('.phone-dropdown').forEach(dropdown => {

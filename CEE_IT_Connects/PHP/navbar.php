@@ -92,7 +92,13 @@ function timeAgo($datetime)
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/CSS/index-style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        body, html {
+            font-family: 'Poppins', sans-serif;
+        }
+
         /* ── NAVBAR ── */
         .navbar-custom {
             background: #2c3e67;
@@ -103,6 +109,12 @@ function timeAgo($datetime)
             width: 100%;
             height: 70px;
             z-index: 1000;
+
+            /* position: sticky; */
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: nowrap;
+            /* overflow: hidden; */
         }
 
         .nav-logo {
@@ -115,7 +127,7 @@ function timeAgo($datetime)
             font-weight: 700;
             letter-spacing: 1px;
             font-size: 22px;
-            font-family: 'GeogrotSharp TRIAL', sans-serif;
+            font-family: 'Questrial', sans-serif !important;
         }
 
         .navbar-nav .nav-link {
@@ -123,7 +135,6 @@ function timeAgo($datetime)
             font-weight: 600;
             font-size: 16px;
             transition: 0.2s;
-            font-family: 'Poppins', sans-serif;
             letter-spacing: .5px;
         }
 
@@ -325,6 +336,7 @@ function timeAgo($datetime)
         @media (max-width: 768px) {
             .brand-text {
                 font-size: 13px;
+                font-family: 'Urbanist', sans-serif !important;
             }
 
             .nav-logo {
@@ -400,77 +412,18 @@ function timeAgo($datetime)
                     <p class="notif-subtitle">You have <?= $unread_count ?> new notifications</p>
                     <hr>
 
-                    <!-- TODAY -->
-                    <h6><strong>Today</strong></h6>
-                    <?php
-                    $today = date('Y-m-d');
-                    $hasToday = false;
-                    foreach ($notifications as $notif):
-                        if (date('Y-m-d', strtotime($notif['created_at'])) == $today):
-                            $hasToday = true; ?>
-                            <div class="notif-item"
-                                onclick="window.location.href='<?= htmlspecialchars($notif['link'] ?? 'index.php') ?>'">
-                                <?php if (!$notif['is_read']): ?>
-                                    <div class="dot"></div><?php endif; ?>
-                                <div>
-                                    <strong><?= htmlspecialchars($notif['title']) ?></strong>
-                                    <p class="mb-0 small text-muted"><?= htmlspecialchars($notif['message']) ?></p>
-                                    <small><?= timeAgo($notif['created_at']) ?></small>
-                                </div>
+                    <?php foreach ($notifications as $notif): ?>
+                        <div class="notif-item"
+                            onclick="window.location.href='<?= htmlspecialchars($notif['link'] ?? 'index.php') ?>'">
+                            <?php if (!$notif['is_read']): ?>
+                                <div class="dot"></div><?php endif; ?>
+                            <div>
+                                <strong><?= htmlspecialchars($notif['title']) ?></strong>
+                                <p class="mb-0 small text-muted"><?= htmlspecialchars($notif['message']) ?></p>
+                                <small><?= timeAgo($notif['created_at']) ?></small>
                             </div>
-                        <?php endif; endforeach; ?>
-                    <?php if (!$hasToday): ?>
-                        <p class="text-muted small">No notifications today</p>
-                    <?php endif; ?>
-                    <hr>
-
-                    <!-- THIS WEEK -->
-                    <h6><strong>This week</strong></h6>
-                    <?php
-                    $weekAgo = date('Y-m-d', strtotime('-7 days'));
-                    $hasWeek = false;
-                    foreach ($notifications as $notif):
-                        $date = date('Y-m-d', strtotime($notif['created_at']));
-                        if ($date < $today && $date >= $weekAgo):
-                            $hasWeek = true; ?>
-                            <div class="notif-item"
-                                onclick="window.location.href='<?= htmlspecialchars($notif['link'] ?? 'index.php') ?>'">
-                                <?php if (!$notif['is_read']): ?>
-                                    <div class="dot"></div><?php endif; ?>
-                                <div>
-                                    <strong><?= htmlspecialchars($notif['title']) ?></strong>
-                                    <p class="mb-0 small text-muted"><?= htmlspecialchars($notif['message']) ?></p>
-                                    <small><?= timeAgo($notif['created_at']) ?></small>
-                                </div>
-                            </div>
-                        <?php endif; endforeach; ?>
-                    <?php if (!$hasWeek): ?>
-                        <p class="text-muted small">No notifications this week</p>
-                    <?php endif; ?>
-                    <hr>
-
-                    <!-- OLDER -->
-                    <h6><strong>Older</strong></h6>
-                    <?php
-                    $hasOlder = false;
-                    foreach ($notifications as $notif):
-                        $date = date('Y-m-d', strtotime($notif['created_at']));
-                        if ($date < $weekAgo):
-                            $hasOlder = true; ?>
-                            <div class="notif-item"
-                                onclick="window.location.href='<?= htmlspecialchars($notif['link'] ?? 'index.php') ?>'">
-                                <?php if (!$notif['is_read']): ?>
-                                    <div class="dot"></div><?php endif; ?>
-                                <div>
-                                    <strong><?= htmlspecialchars($notif['title']) ?></strong>
-                                    <p class="mb-0 small text-muted"><?= htmlspecialchars($notif['message']) ?></p>
-                                    <small><?= timeAgo($notif['created_at']) ?></small>
-                                </div>
-                            </div>
-                        <?php endif; endforeach; ?>
-                    <?php if (!$hasOlder): ?>
-                        <p class="text-muted small">No older notifications</p>
-                    <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
 

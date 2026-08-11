@@ -18,6 +18,7 @@ $internshipStmt = $pdo->query("
 ");
 $internships = $internshipStmt->fetchAll(PDO::FETCH_ASSOC);
 
+
 // Stats for dashboard
 $statsStmt = $pdo->query("SELECT COUNT(*) AS total FROM internships");
 $totalInternships = $statsStmt->fetchColumn();
@@ -333,6 +334,8 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
     <title>System Admin | CEE IT Connects</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --gradient-start: #FFB62F;
@@ -342,7 +345,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
 
         body {
             margin: 0;
-            font-family: 'Segoe UI', Tahoma, sans-serif;
+            font-family: 'Poppins', sans-serif !important;
             background: linear-gradient(135deg, #f5f7ff, #eef1ff);
             min-height: 100vh;
             padding-top: 70px;
@@ -446,25 +449,109 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
             padding: 24px;
             width: 100%;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            /* overflow-x: auto; */
+
+            /* puts content inside the table */
+            overflow: hidden;
         }
 
-        .sysAdm-header h2 {
+
+        /* sysAdm-header--danger addition for delete account feature */
+        .sysAdm-header--danger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, #f7dddd 7%,  #fbdad9 50%, #f1cecd 100%);
+            border-radius: 14px 14px 0 0;
+            padding: 22px 28px;
+            /* margin-bottom: 20px; */
+            margin: -24px -24px 20px -24px;
+            width: calc(100% + 48px);
+
+        }
+
+        .sysAdm-header--danger h2 {
+            color: var(--primary-dark-blue);
             font-size: 26px;
             font-weight: 700;
             color: #1e293b;
             margin-bottom: 4px;
         }
 
+        .sysAdm-header--danger p {
+            margin-bottom: 0 !important;
+        }
+
+        .sysAdm-header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .sysAdm-header-icon {
+            background-color: #f6c3bd;
+            color: var(--gradient-end);
+            width: 64px;
+            height: 64px;
+            min-width: 64px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .sysAdm-header-deco {
+            width: 100px;
+            height: 100px;
+            /* height: auto; */
+        }
+
+        .sysAdm-header--blue {
+            background: linear-gradient(135deg, #dce2ef 0%, #dde3f0 50%, #c0cfef 100%);
+        }
+
+        .sysAdm-header--blue .sysAdm-header-icon {
+            background-color: #c7d2e8;
+            color: var(--primary-dark-blue);
+        }
+
+        .sysAdm-header-text {
+            display: flex;
+            flex-direction: column;
+            min-width:0;
+        }
+
+        /* end of added section for delete account feature */
+        
+        .sysAdm-header h2 {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--primary-dark-blue);
+            margin-bottom: 4px !important;
+            overflow-x: hidden;
+        }
+
         .sysAdm-header p {
             color: #64748b;
             font-size: 14px;
-            margin-bottom: 20px;
+            margin-bottom: 0px !important;
+            overflow-x: hidden;
         }
 
         .sysAdm-table {
             width: 100%;
+            /* added */
+            min-width: 720px;
             border-collapse: collapse;
-            overflow: hidden;
+            /* overflow: hidden; */
+            /* overflow-x: auto; */
+        }
+
+        .sysAdm-table-wrapper {
+            overflow-x: auto;
+            width:100%;
+            -webkit-overflow-scrolling: touch;
         }
 
         .sysAdm-table thead {
@@ -496,6 +583,8 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
         .sysAdm-table tbody tr:hover {
             background: #f8fafc;
         }
+
+        
 
         .btn-update {
             margin-top: 18px;
@@ -592,26 +681,19 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
             opacity: 0.9;
         }
 
-        .search-box {
-            position: relative;
-        }
-
-        .search-box input {
-            padding: 10px 40px 10px 15px;
+        .role-select {
+            padding: 8px 32px 8px 14px;
+            border: 1.5px solid #cacfd5;
             border-radius: 10px;
-            border: 1px solid #ddd;
             font-size: 13px;
-            width: 100%;
+            /* font-weight: 600; */
+            color: var(--primary-dark-blue);
+            background-color: #f1f5f9;
+            cursor: pointer;
+            /* outline: none;
+            appearance: none;
+            -webkit-appearance: none; */
         }
-
-        .search-box i {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #E4572E;
-        }
-
         /* Assign adviser select */
         .assign-select {
             padding: 6px 10px;
@@ -655,6 +737,16 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
         @media (max-width: 768px) {
             .layout {
                 flex-direction: row;
+            }
+
+            /* added ulit dahil sa top header cardZ */
+            .sysAdm-section {
+                padding: 20px !important;
+            }
+            .sysAdm-header--danger {
+                margin: -20px -20px 20px -20px;
+                width: calc(100% + 40px);
+                border-radius: 0; /* optional: square off entirely on mobile if you want */
             }
 
             .sidebar {
@@ -933,31 +1025,40 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="sidebar">
             <h3>Superadmin</h3>
             <a href="#" onclick="showSection(event, 'dashboard')" class="active">
-                <i class="bi bi-person-fill-lock me-2"></i> Dashboard
+                <i class="bi bi-person-fill-lock me-2"></i>
+                <span class="nav-label">Dashboard</span>
             </a>
-            <a href="#" onclick="showSection(event, 'add-admin')">
-                <i class="bi bi-person-plus me-2"></i> Add Admin
+            <!-- <a href="#" onclick="showSection(event, 'add-admin')" data-tooltip="Add Admin">
+                <i class="bi bi-person-plus me-2"></i>
+                <span class="nav-label">Add Admin</span>
             </a>
-            <a href="#" onclick="showSection(event, 'add-adviser')">
-                <i class="bi bi-person-vcard me-2"></i> Add Adviser
+            <a href="#" onclick="showSection(event, 'add-adviser')" data-tooltip="Add Adviser">
+                <i class="bi bi-person-vcard me-2"></i>
+                <span class="nav-label">Add Adviser</span>
+            </a> -->
+            <a href="#" onclick="showSection(event, 'roles')" data-tooltip="Account Management">
+                <i class="bi bi-person-gear"></i>
+                <span class="nav-label">Account Management</span>
             </a>
-            <a href="#" onclick="showSection(event, 'delete')">
-                <i class="bi bi-person-x me-2"></i> Delete Account
+            <a href="#" onclick="showSection(event, 'delete')" data-tooltip="Account Deletion">
+                <i class="bi bi-person-x me-2"></i>
+                <span class="nav-label">Account Deletion</span>
             </a>
-            <a href="#" onclick="showSection(event, 'roles')">
-                <i class="bi bi-shuffle me-2"></i> Change Roles
+            <a href="#" onclick="showSection(event, 'monitor')" data-tooltip="Monitor">
+                <i class="bi bi-binoculars me-2"></i>
+                <span class="nav-label">Monitor</span>
             </a>
-            <a href="#" onclick="showSection(event, 'monitor')">
-                <i class="bi bi-binoculars me-2"></i> Monitor
+            <a href="#" onclick="showSection(event, 'student_register')" data-tooltip="Student Register">
+                <i class="bi bi-file-earmark-person me-2"></i>
+                <span class="nav-label">Student Register</span>
             </a>
-            <a href="#" onclick="showSection(event, 'student_register')">
-                <i class="bi bi-file-earmark-person me-2"></i> Student Register
+            <a href="#" onclick="showSection(event, 'assign_adviser')" data-tooltip="Assign Adviser">
+                <i class="bi bi-person-lines-fill me-2"></i>
+                <span class="nav-label">Assign Adviser</span>
             </a>
-            <a href="#" onclick="showSection(event, 'assign_adviser')">
-                <i class="bi bi-person-lines-fill me-2"></i> Assign Adviser
-            </a>
-            <a href="#" onclick="showSection(event, 'supervisor_requests')">
-                <i class="bi bi-person-badge me-2"></i> Supervisor Requests
+            <a href="#" onclick="showSection(event, 'supervisor_requests')" data-tooltip="Supervisor Requests">
+                <i class="bi bi-person-badge me-2"></i>
+                <span class="nav-label">Supervisor Requests</span>
             </a>
             <a href="#" onclick="showSection(event, 'ojt_hours')" data-tooltip="OJT Hours">
                 <i class="bi bi-clock-history me-2"></i>
@@ -968,20 +1069,22 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="main-content">
 
             <!-- DASHBOARD -->
-            <div id="dashboard" class="section active">
-                <div class="d-flex align-items-center justify-content-between mb-4">
-                    <div>
-                        <h4 class="fw-bold mb-0" style="color:#272f54;">System Admin Overview</h4>
-                        <p class="text-muted small mb-0">Live summary from the internship admin panel</p>
+            <div id="dashboard" class="section active sysAdm-section">
+                <div class="sysAdm-header--danger sysAdm-header--blue mb-4">
+                    <div class="sysAdm-header-left">
+                        <div class="sysAdm-header-icon">
+                            <i class="bi bi-speedometer2"></i>
+                        </div>
+                        <div class="sysAdm-header-text">
+                            <h2>System Admin Overview</h2>
+                            <p>Live summary from the internship admin panel</p>
+                        </div>
                     </div>
-                    <span class="badge rounded-pill px-3 py-2" style="background:green; font-size:12px;">
-                        <i class="bi bi-circle-fill me-1" style="color:#4cff91; font-size:8px;"></i> Live
-                    </span>
                 </div>
 
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
-                        <div class="card border-0 rounded-4 h-100" style="background:#272f54;">
+                        <div class="card border-0 rounded-4 h-100" style="background:#272f54; opacity:0.9;">
                             <div class="card-body p-4">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
@@ -997,37 +1100,39 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
                         </div>
                     </div>
+
+                    <!-- CHANGE: "Active Accounts" (admins + advisers). -->
                     <div class="col-md-4">
-                        <div class="card border-0 rounded-4 h-100" style="background:#FFB62F;">
+                        <div class="card border-0 rounded-4 h-100" style="background:#FFB62F; opacity:0.9;">
                             <div class="card-body p-4">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <p class="small mb-1 fw-semibold text-uppercase"
-                                            style="letter-spacing:.05em;font-size:11px;color:#7a5200;">Students
-                                            Interested</p>
-                                        <h2 class="fw-bold mb-0" style="color:#3b2600;"><?= (int) $totalInterested ?>
-                                        </h2>
+                                            style="letter-spacing:.05em;font-size:11px;color:#7a5200;">Active Accounts</p>
+                                        <h2 class="fw-bold mb-0" style="color:#3b2600;">34</h2>
                                     </div>
                                     <div class="rounded-3 d-flex align-items-center justify-content-center"
                                         style="width:44px;height:44px;background:rgba(0,0,0,0.1);">
-                                        <i class="bi bi-bookmarks-fill fs-5" style="color:#3b2600;"></i>
+                                        <i class="bi bi-person-badge-fill fs-5" style="color:#3b2600;"></i>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- CHANGE: "Programs Tracked" (count of programs in Hours Rendering) -->
                     <div class="col-md-4">
-                        <div class="card border-0 rounded-4 h-100" style="background:#E4572E;">
+                        <div class="card border-0 rounded-4 h-100" style="background:#E4572E; opacity:0.9;">
                             <div class="card-body p-4">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <p class="text-white-50 small mb-1 fw-semibold text-uppercase"
-                                            style="letter-spacing:.05em;font-size:11px;">Announcements</p>
-                                        <h2 class="fw-bold text-white mb-0"><?= (int) $totalAnnouncements ?></h2>
+                                            style="letter-spacing:.05em;font-size:11px;">Programs Tracked</p>
+                                        <h2 class="fw-bold text-white mb-0">2</h2>
                                     </div>
                                     <div class="rounded-3 d-flex align-items-center justify-content-center"
                                         style="width:44px;height:44px;background:rgba(255,255,255,0.15);">
-                                        <i class="bi bi-bell-fill text-white fs-5"></i>
+                                        <i class="bi bi-clock-history text-white fs-5"></i>
                                     </div>
                                 </div>
                             </div>
@@ -1035,7 +1140,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
 
-                <!-- Recent Internship Postings -->
+                <!-- Recent Internship Postings (unchanged) -->
                 <div class="card border-0 rounded-4 shadow-sm mb-4">
                     <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
                         <i class="bi bi-briefcase" style="color:#272f54;"></i>
@@ -1089,38 +1194,38 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="col-lg-6">
                         <div class="card border-0 rounded-4 shadow-sm h-100">
                             <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
-                                <i class="bi bi-people" style="color:#272f54;"></i>
-                                <h6 class="fw-bold mb-0" style="color:#272f54;">Recently Interested Students</h6>
+                                <i class="bi bi-person-plus" style="color:#272f54;"></i>
+                                <h6 class="fw-bold mb-0" style="color:#272f54;">Recent Account Activity</h6>
                                 <span class="badge ms-auto rounded-pill"
-                                    style="background:#fff8e1;color:#7a5200;font-size:11px;">Latest 5</span>
+                                    style="background:#eef1ff;color:#272f54;font-size:11px;">#</span>
                             </div>
-                            <div id="table-interested" class="card-body px-4 pb-4 pt-2">
-                                <?php if (empty($recentInterested)): ?>
-                                    <p class="text-muted small mb-0">No student interest recorded yet.</p>
+                            <div id="table-account-activity" class="card-body px-4 pb-4 pt-2">
+                                <?php if (empty($recentAccounts)): ?>
+                                    <p class="text-muted small mb-0">No accounts created recently.</p>
                                 <?php else: ?>
                                     <div class="d-flex flex-column gap-3">
-                                        <?php foreach ($recentInterested as $ri): ?>
+                                        <?php foreach ($recentAccounts as $ra): ?>
                                             <div class="d-flex align-items-center gap-3">
                                                 <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 fw-bold"
                                                     style="width:38px;height:38px;background:#eef1ff;color:#272f54;font-size:13px;">
-                                                    <?= strtoupper(substr($ri['full_name'], 0, 1)) ?>
+                                                    <?= strtoupper(substr($ra['full_name'], 0, 1)) ?>
                                                 </div>
                                                 <div class="flex-grow-1 overflow-hidden">
                                                     <p class="fw-semibold mb-0 text-truncate"
                                                         style="color:#272f54;font-size:14px;">
-                                                        <?= htmlspecialchars($ri['full_name']) ?>
+                                                        <?= htmlspecialchars($ra['full_name']) ?>
                                                     </p>
                                                     <p class="text-muted mb-0 text-truncate" style="font-size:12px;">
-                                                        <?= htmlspecialchars($ri['email']) ?>
+                                                        <?= htmlspecialchars($ra['email']) ?>
                                                     </p>
                                                 </div>
                                                 <div class="text-end flex-shrink-0">
                                                     <span class="badge rounded-pill px-2"
                                                         style="background:#f5f5f5;color:#555;font-size:11px;font-weight:500;">
-                                                        <?= htmlspecialchars($ri['company']) ?>
+                                                        <?= htmlspecialchars($ra['role']) ?>
                                                     </span>
                                                     <p class="text-muted mb-0 mt-1" style="font-size:11px;">
-                                                        <?= date("M d", strtotime($ri['created_at'])) ?>
+                                                        <?= date("M d", strtotime($ra['created_at'])) ?>
                                                     </p>
                                                 </div>
                                             </div>
@@ -1130,42 +1235,28 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
                         </div>
                     </div>
-
                     <div class="col-lg-6">
                         <div class="card border-0 rounded-4 shadow-sm h-100">
                             <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
-                                <i class="bi bi-bell" style="color:#272f54;"></i>
-                                <h6 class="fw-bold mb-0" style="color:#272f54;">Recent Announcements</h6>
+                                <i class="bi bi-clock-history" style="color:#272f54;"></i>
+                                <h6 class="fw-bold mb-0" style="color:#272f54;">OJT Hours by Program</h6>
                                 <span class="badge ms-auto rounded-pill"
-                                    style="background:#fdecea;color:#7f1d1d;font-size:11px;">Latest 5</span>
+                                    style="background:#eaf3de;color:#27500a;font-size:11px;">All Programs</span>
                             </div>
-                            <div id="table-announcements" class="card-body px-4 pb-4 pt-2">
-                                <?php if (empty($recentAnnouncements)): ?>
-                                    <p class="text-muted small mb-0">No announcements yet.</p>
+                            <div id="table-hours-summary" class="card-body px-4 pb-4 pt-2">
+                                <?php if (empty($programHoursList)): ?>
+                                    <p class="text-muted small mb-0">No programs configured yet.</p>
                                 <?php else: ?>
                                     <div class="d-flex flex-column gap-3">
-                                        <?php foreach ($recentAnnouncements as $a):
-                                            $catColors = [
-                                                'news' => ['bg' => '#e6f1fb', 'color' => '#0c447c'],
-                                                'updates' => ['bg' => '#eaf3de', 'color' => '#27500a'],
-                                                'FAQs' => ['bg' => '#faeeda', 'color' => '#633806'],
-                                            ];
-                                            $c = $catColors[$a['category']] ?? ['bg' => '#f0f0f0', 'color' => '#444'];
-                                            ?>
-                                            <div class="d-flex align-items-start gap-3">
-                                                <span class="badge rounded-pill px-3 py-2 flex-shrink-0"
-                                                    style="background:<?= $c['bg'] ?>;color:<?= $c['color'] ?>;font-size:11px;font-weight:600;">
-                                                    <?= htmlspecialchars(ucfirst($a['category'])) ?>
+                                        <?php foreach ($programHoursList as $ph): ?>
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <p class="fw-semibold mb-0" style="color:#272f54;font-size:14px;">
+                                                    <?= htmlspecialchars($ph['program']) ?>
+                                                </p>
+                                                <span class="badge rounded-pill px-3"
+                                                    style="background:#f0f4ff;color:#272f54;font-weight:500;font-size:12px;">
+                                                    <?= (int) $ph['required_hours'] ?> hrs
                                                 </span>
-                                                <div class="flex-grow-1 overflow-hidden">
-                                                    <p class="fw-semibold mb-0 text-truncate"
-                                                        style="color:#272f54;font-size:14px;">
-                                                        <?= htmlspecialchars($a['title']) ?>
-                                                    </p>
-                                                    <p class="text-muted mb-0" style="font-size:12px;">
-                                                        <?= date("M d, Y", strtotime($a['created_at'])) ?>
-                                                    </p>
-                                                </div>
                                             </div>
                                         <?php endforeach; ?>
                                     </div>
@@ -1173,28 +1264,26 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
                         </div>
                     </div>
-
                     <div class="d-flex justify-content-end gap-2 mt-4 mb-3">
-                        <button onclick="downloadDashboardCSV()" class="btn btn-sm btn-outline-secondary"
-                            style="background:#272f54;color:white;">
+                        <button onclick="downloadDashboardCSV()" class="btn-update">
                             <i class="bi bi-filetype-csv me-1"></i> Download CSV
                         </button>
-                        <button onclick="downloadDashboardPDF()" class="btn btn-sm"
-                            style="background:#272f54;color:white;">
+                        <button onclick="downloadDashboardPDF()" class="btn-update">
                             <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF
                         </button>
                     </div>
                 </div>
 
                 <!-- Registration Toggle -->
-                <div id="register-toggle" class="mt-4">
-                    <div class="sysAdm-header">
-                        <h2>Registration Link</h2>
+                <div id="register-toggle" class="card border-0 rounded-4 shadow-sm mt-2">
+                    <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
+                        <i class="bi bi-toggle2-on" style="color:#272f54;"></i>
+                        <h6 class="fw-bold mb-0" style="color:#272f54;">Registration Link</h6>
                     </div>
-                    <div class="dashboard-container">
-                        <p>Control whether the registration link is visible on the login page.</p>
-                        <form method="POST">
-                            <p>Current Status:
+                    <div class="card-body px-4 pb-4 pt-2">
+                        <p class="text-muted small">Control whether the registration link is visible on the login page.</p>
+                        <form method="POST" class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                            <p class="mb-0">Current Status:
                                 <strong style="color: <?= $registerVisible === 'show' ? 'green' : 'red' ?>">
                                     <?= $registerVisible === 'show' ? 'Visible' : 'Hidden' ?>
                                 </strong>
@@ -1205,13 +1294,160 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                         </form>
                     </div>
                 </div>
+
+            </div>
+
+            <!-- DELETE USER -->
+            <div id="delete" class="section sysAdm-section">
+                <div class="sysAdm-header--danger">
+                    <div class="sysAdm-header-left">
+                        <div class="sysAdm-header-icon">
+                            <!-- DITO NAHINTO -->
+                            <i class="fa-solid fa-trash"></i>
+                        </div>
+                            <h2>Account Deletion</h2>
+                            <p>Permanently remove users from the system.</p>
+                    </div>
+                    
+                    <!-- <div class="sysAdm-header-deco">
+                        <img src="../Sources/Inbox%20cleanup-pana.svg" alt="Delete account illustration">
+                    </div> -->
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <input type="text" id="search-delete" oninput="filterDelete()"
+                            placeholder="Search for a student"
+                            style="padding:8px 14px; border-radius:10px; border:1px solid #ddd; font-size:13px; min-width:220px;">
+                        <select id="filter-role" onchange="filterDelete()"
+                            style="padding:8px 14px; border-radius:10px; border:1px solid #ddd; font-size:13px; min-width:200px;">
+                            <option value="">All Roles</option>
+                            <option value="student">Student</option>
+                            <option value="adviser">Adviser</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                </div>
+                
+
+                <div class="sysAdm-table-wrapper">
+                    <table class="sysAdm-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="delete-tbody">
+                            <?php foreach ($users as $u): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($u['name']) ?></td>
+                                    <td><?= htmlspecialchars($u['email']) ?></td>
+                                    <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $u['role']))) ?></td>
+                                    <td>
+                                        <form method="POST" action="superadmin-db.php"
+                                            onsubmit="return confirm('Are you sure you want to delete this user?')">
+                                            <input type="hidden" name="id" value="<?= $u['id'] ?>">
+                                            <input type="hidden" name="source" value="<?= $u['source'] ?>">
+                                            <button type="submit" name="delete" class="btn-delete">
+                                                <i class="bi bi-trash-fill"></i> Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- add updated delete account with danger top card -->
+            <!-- CHANGE ROLES / Admin Management -->
+            <div id="roles" class="section sysAdm-section">
+                <div class="sysAdm-header--danger sysAdm-header--blue">
+                    <div class="sysAdm-header-left">
+                        <div class="sysAdm-header-icon">
+                            <i class="bi bi-person-gear"></i>
+                        </div>
+                        <div class="sysAdm-header-text">
+                            <h2>Account Management</h2>
+                            <p>Create accounts and assign roles for admins and advisers.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <input type="text" id="search-roles" oninput="filterRoles()"
+                            placeholder="Search for an admin"
+                            style="padding:8px 14px; border-radius:10px; border:1px solid #ddd; font-size:13px; min-width:220px;">
+                        <select id="filter-role-admin" onchange="filterRoles()"
+                            style="padding:8px 14px; border-radius:10px; border:1px solid #ddd; font-size:13px; min-width:200px;">
+                            <option value="">All Roles</option>
+                            <option value="superadmin">System Admin</option>
+                            <option value="internship_admin">Internship Admin</option>
+                        </select>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn-update" onclick="showSection(event, 'add-admin')">
+                            <i class="bi bi-person-plus me-1"></i>Add Admin
+                        </button>
+                        <button type="button" class="btn-update" onclick="showSection(event, 'add-adviser')">
+                            <i class="bi bi-person-plus me-1"></i>Add Adviser
+                        </button>
+                    </div>
+                </div>
+
+                <form method="POST" onsubmit="return confirmSuperadminGlobal()">
+                    <div class="sysAdm-table-wrapper">
+                        <table class="sysAdm-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                </tr>
+                            </thead>
+                            <tbody id="roles-tbody">
+                                <?php foreach ($admins as $admin): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($admin['name']) ?></td>
+                                        <td><?= htmlspecialchars($admin['email']) ?></td>
+                                        <td>
+                                            <input type="hidden" name="admin_id[]" value="<?= $admin['id'] ?>">
+                                            <select name="role[]" data-original="<?= $admin['role'] ?>" class="role-select" required>
+                                                <option value="superadmin" <?= $admin['role'] == 'superadmin' ? 'selected' : '' ?>>
+                                                    System admin</option>
+                                                <option value="internship_admin" <?= $admin['role'] == 'internship_admin' ? 'selected' : '' ?>>Internship Admin</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-end" style="margin-top: 16px;">
+                        <button type="submit" name="update_role" class="btn-update">
+                            <i class="bi bi-floppy2"></i> Update Roles
+                        </button>
+                    </div>
+                </form>
             </div>
 
             <!-- ADD ADMIN -->
             <div id="add-admin" class="section sysAdm-section">
-                <div class="sysAdm-header">
-                    <h2>Create New Admin Account</h2>
-                    <p>Admins can be assigned to an internship administration role.</p>
+                <div class="sysAdm-header--danger sysAdm-header--blue">
+                    <div class="sysAdm-header-left">
+                        <div class="sysAdm-header-icon">
+                            <i class="bi bi-person-plus"></i>
+                        </div>
+                        <div class="sysAdm-header-text">
+                            <h2>Create New Admin Account</h2>
+                            <p>Admins can be assigned to an internship administration role.</p>
+                        </div>
+                    </div>
                 </div>
                 <form method="POST" action="superadmin-db.php" class="admin-form">
                     <input type="text" name="name" placeholder="Full Name" required>
@@ -1221,7 +1457,10 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                         <option value="" disabled selected>Select Role</option>
                         <option value="internship_admin">Internship Admin</option>
                     </select>
-                    <div style="display:flex;width:100%;justify-content:flex-end;margin-top:12px;">
+                    <div style="display:flex;width:100%;justify-content:space-between;margin-top:12px;">
+                        <button type="button" class="btn-update" onclick="showSection(event, 'roles')" style="background:#eee;color:#555;">
+                            <i class="bi bi-arrow-left me-1"></i>Back
+                        </button>
                         <button type="submit" name="create-admin" class="btn-create">Create Admin</button>
                     </div>
                 </form>
@@ -1229,9 +1468,16 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
 
             <!-- ADD ADVISER -->
             <div id="add-adviser" class="section sysAdm-section">
-                <div class="sysAdm-header">
-                    <h2>Create New Adviser Account</h2>
-                    <p>Advisers can be assigned to either HTE or Internship advising roles.</p>
+                <div class="sysAdm-header--danger sysAdm-header--blue">
+                    <div class="sysAdm-header-left">
+                        <div class="sysAdm-header-icon">
+                            <i class="bi bi-person-plus"></i>
+                        </div>
+                        <div class="sysAdm-header-text">
+                            <h2>Create New Adviser Account</h2>
+                            <p>Advisers can be assigned to either HTE or Internship advising roles.</p>
+                        </div>
+                    </div>
                 </div>
                 <form method="POST" action="superadmin-db.php" class="admin-form">
                     <input type="text" name="name" placeholder="Full Name" required>
@@ -1253,102 +1499,47 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div style="display:flex;width:100%;justify-content:flex-end;margin-top:12px;">
-                        <button type="submit" name="create-adviser" class="btn-create">Create Adviser</button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- DELETE USER -->
-            <div id="delete" class="section sysAdm-section">
-                <div class="sysAdm-header">
-                    <h2>Delete Account</h2>
-                    <p>Permanently remove users from the system.</p>
-                </div>
-                <table class="sysAdm-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($users as $u): ?>
-                            <tr>
-                                <td><?= htmlspecialchars($u['name']) ?></td>
-                                <td><?= htmlspecialchars($u['email']) ?></td>
-                                <td><?= htmlspecialchars($u['role']) ?></td>
-                                <td>
-                                    <form method="POST" action="superadmin-db.php"
-                                        onsubmit="return confirm('Are you sure you want to delete this user?')">
-                                        <input type="hidden" name="id" value="<?= $u['id'] ?>">
-                                        <input type="hidden" name="source" value="<?= $u['source'] ?>">
-                                        <button type="submit" name="delete" class="btn-delete">
-                                            <i class="bi bi-trash-fill"></i> Delete
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- CHANGE ROLES -->
-            <div id="roles" class="section sysAdm-section">
-                <div class="sysAdm-header">
-                    <h2>Admin Management</h2>
-                    <p>Assign and update roles for admin users.</p>
-                </div>
-                <form method="POST" onsubmit="return confirmSuperadminGlobal()">
-                    <table class="sysAdm-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Role</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($admins as $admin): ?>
-                                <tr>
-                                    <td><?= htmlspecialchars($admin['name']) ?></td>
-                                    <td><?= htmlspecialchars($admin['email']) ?></td>
-                                    <td>
-                                        <input type="hidden" name="admin_id[]" value="<?= $admin['id'] ?>">
-                                        <select name="role[]" data-original="<?= $admin['role'] ?>" required>
-                                            <option value="null" disabled <?= $admin['role'] !== 'superadmin' && $admin['role'] !== 'internship_admin' ? 'selected' : '' ?>>
-                                                None
-                                            </option>
-                                            <option value="superadmin" <?= $admin['role'] == 'superadmin' ? 'selected' : '' ?>>
-                                                System admin</option>
-                                            <option value="internship_admin" <?= $admin['role'] == 'internship_admin' ? 'selected' : '' ?>>Internship Admin</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                    <div class="text-end">
-                        <button type="submit" name="update_role" class="btn-update">
-                            <i class="bi bi-floppy2"></i> Update Roles
+                    <div style="display:flex;width:100%;justify-content:space-between;margin-top:12px;">
+                        <button type="button" class="btn-update" onclick="showSection(event, 'roles')" style="background:#eee;color:#555;">
+                            <i class="bi bi-arrow-left me-1"></i>Back
                         </button>
+                        <button type="submit" name="create-adviser" class="btn-create">Create Adviser</button>
                     </div>
                 </form>
             </div>
 
             <!-- MONITOR -->
             <div id="monitor" class="section sysAdm-section">
-                <div class="sysAdm-header">
-                    <h2>System Monitoring</h2>
-                    <p>Recent user activities and actions.</p>
-                    <div class="search-box">
-                        <input type="text" id="search-monitor" oninput="filterMonitor()" placeholder="Search...">
-                        <i class="bi bi-search"></i>
+            <div class="sysAdm-header--danger sysAdm-header--blue">
+                <div class="sysAdm-header-left">
+                    <div class="sysAdm-header-icon">
+                        <i class="bi bi-activity"></i>
+                    </div>
+                    <div class="sysAdm-header-text">
+                        <h2>System Monitoring</h2>
+                        <p>Recent user activities and actions.</p>
                     </div>
                 </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <div class="d-flex gap-2 flex-wrap">
+                    <input type="text" id="search-monitor" oninput="filterMonitor()"
+                        placeholder="Search for a student"
+                        style="padding:8px 14px; border-radius:10px; border:1px solid #ddd; font-size:13px; min-width:220px;">
+                    <select id="filter-role-monitor" onchange="filterMonitor()"
+                        style="padding:8px 14px; border-radius:10px; border:1px solid #ddd; font-size:13px; min-width:200px;">
+                        <option value="">All Roles</option>
+                        <option value="student">Student</option>
+                        <option value="hte_adviser">HTE Adviser</option>
+                        <option value="internship_adviser">Internship Adviser</option>
+                        <option value="internship_admin">Internship Admin</option>
+                        <option value="superadmin">System Admin</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="sysAdm-table-wrapper">
                 <table class="sysAdm-table">
                     <thead>
                         <tr>
@@ -1362,19 +1553,29 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                         <?php foreach ($activityLogs as $log): ?>
                             <tr>
                                 <td><?= htmlspecialchars($log['name']) ?></td>
-                                <td><?= htmlspecialchars($log['roles']) ?></td>
+                                <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $log['roles']))) ?></td>
                                 <td><?= htmlspecialchars($log['activity']) ?></td>
-                                <td><?= htmlspecialchars($log['activity_date']) ?></td>
+                                <td><?= date('M j, Y • g:i A', strtotime($log['activity_date'])) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
+        </div>
 
             <!-- STUDENT REGISTER -->
-            <div id="student_register" class="section sysAdm-header">
-                <h2>Student Register</h2>
-                <p>The master list for keeping tabs on every student in the system.</p>
+            <div id="student_register" class="section sysAdm-section">
+                <div class="sysAdm-header--danger sysAdm-header--blue">
+                    <div class="sysAdm-header-left">
+                        <div class="sysAdm-header-icon">
+                            <i class="bi bi-person-vcard"></i>
+                        </div>
+                        <div class="sysAdm-header-text">
+                            <h2>Student Register</h2>
+                            <p>The master list for keeping tabs on every student in the system.</p>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="form-card">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -1383,7 +1584,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             </h5>
                             <p class="text-muted small mb-0">View and edit the current student CSV file.</p>
                         </div>
-                        <button class="btn-button align-self-center" onclick="showSection(event, 'edit_csv')">
+                        <button class="btn-update" onclick="showSection(event, 'edit_csv')">
                             <i class="bi bi-pencil-square me-1"></i>Edit Current CSV
                         </button>
                     </div>
@@ -1400,7 +1601,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                         <div class="d-flex gap-2 align-items-center">
                             <input type="file" name="students_csv" accept=".csv" required class="form-control"
                                 style="flex:1;font-size:13px;">
-                            <button class="btn-button" type="submit">
+                            <button class="btn-update" type="submit">
                                 <i class="bi bi-upload me-1"></i>Replace CSV
                             </button>
                         </div>
@@ -1415,8 +1616,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             <h5 class="fw-semibold mb-1" style="color:#272f54;">Download Current CSV Template</h5>
                             <p class="text-muted small mb-0">Download the current student registration template.</p>
                         </div>
-                        <a href="download-csv-temp.php?type=student_register"
-                            class="btn btn-sm btn-outline-secondary mb-3">
+                        <a href="download-csv-temp.php?type=student_register" style="text-decoration: none;" class="btn-update">
                             <i class="bi bi-download me-1"></i> Download Template
                         </a>
                     </div>
@@ -1499,17 +1699,24 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
 
             <!-- ASSIGN ADVISER -->
             <div id="assign_adviser" class="section sysAdm-section">
-                <div class="sysAdm-header">
-                    <h2>Assign Adviser to Student</h2>
-                    <p>Assign an internship adviser to a student. The student will automatically be added to that
-                        adviser's room.</p>
+                <div class="sysAdm-header--danger sysAdm-header--blue">
+                    <div class="sysAdm-header-left">
+                        <div class="sysAdm-header-icon">
+                            <i class="bi bi-person-check-fill"></i>
+                        </div>
+                        <div class="sysAdm-header-text">
+                            <h2>Assign Adviser to Student</h2>
+                            <p>Assign an internship adviser to a student. The student will automatically be added to that
+                                adviser's room.</p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Search + filter -->
                 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                     <div class="d-flex gap-2 flex-wrap">
                         <input type="text" id="assign-search" oninput="filterAssignTable()"
-                            placeholder="Search student..."
+                            placeholder="Search for a student"
                             style="padding:8px 14px; border-radius:10px; border:1px solid #ddd; font-size:13px; min-width:220px;">
                         <select id="assign-filter-adviser" onchange="filterAssignTable()"
                             style="padding:8px 14px; border-radius:10px; border:1px solid #ddd; font-size:13px; min-width:200px;">
@@ -1526,7 +1733,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                         <i class="bi bi-file-earmark-spreadsheet me-1"></i> Import via CSV
                     </button>
                 </div>
-
+                <div class="sysAdm-table-wrapper">
                 <table class="sysAdm-table">
                     <thead>
                         <tr>
@@ -1600,13 +1807,21 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
             </div>
 
             <!-- SUPERVISOR REQUESTS -->
             <div id="supervisor_requests" class="section sysAdm-section">
-                <div class="sysAdm-header">
-                    <h2>HTE Supervisor Requests</h2>
-                    <p>Review and approve HTE supervisor account requests from students across all rooms.</p>
+                <div class="sysAdm-header--danger sysAdm-header--blue">
+                    <div class="sysAdm-header-left">
+                        <div class="sysAdm-header-icon">
+                            <i class="bi bi-person"></i>
+                        </div>
+                        <div class="sysAdm-header-text">
+                            <h2>HTE Supervisor Requests</h2>
+                            <p>Review and approve HTE supervisor account requests from students across all rooms.</p>
+                        </div>
+                    </div>
                 </div>
 
                 <?php if (empty($supervisorRequests)): ?>
@@ -1806,12 +2021,19 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
 
             <!-- OJT HOURS -->
             <div id="ojt_hours" class="section sysAdm-section">
-                <div class="sysAdm-header">
-                    <h2>Required OJT Hours per Program</h2>
-                    <p>
-                        Set the required number of OJT hours per program. Updates apply to
-                        all internships sharing that program name. Advisers cannot override these values.
-                    </p>
+                <div class="sysAdm-header--danger sysAdm-header--blue">
+                    <div class="sysAdm-header-left">
+                        <div class="sysAdm-header-icon">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        <div class="sysAdm-header-text">
+                            <h2>Required OJT Hours per Program</h2>
+                            <p>
+                                Set the required number of OJT hours per program. Updates apply to
+                                all internships sharing that program name. Advisers cannot override these values.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <?php if (empty($programHoursList)): ?>
@@ -1822,59 +2044,61 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                 <?php else: ?>
 
                     <form method="POST" action="superadmin-db.php">
-                        <div style="background:white; border:1px solid #e5e7eb; border-radius:10px;
-                                    overflow:hidden; margin-bottom:24px;">
-                            <table class="sysAdm-table">
-                                <thead>
-                                    <tr>
-                                        <th>Program</th>
-                                        <th style="width:220px;">Required Hours</th>
-                                        <th style="width:200px;">Internships Affected</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php
-                                    $countStmt = $pdo->query("
-                                        SELECT program, COUNT(*) AS total
-                                        FROM internships
-                                        WHERE program IS NOT NULL AND program <> ''
-                                        GROUP BY program
-                                    ");
-                                    $programCounts = [];
-                                    foreach ($countStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-                                        $programCounts[$row['program']] = $row['total'];
-                                    }
-                                    ?>
-                                    <?php foreach ($programHoursList as $ph): ?>
-                                        <tr>
-                                            <td>
-                                                <input type="hidden" name="program[]"
-                                                    value="<?= htmlspecialchars($ph['program']) ?>">
-                                                <span style="font-weight:500; color:#272f54;">
-                                                    <?= htmlspecialchars($ph['program']) ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <input type="number" name="required_hours[]"
-                                                    value="<?= (int) $ph['required_hours'] ?>" min="1" max="9999" required
-                                                    style="width:120px; padding:7px 10px;
-                                          border:1.5px solid #e5e7eb; border-radius:8px;
-                                          font-size:13px; font-family:inherit;
-                                          outline:none; text-align:center;
-                                          transition:border-color .2s;" onfocus="this.style.borderColor='#4f51a8'"
-                                                    onblur="this.style.borderColor='#e5e7eb'">
-                                                <span style="font-size:12px; color:#9ca3af; margin-left:6px;">hrs</span>
-                                            </td>
-                                            <td>
-                                                <span style="font-size:13px; color:#555;">
-                                                    <?= (int) ($programCounts[$ph['program']] ?? 0) ?>
-                                                    internship(s) will be updated
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+                        <?php
+                            $countStmt = $pdo->query("
+                                SELECT program, COUNT(*) AS total
+                                FROM internships
+                                WHERE program IS NOT NULL AND program <> ''
+                                GROUP BY program
+                            ");
+                            $programCounts = [];
+                            foreach ($countStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                                $programCounts[$row['program']] = $row['total'];
+                            }
+                            
+                            $cardStyles = [
+                                ['color' => '#4f51a8', 'icon' => 'bi-buildings'],   // blue
+                                ['color' => '#e0483e', 'icon' => 'bi-pc-display'],    // red/orange
+                                ['color' => '#f2b705', 'icon' => 'bi-lightning-charge'], // yellow
+                            ];
+                        ?>
+
+                        <div style="display:flex; flex-wrap:wrap; gap:20px; margin-bottom:24px;">
+                            <?php foreach ($programHoursList as $programIndex => $ph):
+                                $style = $cardStyles[$programIndex % count($cardStyles)];
+                                $count = (int) ($programCounts[$ph['program']] ?? 0);
+                            ?>
+                                <div style="flex:1; min-width:260px; background:#fff;
+                                            border:1.5px solid #e5e7eb; border-left:5px solid <?= $style['color'] ?>;
+                                            border-radius:10px; padding:18px 20px;">
+
+                                    <!-- Header row: program name + icon -->
+                                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+                                        <div>
+                                            <div style="font-weight:700; font-size:16px; color:#272f54;">
+                                                <?= htmlspecialchars($ph['program']) ?>
+                                            </div>
+                                            <div style="font-size:12.5px; color:#9ca3af;">
+                                                <?= (int) $count ?> internship(s) will be updated
+                                            </div>
+                                        </div>
+                                        <i class="bi <?= $style['icon'] ?>" style="font-size:20px; color:<?= $style['color'] ?>;"></i>
+                                    </div>
+
+                                    <!-- Hidden field preserves program name for POST -->
+                                    <input type="hidden" name="program[]" value="<?= htmlspecialchars($ph['program']) ?>">
+
+                                    <!--  editable hours -->
+                                    <div style="display:flex; align-items:baseline; gap:6px;">
+                                        <input type="number" name="required_hours[]"
+                                            value="<?= (int) $ph['required_hours'] ?>" min="1" max="9999" required
+                                            style="width:100%; border:none; outline:none; background:transparent;
+                                                   font-size:28px; font-weight:700; color:#272f54;
+                                                   font-family:inherit; padding:0;">
+                                        <span style="font-size:13px; color:#9ca3af; white-space:nowrap;">hrs</span>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
 
                         <div style="display:flex; justify-content:flex-end;">
@@ -1941,6 +2165,60 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
             const search = document.getElementById('search-monitor').value.toLowerCase();
             document.querySelectorAll('#monitor-tbody tr').forEach(row => {
                 row.style.display = row.innerText.toLowerCase().includes(search) ? '' : 'none';
+            });
+        }
+
+        // function filterDelete() {
+        //     const search = document.getElementById('search-delete').value.toLowerCase();
+        //     document.querySelectorAll('#delete-tbody tr').forEach(row => {
+        //         row.style.display = row.innerText.toLowerCase().includes(search) ? '' : 'none';
+        //     });
+        // }
+
+        function filterDelete() {
+            const search = document.getElementById('search-delete').value.toLowerCase();
+            const role = document.getElementById('filter-role').value.toLowerCase();
+
+            document.querySelectorAll('#delete-tbody tr').forEach(row => {
+                const rowText = row.innerText.toLowerCase();
+                const matchesSearch = rowText.includes(search);
+                const matchesRole = role === '' || rowText.includes(role);
+
+                row.style.display = (matchesSearch && matchesRole) ? '' : 'none';
+            });
+        }
+
+        function filterMonitor() {
+            const search = document.getElementById('search-monitor').value.toLowerCase();
+            const roleValue = document.getElementById('filter-role-monitor').value;
+
+            const roleLabels = {
+                'student': 'student',
+                'hte_adviser': 'hte adviser',
+                'internship_admin': 'internship admin',
+                'superadmin': 'superadmin'
+            };
+            const roleLabel = roleLabels[roleValue] || '';
+
+            document.querySelectorAll('#monitor-tbody tr').forEach(row => {
+                const rowText = row.innerText.toLowerCase();
+                const matchesSearch = rowText.includes(search);
+                const matchesRole = roleValue === '' || rowText.includes(roleLabel);
+
+                row.style.display = (matchesSearch && matchesRole) ? '' : 'none';
+            });
+        }
+
+        function filterRoles() {
+            const search = document.getElementById('search-roles').value.toLowerCase();
+            const role = document.getElementById('filter-role-admin').value.toLowerCase();
+
+            document.querySelectorAll('#roles-tbody tr').forEach(row => {
+                const rowText = row.innerText.toLowerCase();
+                const matchesSearch = rowText.includes(search);
+                const matchesRole = role === '' || rowText.includes(role.replace('_', ' '));
+
+                row.style.display = (matchesSearch && matchesRole) ? '' : 'none';
             });
         }
 

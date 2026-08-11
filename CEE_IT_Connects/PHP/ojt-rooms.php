@@ -373,20 +373,23 @@ $page = 'messages';
             vertical-align: middle;
         }
 
-        .avatar {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            color: white;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 8px;
-        }
-
         .student-cell {
             display: flex;
             align-items: center;
+            gap: 10px;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            flex-shrink: 0;
         }
 
         .progress-bar-bg {
@@ -400,6 +403,18 @@ $page = 'messages';
             height: 100%;
             border-radius: 4px;
             background: #ff6b2c;
+        }
+
+        /* horizontal scroll */
+        .ojt-table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .ojt-status-table {
+            width: 100%;
+            min-width: 900px;
+            border-collapse: collapse;
         }
 
         /* Chat styles */
@@ -1171,55 +1186,54 @@ $page = 'messages';
 
     <!-- SIDEBAR -->
     <div class="sidebar">
-        <div style="display:flex; flex-direction:column; width:100%;">
+    <div style="display:flex; flex-direction:column; width:100%;">
 
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>" class="<?= $section === '' ? 'active' : '' ?>">
-                <i class="fa-solid fa-comments me-2"></i> Room
-            </a>
+        <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>" class="<?= $section === '' ? 'active' : '' ?>" title="Room">
+            <i class="bi bi-display-fill me-2" style="font-weight: 800;"></i> <span class="sidebar-text">Room</span>
+        </a>
 
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=status"
-                class="<?= $section === 'status' ? 'active' : '' ?>">
-                <i class="fa-solid fa-calendar-check me-2"></i> Status
-            </a>
+        <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=status"
+            class="<?= $section === 'status' ? 'active' : '' ?>" title="Status">
+            <i class="fa-solid fa-calendar-check me-2"></i> <span class="sidebar-text">Status</span>
+        </a>
 
-            <!-- <a href="ojt-rooms.php?room_id=<?//= $current_room_id ?>&section=remarks"
-                class="<?//= $section === 'remarks' ? 'active' : '' ?>">
-                <i class="fa-solid fa-list me-2"></i> Remarks
-            </a> -->
-
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=ojt_applications"
-                class="<?= $section === 'ojt_applications' ? 'active' : '' ?>">
-                <i class="bi bi-book-fill me-2"></i> OJT Applications
-                <?php
-                $pendingStmt = $pdo->prepare("
-                    SELECT COUNT(*) FROM ojt_applications oa 
-                    JOIN room_members rm ON oa.student_id = rm.user_id AND rm.user_type = 'student'
-                    WHERE rm.room_id = ? AND oa.status = 'pending'
-                ");
-                $pendingStmt->execute([$current_room_id]);
-                $pCount = $pendingStmt->fetchColumn();
-                if ($pCount > 0):
-                    ?>
-                    <span class="ms-auto badge rounded-pill"
-                        style="background:#ff6b2c;font-size:10px;"><?= $pCount ?></span>
-                <?php endif; ?>
-            </a>
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=chats"
-                class="<?= $section === 'chats' ? 'active' : '' ?>">
-                <i class="fa-solid fa-comments me-2"></i> Chats
-            </a>
-
-
-            <?php if ($isAdviser): ?>
-                <hr style="border-color:#eee; margin:10px 0;">
-                <button class="btn-create" data-bs-toggle="modal" data-bs-target="#csvUploadModal">
-                    <i class="fa fa-file-csv me-2"></i> Import Students
-                </button>
+        <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=ojt_applications"
+            class="<?= $section === 'ojt_applications' ? 'active' : '' ?>" title="OJT Applications">
+            <i class="bi bi-book-fill me-2"></i> <span class="sidebar-text">Requirements</span>
+            <?php
+            $pendingStmt = $pdo->prepare("
+                SELECT COUNT(*) FROM ojt_applications oa 
+                JOIN room_members rm ON oa.student_id = rm.user_id AND rm.user_type = 'student'
+                WHERE rm.room_id = ? AND oa.status = 'pending'
+            ");
+            $pendingStmt->execute([$current_room_id]);
+            $pCount = $pendingStmt->fetchColumn();
+            if ($pCount > 0):
+                ?>
+                <span class="ms-auto badge rounded-pill"
+                    style="background:#ff6b2c;font-size:10px;"><?= $pCount ?></span>
             <?php endif; ?>
+        </a>
 
-        </div>
+        <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=weekly_reports"
+            class="<?= $section === 'weekly_reports' ? 'active' : '' ?>" title="Weekly Reports">
+            <i class="fa-solid fa-file-lines me-2"></i> <span class="sidebar-text">Weekly Reports</span>
+        </a>
+
+        <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=chats"
+            class="<?= $section === 'chats' ? 'active' : '' ?>" title="Chats">
+            <i class="fa-solid fa-comments me-2"></i> <span class="sidebar-text">Chats</span>
+        </a>
+
+        <?php if ($isAdviser): ?>
+            <hr style="border-color:#eee; margin:10px 0;">
+            <button class="btn-create" data-bs-toggle="modal" data-bs-target="#csvUploadModal" title="Import Students">
+                <i class="fa fa-file-csv me-2"></i> <span class="sidebar-text">Import Students</span>
+            </button>
+        <?php endif; ?>
+
     </div>
-
+</div>
     <!-- MAIN CONTENT -->
     <div class="main">
 
@@ -1251,7 +1265,8 @@ $page = 'messages';
 
 
                 <div style="background:white; border:1px solid #ddd; border-radius:8px; overflow:hidden;">
-                    <table>
+                <div class="ojt-table-wrapper">    
+                <table class="ojt-status-table">
                         <thead style="background:#f8f9fa;">
                             <tr>
                                 <th>STUDENT</th>
@@ -1287,8 +1302,7 @@ $page = 'messages';
                                         </td>
                                         <td>
                                             <?php if (empty($s['company'])): ?>
-                                                <span class="rounded-pill px-3 py-1"
-                                                    style="background:#f8d7da; color:#721c24; font-size:12px; font-weight:500;">
+                                                <span style="font-size:12px; font-weight:500;">
                                                     No company
                                                 </span>
                                             <?php else: ?>
@@ -1315,13 +1329,13 @@ $page = 'messages';
                                             ?>
                                             <?php if ($hasSupEval): ?>
                                                 <a href="ojt-evaluation-download.php?student_id=<?= $s['id'] ?>" target="_blank" style="display:inline-flex; align-items:center; gap:5px; padding:5px 10px;
-                              background:#dbeafe; color:#1e40af; border-radius:6px; font-size:11px;
-                              font-weight:600; border:1px solid #93c5fd; text-decoration:none; white-space:nowrap;">
+                              background: #ffe5d9; color: #ff6b2c; border-radius:6px; font-size:11px;
+                              font-weight:600; border:1px solid #ff6b2c; text-decoration:none; white-space:nowrap;">
                                                     <i class="fa fa-file-pdf"></i> Supervisor Eval
                                                 </a>
                                             <?php else: ?>
                                                 <span style="display:inline-flex; align-items:center; gap:5px; padding:5px 10px;
-                                 background:#f3f4f6; color:#9ca3af; border-radius:6px; font-size:11px;
+                                 background: #f3f4f6; color: #9ca3af; border-radius:6px; font-size:11px;
                                  font-weight:600; white-space:nowrap; border:1px solid #e5e7eb;">
                                                     <i class="fa fa-file-pdf"></i> Supervisor Eval
                                                 </span>
@@ -1332,6 +1346,7 @@ $page = 'messages';
                             <?php endif; ?>
                         </tbody>
                     </table>
+                </div>
                 </div>
             </div>
 
@@ -1358,8 +1373,8 @@ $page = 'messages';
             ];
             ?>
             <div>
-                <h4 class="fw-bold mb-1">OJT Applications</h4>
-                <p class="text-muted mb-3">Track students' OJT application progress.</p>
+                <h4 class="fw-bold mb-1">Requirements</h4>
+                <p class="text-muted mb-3">Track students' pre-deployment requirements submission progress.</p>
 
                 <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
                     <div style="position:relative; flex:1; min-width:200px;">
@@ -1451,7 +1466,7 @@ $page = 'messages';
                                     <!-- Submitted date -->
                                     <div style="min-width:100px;">
                                         <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;">
-                                            Submitted</div>
+                                            Last Submitted</div>
                                         <div style="font-size:13px;">
                                             <?= date('M d, Y', strtotime($app['submitted_at'])) ?>
                                         </div>
@@ -1504,6 +1519,98 @@ $page = 'messages';
 
                 <?php endif; ?>
             </div>
+
+            <!-- start of weekly reports logic -->
+            <?php elseif ($section === 'weekly_reports'): ?>
+                <div>
+                    <h4 class="fw-bold mb-1">Weekly Progress Reports</h4>
+                    <p class="text-muted mb-3" style="font-size:.85rem;">
+                        View weekly reports submitted by students in this room.
+                    </p>
+
+                    <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="reportsSearchInput" placeholder="Search student" oninput="filterReportsTable()">
+                        </div>
+
+                        
+                    </div>
+
+                    <div class="ojt-table-wrapper">
+                        <table class="ojt-status-table">
+                            <thead style="background:#f8f9fa;">
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Room
+                                    <th>Week #</th>
+                                    <th>Submitted</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reports-tbody">
+                                <?php
+                                $reportsStmt = $pdo->prepare("
+                                    SELECT wr.id, wr.week_start, wr.submitted_at, wr.status,
+                                        u.full_name AS student_name
+                                    FROM weekly_reports wr
+                                    JOIN room_members rm ON wr.student_id = rm.user_id AND rm.user_type = 'student'
+                                    JOIN users u ON wr.student_id = u.id
+                                    WHERE rm.room_id = ?
+                                    ORDER BY wr.week_start DESC, u.full_name ASC
+                                ");
+                                // $reportsStmt->execute([$current_room_id]);
+                                $reports = $reportsStmt->fetchAll(PDO::FETCH_ASSOC);
+                                ?>
+                                <?php if (empty($reports)): ?>
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">
+                                            No weekly reports submitted yet.
+                                        </td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($reports as $r):
+                                        $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22'];
+                                        $avatarColor = $avatarColors[crc32($r['student_name']) % count($avatarColors)];
+                                    ?>
+                                        <tr data-status="<?= htmlspecialchars($r['status']) ?>">
+                                            <td>
+                                                <div class="student-cell">
+                                                    <div class="avatar" style="background:<?= $avatarColor ?>;">
+                                                        <strong><?= strtoupper(substr($r['student_name'], 0, 1)) ?></strong>
+                                                    </div>
+                                                    <span><?= htmlspecialchars($r['student_name']) ?></span>
+                                                </div>
+                                            </td>
+                                            <td><?= date('M d, Y', strtotime($r['week_start'])) ?></td>
+                                            <td><?= date('M d, Y', strtotime($r['submitted_at'])) ?></td>
+                                            <td>
+                                                <span style="padding:3px 10px; border-radius:99px; font-size:11px; font-weight:600;
+                                                    background:<?= $r['status'] === 'approved' ? '#f0fdf4' : '#fffbeb' ?>;
+                                                    color:<?= $r['status'] === 'approved' ? '#065f46' : '#92400e' ?>;">
+                                                    <?= ucfirst($r['status']) ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a href="weekly-report-view.php?id=<?= $r['id'] ?>" target="_blank"
+                                                    style="display:inline-flex; align-items:center; gap:5px; padding:5px 10px;
+                                                    background:#dbeafe; color:#1e40af; border-radius:6px; font-size:11px;
+                                                    font-weight:600; border:1px solid #93c5fd; text-decoration:none; white-space:nowrap;">
+                                                    <i class="fa fa-eye"></i> View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+
+            <?php elseif ($section === 'remarks'): ?>
+            
+            <!-- end of weekly reports logic -->
 
         <?php elseif ($section === 'chats'): ?>
             <?php

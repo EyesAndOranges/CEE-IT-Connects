@@ -65,6 +65,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 
         .prep-col {
             background: #1e2647;
+            opacity: 0.90;
             padding: 22px 20px;
             border-right: 1px solid rgba(255, 255, 255, 0.08);
         }

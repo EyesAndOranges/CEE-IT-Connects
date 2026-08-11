@@ -1188,6 +1188,9 @@ foreach ($roomStatuses as $s) {
         <a href="#" onclick="showSection('status', event)" id="nav-status">
             <i class="fa-solid fa-calendar-check me-2"></i><span class="sidebar-text">Status</span>
         </a>
+        <a href="#" onclick="showSection('weekly_reports', event)" id="nav-weekly_reports">
+            <i class="fa-solid fa-file-lines me-2"></i> <span class="sidebar-text">Weekly Reports</span>
+        </a>
         <a href="#" onclick="showSection('chats', event)" id="nav-chats">
             <i class="fa-solid fa-comments me-2"></i><span class="sidebar-text">Chats</span>
         </a>
@@ -1460,114 +1463,83 @@ foreach ($roomStatuses as $s) {
             </div>
         </div>
 
-        <!-- REMARKS SECTION -->
-        <div id="remarks" class="section-panel">
-            <h4><strong>Log Hours &amp; HTE Remarks</strong></h4><br>
+        
+<!-- WEEKLY REPORTS SECTION -->
+<div id="weekly_reports" class="section-panel">
+    <h4><strong>Weekly Progress Reports</strong></h4><br>
 
-            <div style="display:flex; gap:10px; margin-bottom:16px; align-items:center;">
-                <div class="search-box">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" id="remarksSearchInput" placeholder="Search student" oninput="filterCards()">
-                </div>
-                <select id="remarksRoomFilter" onchange="filterCards()"
-                    style="padding:7px 14px; border:1px solid #bbb; border-radius:24px; font-size:12px;">
-                    <option value="">All Rooms</option>
-                    <?php foreach ($rooms as $r): ?>
-                        <option value="<?= htmlspecialchars($r['room_name']) ?>">
-                            <?= htmlspecialchars($r['room_name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div id="student-list">
-                <?php foreach ($students as $student): ?>
-                    <form method="POST" action="hte-db.php">
-
-                        <input type="hidden" name="student_id" value="<?= $student['id'] ?>">
-                        <input type="hidden" name="internship_id" value="<?= $student['internship_id'] ?>">
-
-                        <div class="student-card">
-                            <div class="log-row">
-                                <div class="log-row-top">
-                                    <div class="avatar" style="background:#ff2c8f;">
-                                        <strong><?= strtoupper(substr($student['full_name'], 0, 1)) ?></strong>
-                                    </div>
-                                    <div class="student-info">
-                                        <strong><?= htmlspecialchars($student['full_name']) ?></strong>
-                                        <span><?= htmlspecialchars($student['company']) ?></span>
-                                    </div>
-                                </div>
-                                <div class="log-row-controls">
-                                    <select name="status" required>
-                                        <option value="Present">Present</option>
-                                        <option value="Absent">Absent</option>
-                                        <option value="Late">Late</option>
-                                    </select>
-                                    <input type="number" name="hours" placeholder="hrs" min="0" max="24" required>
-                                </div>
-                            </div>
-
-                            <div class="remarks-section">
-                                <div class="remarks-label">Remarks</div>
-                                <textarea name="remarks" placeholder="Enter remarks..." required></textarea>
-                                <div class="remarks-footer">
-                                    <select name="rating" required>
-                                        <option>Outstanding</option>
-                                        <option>Very Satisfactory</option>
-                                        <option>Satisfactory</option>
-                                        <option>Fairly Satisfactory</option>
-                                        <option>Did Not Meet Expectations</option>
-                                    </select>
-                                    <label>
-                                        <input type="checkbox" name="completed"> Mark complete
-                                    </label>
-                                    <!-- ONLY ONE BUTTON -->
-                                    <button type="submit" name="save_all" class="btn-submit">Save</button>
-                                </div>
-                            </div>
-                        </div>
-
-                    </form>
-                <?php endforeach; ?>
-            </div>
-
-            <!-- Static demo card -->
-            <div class="student-card" data-room="Room 2C" data-name="mark anthony dela cruz">
-                <div class="log-row">
-                    <div class="log-row-top">
-                        <div class="avatar" style="background:#2c6fff;"><strong>M</strong></div>
-                        <div class="student-info">
-                            <strong>Mark Anthony Dela Cruz</strong>
-                            <span>TechCorp PH</span>
-                        </div>
-                    </div>
-                    <div class="log-row-controls">
-                        <select>
-                            <option>Present</option>
-                            <option>Absent</option>
-                            <option>Late</option>
-                        </select>
-                        <input type="number" placeholder="hrs" min="0" max="24">
-                    </div>
-                </div>
-                <div class="remarks-section">
-                    <div class="remarks-label">Remarks</div>
-                    <textarea placeholder="Enter remarks..."></textarea>
-                    <div class="remarks-footer">
-                        <select>
-                            <option>Outstanding</option>
-                            <option>Very Satisfactory</option>
-                            <option>Satisfactory</option>
-                            <option>Fairly Satisfactory</option>
-                            <option>Did Not Meet Expectations</option>
-                        </select>
-                        <label><input type="checkbox"> Mark complete</label>
-                        <button class="btn-submit">Submit</button>
-                    </div>
-                </div>
-            </div>
+    <div style="display:flex; gap:10px; margin-bottom:16px; align-items:center;">
+        <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="reportsSearchInput" placeholder="Search student" oninput="filterReportsTable()">
         </div>
+        <select id="reportsRoomFilter" onchange="filterReportsTable()"
+            style="padding:7px 14px; border:1px solid #bbb; border-radius:24px; font-size:12px;">
+            <option value="">All Rooms</option>
+            <?php foreach ($rooms as $r): ?>
+                <option value="<?= htmlspecialchars($r['room_name']) ?>">
+                    <?= htmlspecialchars($r['room_name']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+
+    <div class="ojt-table-wrapper">
+        <table class="ojt-status-table">
+            <thead style="background:#f8f9fa;">
+                <tr>
+                    <th>Student</th>
+                    <th>Room</th>
+                    <th>Week #</th>
+                    <th>Submitted</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="reports-tbody">
+                <?php
+                $reports = [
+                    ['student_name' => 'Jake Cob', 'room_name' => 'Norma Castillo\'s Room', 'week_start' => '2026-08-04', 'submitted_at' => '2026-08-10'],
+                    
+                ];
+                ?>
+                <?php if (empty($reports)): ?>
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            No weekly reports submitted yet.
+                        </td>
+                    </tr>
+                <?php else: ?>
+                    <?php foreach ($reports as $r):
+                        $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22'];
+                        $avatarColor = $avatarColors[crc32($r['student_name']) % count($avatarColors)];
+                    ?>
+                        <tr data-room="">
+                            <td>
+                                <div class="student-cell">
+                                    <div class="avatar" style="background:<?= $avatarColor ?>;">
+                                        <strong><?= strtoupper(substr($r['student_name'], 0, 1)) ?></strong>
+                                    </div>
+                                    <span><?= htmlspecialchars($r['student_name']) ?></span>
+                                </div>
+                            </td>
+                            <td><?= htmlspecialchars($r['room_name']) ?></td>
+                            <td><?= date('M d, Y', strtotime($r['week_start'])) ?></td>
+                            <td><?= date('M d, Y', strtotime($r['submitted_at'])) ?></td>
+                            <td>
+                                <a href="#" style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+                                    background:#dbeafe;color:#1e40af;border-radius:6px;font-size:11px;
+                                    font-weight:600;border:1px solid #93c5fd;text-decoration:none;white-space:nowrap;">
+                                    <i class="fa fa-download"></i> Download
+                                </a>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+        
 
         <div id="chats" class="section-panel <?= $section === 'chats' ? 'active' : '' ?>">
             <?php

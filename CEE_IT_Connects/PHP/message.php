@@ -2122,6 +2122,22 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                     </div>
                 </div>
 
+                <!-- <div class="card border-0 shadow-sm rounded-3 p-3 mb-2 d-flex flex-row align-items-center justify-content-between" style="background-color:#29335C;">
+                    <span style="color:#fff;">Progress</span>
+
+                    <div style="position:relative; width:64px; height:64px;">
+                        <svg width="64" height="64" viewBox="0 0 64 64">
+                            <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="6"></circle>
+                            <circle id="ojt-progress-fill" cx="32" cy="32" r="27" fill="none" stroke="#1abc9c" stroke-width="6"
+                                stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="169.6"
+                                transform="rotate(-90 32 32)"></circle>
+                        </svg>
+                        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+                            <span id="ojt-pct-label" style="color:#fff; font-size:13px; font-weight:600;">0%</span>
+                        </div>
+                    </div>
+                </div> -->
+
                 <!-- Summary Cards -->
                 <div class="row g-2 mb-2" style="margin-top:4px;">
                     <div class="col-md-4">
@@ -2156,9 +2172,9 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                             id="ojt-week-block-<?= $week['week_index'] ?>">
                             <div class="ojt-week-header">
                                 <div class="d-flex align-items-center gap-2">
-                                    <input class="ojt-week-label" type="text" data-field="week_label"
-                                        value="<?= htmlspecialchars($week['week_label']) ?>" placeholder="Week label"
-                                        onchange="ojtOnFieldChange(this)">
+                                    <input class="ojt-week-label" type="text"
+                                        value="<?= htmlspecialchars($week['week_label']) ?>"
+                                        readonly style="background:transparent; border:none; font-weight:600; text-align:left;">
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
                                     <span class="ojt-total-chip ojt-week-total"
@@ -2861,6 +2877,8 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
             document.getElementById('ojt-sum-monthly').textContent = ojtFmtHM(grand);
             document.getElementById('ojt-sum-completed').textContent = ojtFmtHM(grand);
             document.getElementById('ojt-sum-remaining').textContent = ojtFmtHM(rem);
+
+            // progress bar
             document.getElementById('ojt-progress-fill').style.width = pct + '%';
             document.getElementById('ojt-pct-label').textContent = pct + '%';
 

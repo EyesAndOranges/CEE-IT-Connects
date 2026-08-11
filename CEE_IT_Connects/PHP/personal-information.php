@@ -281,13 +281,14 @@ $initials = strtoupper(
 
         .page-title {
             font-weight: 600;
+            font-size: 16px;
             color: #1f2a44;
         }
 
         .profile-container {
             background: #fff;
             border-radius: 30px;
-            border: 2px solid #ffb703;
+            border: 2px solid #ff6b00;
             padding: 90px 40px 40px;
             position: relative;
             max-width: 900px;
@@ -299,7 +300,7 @@ $initials = strtoupper(
             height: 130px;
             border-radius: 50%;
             background: #eef1ff;
-            border: 4px solid #ffb703;
+            border: 4px solid #ff6b00;
             position: absolute;
             top: -65px;
             left: 50%;
@@ -423,8 +424,8 @@ $initials = strtoupper(
     <div class="container mt-4 mb-5">
 
         <div class="d-flex align-items-center gap-2 mb-4">
-            <a href="index.php" class="text-dark"><i class="fa fa-arrow-left"></i></a>
-            <h5 class="page-title mb-0">Edit Personal Information</h5>
+            <a href="index.php" class="text-dark"><i class="fa fa-arrow-left" style="margin-left: 5px;"></i></a>
+            <h5 class="page-title mb-0">Back to Home</h5>
         </div>
 
         <?php if ($success != '' && empty($errors) && empty($upload_errors)): ?>
@@ -445,7 +446,7 @@ $initials = strtoupper(
             </div>
         <?php endif; ?>
 
-        <div class="profile-container mx-auto">
+        <div class="profile-container mx-auto" style="margin-top:100px;">
 
             <div class="profile-pic"><?= htmlspecialchars($initials) ?></div>
 
@@ -488,23 +489,27 @@ $initials = strtoupper(
                                 value="<?= htmlspecialchars($val_contact_number) ?>">
                         </div>
 
-                        <div class="col-md-4">
+                        <!-- <div class="col-md-4">
                             <label class="form-label">Year Level</label>
                             <select name="year_level" class="form-select">
+                                
+                                <?php /* ?>
                                 <?php for ($y = 1; $y <= 5; $y++): ?>
                                     <option value="<?= $y ?>" <?= $val_year_level === $y ? 'selected' : '' ?>>
                                         Year <?= $y ?>
                                     </option>
                                 <?php endfor; ?>
+                                <?php */ ?>
+
                             </select>
-                        </div>
+                        </div> -->
 
                         <div class="col-md-8">
                             <label class="form-label">Program</label>
                             <select name="program" class="form-control">
                                 <?php foreach (['Information Technology', 'Electrical Engineering', 'Civil Engineering'] as $p): ?>
-                                    <option value="<?= $p ?>" <?= $val_program === $p ? 'selected ' : '' ?>>
-                                        <?= $p ?>
+                                    <option value="<?= $p ?>" <?=$val_program === $p ? 'selected ' : '' ?>>
+                                        Bachelor of Science in <?= $p ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -513,7 +518,13 @@ $initials = strtoupper(
                         <div class="col-md-4">
                             <label class="form-label">Section</label>
                             <input type="text" name="section" class="form-control"
-                                value="<?= htmlspecialchars($val_section) ?>">
+                                value="<?= htmlspecialchars($val_year_level . '-' . $val_section) ?>">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Member Since</label>
+                            <input type="text" class="form-control" readonly
+                                value="<?= htmlspecialchars($val_created_at) ?>">
                         </div>
 
                     </div>
@@ -584,7 +595,7 @@ $initials = strtoupper(
                 <!-- This is for change password -->
                 <div class="section-label">
                     Change Password
-                    <span style="font-weight:400;text-transform:none;font-size:11px;color:#ccc;">
+                    <span style="font-weight:400;text-transform:none;font-size:11px;color:#aaa;">
                         — leave blank to keep current
                     </span>
                 </div>
@@ -597,7 +608,7 @@ $initials = strtoupper(
                                 pattern="^(?=.*[a-z])(?=.*[A-Z]).{8,16}$">
                             <i class="fa fa-eye toggle-eye" onclick="togglePass('newPass',this)"></i>
                         </div>
-                        <span class="text-muted h6">8-16 characters with at least one uppercase and one lowercase
+                        <span style="font-weight:400;text-transform:none;font-size:12px;color:#aaa;">8-16 characters with at least one uppercase and one lowercase
                             letter</span>
                     </div>
                     <div class="col-md-6">
@@ -620,7 +631,6 @@ $initials = strtoupper(
         </div>
         <?php if ($userType === 'student'): ?>
             <div class="profile-container mx-auto mt-5">
-
                 <div class="text-center mb-3">
                     <h6 class="fw-bold" style="color:#1f2a44;">Documents & Credentials</h6>
                     <p style="font-size:13px;color:#888;">Upload your resume (PDF) and credential image (JPG/PNG)</p>
@@ -647,7 +657,7 @@ $initials = strtoupper(
                         <div class="col-md-4">
                             <?php if (!empty($docs['resume_path'])): ?>
                                 <a href="../uploads/resumes/<?= htmlspecialchars($docs['resume_path']) ?>" target="_blank"
-                                    class="btn btn-sm btn-outline-secondary w-100 mt-3">
+                                    class="btn btn-sm btn-outline-secondary w-100 mt-0 mt-lg-4">
                                     <i class="fa fa-file-pdf me-1" style="color:#e74c3c;"></i> View Current Resume
                                 </a>
                             <?php else: ?>

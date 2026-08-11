@@ -922,9 +922,9 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </button>
                                 <form method="POST" action="applied-internship-programs-db.php" style="margin:0;">
                                     <input type="hidden" name="internship_id" value="<?= $internship['id'] ?>">
-                                    <button type="submit" class="btn-interested">
+                                    <!-- <button type="submit" class="btn-interested">
                                         <i class="fa fa-bookmark"></i> Interested
-                                    </button>
+                                    </button> -->
                                 </form>
                             </div>
 
