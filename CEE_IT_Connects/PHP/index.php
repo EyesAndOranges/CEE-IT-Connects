@@ -231,7 +231,7 @@ $now = new DateTime();
                         Maysan, Valenzuela City
                         <br><i class="fab fa-facebook"></i> CEE IT Connects
                     </div>
-                    <div class="col-md-4" style="color: #272f54; font-weight: bolder; font-size: 1.25rem;"><strong>CEE
+                    <div class="col-md-4" style="color: #fff; font-weight: bolder; font-size: 1.25rem;"><strong>CEE
                             IT CONNECTS</strong>
                         <br>©2026 CEE IT Connects. All rights reserved
                     </div>

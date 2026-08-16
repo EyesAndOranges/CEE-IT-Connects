@@ -390,6 +390,8 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
             width: 240px;
             background: #fff;
             position: fixed;
+            top:70px;
+            bottom:0;
             padding: 20px;
             border-right: 1px solid #ddd;
             overflow-y: auto;
@@ -931,6 +933,11 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
             border-radius: 99px;
             font-weight: 600;
             flex-shrink: 0;
+        }
+
+        #prDropZone:hover {
+            border-color: #ff6b2c;
+            background: #fff8f5;
         }
 
         /* ── RIGHT PANEL – message area ── */
@@ -1874,15 +1881,21 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
             <a href="?section=hours<?php if ($current_room_id)
                 echo "&room_id=$current_room_id"; ?>"
                 class="sidebar-link <?= $current_section === 'hours' ? 'active' : '' ?>">
-                <i class="fa-solid fa-clock"></i> <span class="sidebar-text">Hours</span>
+                <i class="fa-solid fa-clock m-1"></i> <span class="sidebar-text">Hours</span>
             </a>
         <?php else: ?>
             <a href="#" onclick="return false;" title="Complete at least one application step to unlock"
                 style="opacity:0.4; cursor:not-allowed; pointer-events:none;">
-                <i class="fa-solid fa-clock"></i>
+                <i class="fa-solid fa-clock m-1"></i>
                 <span class="sidebar-text">Hours <i class="fa-solid fa-lock" style="font-size:10px;"></i></span>
             </a>
         <?php endif; ?>
+
+        <a href="?section=progress_report<?php if ($current_room_id)
+            echo "&room_id=$current_room_id"; ?>"
+            class="sidebar-link <?= $current_section === 'progress_report' ? 'active' : '' ?>">
+            <i class="fa-solid fa-file m-1"></i> <span class="sidebar-text">Progress Report</span>
+        </a>
     </div>
 
     <!-- HOME SECTION -->
@@ -2268,7 +2281,7 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                 </div>
 
                 <!-- Progress Bar -->
-                <div class="card border-0 shadow-sm rounded-3 p-3 mb-2" style="background-color:#29335C;">
+                <div class="card border-0 shadow-sm rounded-3 p-3 mb-2" style="background-color:#29335C; opacity:0.90;">
                     <div class="d-flex justify-content-between" style="color:#fff; margin-bottom:6px;">
                         <span>Progress</span>
                         <span id="ojt-pct-label">0%</span>
@@ -2299,21 +2312,21 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                 <div class="row g-2 mb-2" style="margin-top:4px;">
                     <div class="col-md-4">
                         <div
-                            style="background:#d9d9d9; border:1px solid #ababab; border-radius:8px; padding:1rem; margin-right:5px;">
+                            style="border:2px solid #ababab; border-radius:8px; padding:1rem; margin-right:5px;">
                             <div style="letter-spacing:.05em; color:#29335C;">MONTHLY OJT HOURS</div>
                             <div id="ojt-sum-monthly" style="font-size:20px; font-weight:500; color:#29335C;">0h 0m</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div
-                            style="background:#d9d9d9; border:1px solid #ababab; border-radius:8px; padding:1rem; margin:0 5px;">
+                            style="border:2px solid #ababab; border-radius:8px; padding:1rem; margin:0 5px;">
                             <div style="letter-spacing:.05em; color:#29335C;">HOURS COMPLETED</div>
                             <div id="ojt-sum-completed" style="font-size:20px; font-weight:500; color:#29335C;">0h 0m</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div
-                            style="background:#d9d9d9; border:1px solid #ababab; border-radius:8px; padding:1rem; margin-left:5px;">
+                            style="border:2px solid #ababab; border-radius:8px; padding:1rem; margin-left:5px;">
                             <div style="letter-spacing:.05em; color:#29335C;">REMAINING HOURS</div>
                             <div id="ojt-sum-remaining" style="font-size:20px; font-weight:500; color:#29335C;">
                                 <?= $requiredHours ?>h 0m
@@ -2523,6 +2536,110 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                 </div>
             <?php endif; ?>
         </div>
+    </div>
+
+    <!-- PROGRESS REPORT SECTION -->
+     
+    <div class="section <?= $current_section === 'progress_report' ? 'active' : '' ?>">
+    <div class="main" style="padding-bottom:60px;">
+        <h3 class="fw-bold mb-1">Weekly Progress Report</h3>
+        <p class="text-muted mb-4">Upload your filled-out weekly report, or download the blank template below.</p>
+
+        <!-- TEMPLATE DOWNLOAD -->
+        <div class="card shadow-sm rounded-3 p-3 mb-3 d-flex flex-row align-items-center justify-content-between"style="border:1px solid #e5e7eb;">
+            <div class="d-flex align-items-center gap-3">
+                <div style="width:42px;height:42px;border-radius:10px;background:#fde3d8;display:flex;align-items:center;justify-content:center;">
+                    <i class="fa-solid fa-file-lines" style="color:#ff6b2c;"></i>
+                </div>
+                <div>
+                    <strong style="font-size:14px;">Weekly Report Template</strong>
+                    <div class="text-muted" style="font-size:12px;">DOCX · Download and fill out before uploading</div>
+                </div>
+            </div>
+            <a href="../Sources/weekly-report-template.docx" download
+                class="btn btn-sm fw-semibold"
+                style="background:#272f54;color:#fff;border-radius:8px;">
+                <i class="fa-solid fa-download me-1"></i> Download
+            </a>
+        </div>
+
+        <!-- UPLOAD FORM -->
+        <form method="POST" action="progress-report-db.php" enctype="multipart/form-data">
+            <input type="hidden" name="room_id" value="<?= $current_room_id ?>">
+
+            <div class="card shadow-sm rounded-3 p-4 mb-3" style="border:1px solid #e5e7eb;">
+                <label id="prDropZone" for="prFileInput" style="
+                    border: 2px dashed #ddd;
+                    border-radius: 12px;
+                    padding: 32px;
+                    text-align: center;
+                    cursor: pointer;
+                    display: block;
+                    transition: border-color .2s, background .2s;">
+                    <i class="fa-solid fa-cloud-arrow-up fa-2x mb-2" style="color:#ff6b2c;"></i>
+                    <div style="font-weight:600; font-size:14px;">Click to upload or drag and drop</div>
+                    <div class="text-muted" style="font-size:12px;">PDF or DOCX, up to 10MB</div>
+                    <div id="prFileName" style="margin-top:10px; font-size:13px; color:#272f54; font-weight:600;"></div>
+                </label>
+                <input type="file" id="prFileInput" name="report_file" accept=".pdf,.doc,.docx" style="display:none;" required onchange="prShowFileName(this)">
+
+                <div class="d-flex gap-2 align-items-center mt-3">
+                    <input type="date" name="week_start" class="form-control form-control-sm" style="max-width:180px;" required>
+                    <span class="text-muted" style="font-size:12px;">Week start date</span>
+                </div>
+
+                <button type="submit" class="btn btn-sm fw-semibold ms-auto mt-3 align-self-start"
+                    style="background:#ff6b2c;color:#fff;border-radius:8px;padding:8px 18px;">
+                    <i class="fa-solid fa-paper-plane me-1"></i> Submit Report
+                </button>
+            </div>
+        </form>
+
+        <!-- SUBMITTED REPORTS LIST -->
+        <h6 class="fw-bold mb-2" style="font-size:14px;">Your Submitted Reports</h6>
+        <div class="card  shadow-sm rounded-3" style="overflow:hidden; border:1px solid #e5e7eb;">
+            <table class="w-100" style="font-size:13px; border-collapse:collapse;">
+                <thead style="background:#f8f9fa;">
+                    <tr>
+                        <th class="p-3 text-start">Week Of</th>
+                        <th class="p-3 text-start">Submitted</th>
+                        <th class="p-3 text-start">Status</th>
+                        <th class="p-3 text-start">File</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    // Placeholder data — swap for real query once ready
+                    $reports = [
+                        ['week_start' => '2026-08-04', 'submitted_at' => '2026-08-10', 'status' => 'approved', 'filename' => 'week1-report.pdf'],
+                        ['week_start' => '2026-07-28', 'submitted_at' => '2026-08-03', 'status' => 'pending', 'filename' => 'week0-report.docx'],
+                    ];
+                    ?>
+                    <?php if (empty($reports)): ?>
+                        <tr><td colspan="4" class="text-center text-muted p-4">No reports submitted yet.</td></tr>
+                    <?php else: ?>
+                        <?php foreach ($reports as $r): ?>
+                            <tr style="border-top:1px solid #f0f0f0;">
+                                <td class="p-3"><?= date('M d, Y', strtotime($r['week_start'])) ?></td>
+                                <td class="p-3"><?= date('M d, Y', strtotime($r['submitted_at'])) ?></td>
+                                <td class="p-3">
+                                    <span style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;
+                                        background:<?= $r['status'] === 'approved' ? '#f0fdf4' : '#fffbeb' ?>;
+                                        color:<?= $r['status'] === 'approved' ? '#065f46' : '#92400e' ?>;">
+                                        <?= ucfirst($r['status']) ?>
+                                    </span>
+                                </td>
+                                <td class="p-3">
+                                    <i class="fa-solid fa-file-lines me-1" style="color:#888;"></i>
+                                    <?= htmlspecialchars($r['filename']) ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
     </div>
 
     <!-- ===== OJT COMPLETION EVALUATION MODAL ===== -->
@@ -3463,6 +3580,27 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                 el.style.display = (el.dataset.rcname || '').includes(q) ? '' : 'none';
             });
         }
+
+        function prShowFileName(input) {
+            const nameEl = document.getElementById('prFileName');
+            nameEl.textContent = input.files.length ? '✓ ' + input.files[0].name : '';
+        }
+
+        // drag-and-drop visual support
+        (function() {
+            const dz = document.getElementById('prDropZone');
+            const input = document.getElementById('prFileInput');
+            if (!dz || !input) return;
+            ['dragover', 'dragleave', 'drop'].forEach(evt => {
+                dz.addEventListener(evt, e => e.preventDefault());
+            });
+            dz.addEventListener('drop', e => {
+                if (e.dataTransfer.files.length) {
+                    input.files = e.dataTransfer.files;
+                    prShowFileName(input);
+                }
+            });
+        })();
 
         /* ── auto-scroll to bottom ── */
         (function () {

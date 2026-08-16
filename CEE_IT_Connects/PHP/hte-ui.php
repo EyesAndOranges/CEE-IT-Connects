@@ -312,6 +312,14 @@ foreach ($roomStatuses as $s) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
+
+        /* * {
+            outline: 1px solid red !important;
+        }
+        html, body {
+            overflow: visible !important;
+            height: auto !important;
+        } */
         body {
             background-color: #f0f2f7;
             margin: 0;

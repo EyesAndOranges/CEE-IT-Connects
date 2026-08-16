@@ -162,14 +162,44 @@ if (isset($_POST['reset_password'])) {
             <?php if (isset($error))
                 echo "<div class='alert alert-danger'>$error</div>"; ?>
 
-            <form method="POST">
+            <form method="POST" id="resetForm">
                 <input type="hidden" name="email" value="<?php echo htmlspecialchars($_GET['email']); ?>">
-                <input type="password" name="new_password" pattern="^(?=.*[a-z])(?=.*[A-Z]).{8,16}$"
-                    class="form-control mb-3" placeholder="New Password" required>
-                <input type="password" name="confirm_password" class="form-control mb-3" placeholder="Confirm Password"
-                    required>
+                <input type="password" name="new_password" id="newPassword"
+                    pattern="^(?=.*[a-z])(?=.*[A-Z]).{8,16}$"
+                    class="form-control mb-1" placeholder="New Password" required
+                    oninput="this.setCustomValidity('')"
+                    oninvalid="this.setCustomValidity('Password must be 8–16 characters and include at least one uppercase and one lowercase letter.')">
+                <div class="text-muted mb-2" style="font-size:12px;">
+                    Must be 8–16 characters, with at least 1 uppercase and 1 lowercase letter.
+                </div>
+
+                <input type="password" name="confirm_password" id="confirmPassword"
+                    class="form-control mb-1" placeholder="Confirm Password" required
+                    oninput="this.setCustomValidity('')">
+                <div id="confirmError" class="text-danger mb-2" style="font-size:12px; display:none;">
+                    Passwords do not match.
+                </div>
+
                 <button name="reset_password" class="btn btn-success w-100">Reset Password</button>
             </form>
+
+            <script>
+            document.getElementById('resetForm').addEventListener('submit', function (e) {
+                const pass = document.getElementById('newPassword');
+                const confirm = document.getElementById('confirmPassword');
+                const confirmError = document.getElementById('confirmError');
+
+                confirmError.style.display = 'none';
+                confirm.setCustomValidity('');
+
+                if (pass.value !== confirm.value) {
+                    e.preventDefault();
+                    confirm.setCustomValidity('Passwords do not match.');
+                    confirmError.style.display = 'block';
+                    confirm.reportValidity();
+                }
+            });
+            </script>
 
         <?php else: ?>
 

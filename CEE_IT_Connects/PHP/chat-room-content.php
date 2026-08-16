@@ -605,8 +605,33 @@ $backLink = getDashboardByRole($_SESSION['role']);
             cursor: not-allowed;
         }
 
+        .circle-progress {
+            --pct: 0;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: conic-gradient(#fff calc(var(--pct) * 1%), rgba(255,255,255,0.3) 0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 0 6px auto;
+        }
+
+        .circle-progress span {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: #d63ba5;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         /*susu - DESKTOP CHAT SCROLL*/
-        @media (min-width: 769px) {
+        /* @media (min-width: 769px) {
 
             html,
             body {
@@ -638,7 +663,7 @@ $backLink = getDashboardByRole($_SESSION['role']);
                 flex-shrink: 0;
                 background: #ffffff;
             }
-        }
+        } */
 
         @media (max-width: 768px) {
             #roomChatBackBar {
@@ -714,14 +739,12 @@ $backLink = getDashboardByRole($_SESSION['role']);
             ?>
             <div class="text-end">
 
-                <div class="progress-bar-bg mb-1">
-                    <div class="progress-bar-fill" style="width: <?= $progressWidth ?>%;">
+                <div class="text-end">
+                    <div class="circle-progress" style="--pct: <?= $progressWidth ?>;">
+                        <span><?= $progressWidth ?>%</span>
                     </div>
-                </div>
-
-                <small>
                     <small><?= $status['total_hours'] ?> / <?= $requiredHours ?> hours</small>
-                </small>
+                </div>
             </div>
         <?php endif; ?>
     <?php endif; ?>

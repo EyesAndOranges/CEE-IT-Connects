@@ -369,11 +369,10 @@ body,html{
 
 /* ABOUT US */
 .about-section{
-    background: linear-gradient(135deg, #eea620 0%, #e34d20 100%);
+    /* background: linear-gradient(135deg, #eea620 0%, #e34d20 100%); */
     padding: 50px 0 0 0;
     position: relative;
     overflow: hidden;
-    color: #fff;
 }
 
 /* about section before and after removed */
@@ -383,15 +382,19 @@ body,html{
     font-size:3rem;
     margin-bottom:25px;
     text-shadow:1px 2px 5px rgba(227, 83, 0, 0.807);
+    color: #fff;
 }
 
 .about-text{
-    max-width:850px;
+    max-width:1000px;
     margin:0 auto 50px auto;
-    font-size:1.1rem;
+    /* font-size:1.1rem; */
     line-height:1.8;
     text-shadow:0px 1px 4px rgba(0,0,0,0.2);
     text-align: justify;
+    color: var(--primary-dark-blue);
+    font-weight: 700;
+    font-size: 1.5rem;
 }
 
 .about-info-bar{
