@@ -24,39 +24,67 @@ if (!$current_room_id && $_SESSION['role'] === 'student') {
 }
 
 // for the application section
-$bookmarksStmt = $pdo->prepare("
-    SELECT 
-        ib.id AS bookmark_id,
-        ib.internship_id,
-        ib.created_at,
-        i.title,
-        i.company,
-        i.location,
-        i.program,
-        i.deadline,
-        i.internship_type,
-        CASE
-            WHEN sp_ojt.is_done = TRUE  THEN 'Internship Confirmed'
-            WHEN sp_doc.is_done = TRUE  THEN 'Documents Submitted'
-            WHEN sp_app.is_done = TRUE  THEN 'Application Submitted'
-            WHEN sd.student_id IS NOT NULL THEN 'Resume Uploaded'
-            ELSE 'No Progress'
-        END AS current_phase
-    FROM internship_bookmarks ib
-    JOIN internships i ON i.id = ib.internship_id
-    LEFT JOIN student_documents sd 
-        ON sd.student_id = ib.student_id
-    LEFT JOIN student_progress sp_app 
-        ON sp_app.student_id = ib.student_id AND sp_app.step_key = 'application'
-    LEFT JOIN student_progress sp_doc 
-        ON sp_doc.student_id = ib.student_id AND sp_doc.step_key = 'documents'
-    LEFT JOIN student_progress sp_ojt 
-        ON sp_ojt.student_id = ib.student_id AND sp_ojt.step_key = 'ojt_accepted'
-    WHERE ib.student_id = ?
-    ORDER BY ib.created_at DESC
+// $bookmarksStmt = $pdo->prepare("
+//     SELECT 
+//         ib.id AS bookmark_id,
+//         ib.internship_id,
+//         ib.created_at,
+//         i.title,
+//         i.company,
+//         i.location,
+//         i.program,
+//         i.deadline,
+//         i.internship_type,
+//         CASE
+//             WHEN sp_ojt.is_done = TRUE  THEN 'Internship Confirmed'
+//             WHEN sp_doc.is_done = TRUE  THEN 'Documents Submitted'
+//             WHEN sp_app.is_done = TRUE  THEN 'Application Submitted'
+//             WHEN sd.student_id IS NOT NULL THEN 'Resume Uploaded'
+//             ELSE 'No Progress'
+//         END AS current_phase
+//     FROM internship_bookmarks ib
+//     JOIN internships i ON i.id = ib.internship_id
+//     LEFT JOIN student_documents sd 
+//         ON sd.student_id = ib.student_id
+//     LEFT JOIN student_progress sp_app 
+//         ON sp_app.student_id = ib.student_id AND sp_app.step_key = 'application'
+//     LEFT JOIN student_progress sp_doc 
+//         ON sp_doc.student_id = ib.student_id AND sp_doc.step_key = 'documents'
+//     LEFT JOIN student_progress sp_ojt 
+//         ON sp_ojt.student_id = ib.student_id AND sp_ojt.step_key = 'ojt_accepted'
+//     WHERE ib.student_id = ?
+//     ORDER BY ib.created_at DESC
+// ");
+// $bookmarksStmt->execute([$_SESSION['user_id']]);
+// $bookmarkedInternships = $bookmarksStmt->fetchAll(PDO::FETCH_ASSOC);
+
+//for the applications list
+$application_internship_id = null;
+
+$stmt = $pdo->prepare("
+    SELECT internship_id
+    FROM ojt_applications
+    WHERE student_id = ?
+    ORDER BY id DESC
+    LIMIT 1
 ");
-$bookmarksStmt->execute([$_SESSION['user_id']]);
-$bookmarkedInternships = $bookmarksStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$stmt->execute([$_SESSION['user_id']]);
+
+$application = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if ($application) {
+    $application_internship_id = $application['internship_id'];
+}
+
+//to get all the available co.
+$stmt = $pdo->query("
+    SELECT id, company, title
+    FROM internships
+    ORDER BY company ASC
+");
+
+$availableInternships = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // for rooms (only used by advisers now)
 $stmt = $pdo->prepare("
@@ -390,8 +418,8 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
             width: 240px;
             background: #fff;
             position: fixed;
-            top:70px;
-            bottom:0;
+            top: 70px;
+            bottom: 0;
             padding: 20px;
             border-right: 1px solid #ddd;
             overflow-y: auto;
@@ -1917,11 +1945,11 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
     <div id="chats" class="section <?= $current_section === 'chats' ? 'active' : '' ?>">
         <div class="main">
             <div class="rc-wrap">
-
                 <!-- ── LEFT: contact list ── -->
                 <div class="rc-list" id="rcList">
 
                     <div class="rc-list-head">
+
                         <h5><i class="fa-solid fa-comments me-2" style="color:#ff6b2c;"></i>Chats</h5>
                         <div class="rc-search">
                             <i class="fa-solid fa-magnifying-glass"></i>
@@ -2167,85 +2195,121 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
     <!-- APPLICATION SECTION -->
     <div id="application" class="section <?= $current_section === 'application' ? 'active' : '' ?>">
         <div class="main">
-            <h3 class="fw-bold mb-4">My Applications</h3>
+            <?php if ($application_internship_id): ?>
 
-            <?php if (empty($bookmarkedInternships)): ?>
-                <div class="text-center text-muted py-5">
-                    <i class="fa fa-bookmark fa-2x mb-3 d-block"></i>
-                    You haven't expressed interest in any internship yet.<br>
-                    <a href="applied-Internship-programs.php" class="btn btn-sm btn-warning mt-3">
-                        Browse Internships
-                    </a>
-                </div>
+                <?php
+                $internship_id = $application_internship_id;
+                include 'application-progress.php';
+                ?>
+
             <?php else: ?>
-                <div class="row g-3">
-                    <?php foreach ($bookmarkedInternships as $b):
-                        $phaseColors = [
-                            'Internship Confirmed' => ['bg' => '#d1fae5', 'color' => '#065f46'],
-                            'Documents Submitted' => ['bg' => '#dbeafe', 'color' => '#1e40af'],
-                            'Application Submitted' => ['bg' => '#fef9c3', 'color' => '#854d0e'],
-                            'Resume Uploaded' => ['bg' => '#fce7f3', 'color' => '#9d174d'],
-                            'No Progress' => ['bg' => '#f3f4f6', 'color' => '#6b7280'],
-                        ];
-                        $pc = $phaseColors[$b['current_phase']] ?? ['bg' => '#f3f4f6', 'color' => '#6b7280'];
-                        ?>
-                        <div class="col-md-6 col-lg-4">
-                            <div class="card border-0 shadow-sm rounded-4 h-100">
-                                <div class="card-body d-flex flex-column gap-2 p-4">
-                                    <h6 class="fw-bold mb-0" style="color:#272f54;">
-                                        <?= htmlspecialchars($b['title']) ?>
-                                    </h6>
-                                    <p class="text-muted mb-0" style="font-size:13px;">
-                                        <i class="fa fa-building me-1"></i>
-                                        <?= htmlspecialchars($b['company']) ?>
-                                    </p>
-                                    <?php if (!empty($b['location'])): ?>
-                                        <p class="text-muted mb-0" style="font-size:12px;">
-                                            <i class="fa fa-map-marker-alt me-1"></i>
-                                            <?= htmlspecialchars($b['location']) ?>
-                                        </p>
-                                    <?php endif; ?>
-                                    <?php if (!empty($b['program'])): ?>
-                                        <p class="text-muted mb-0" style="font-size:12px;">
-                                            <i class="fa fa-graduation-cap me-1"></i>
-                                            <?= htmlspecialchars($b['program']) ?>
-                                        </p>
-                                    <?php endif; ?>
-                                    <?php if (!empty($b['deadline'])): ?>
-                                        <p class="text-muted mb-0" style="font-size:12px;">
-                                            <i class="fa fa-calendar me-1"></i>
-                                            Deadline: <?= htmlspecialchars($b['deadline']) ?>
-                                        </p>
-                                    <?php endif; ?>
-                                    <div class="mt-1">
-                                        <span style="background:<?= $pc['bg'] ?>; color:<?= $pc['color'] ?>;
-                                            padding:3px 12px; border-radius:99px; font-size:11px; font-weight:600;">
-                                            <?= htmlspecialchars($b['current_phase']) ?>
-                                        </span>
-                                    </div>
-                                    <p class="text-muted mb-0 mt-auto" style="font-size:11px;">
-                                        Interested since <?= date("M d, Y", strtotime($b['created_at'])) ?>
-                                    </p>
-                                    <a href="application-progress.php?internship_id=<?= $b['internship_id'] ?>"
-                                        class="btn btn-sm fw-semibold mt-2"
-                                        style="background:#272f54; color:white; border-radius:8px;">
-                                        <i class="fa fa-arrow-right me-1"></i> Open
-                                    </a>
-                                    <form action="student-progress.php" method="POST">
-                                        <input type="hidden" name="action" value="cancel_application">
-                                        <input type="hidden" name="bookmark_id"
-                                            value="<?= $selectedInternship['bookmark_id'] ?? '' ?>">
-                                        <button type="submit" class="btn-action btn-outline-action"
-                                            onclick="return confirm('Cancel this application and reset your progress?')">
-                                            <i class="fa fa-xmark"></i> Cancel Application
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
+
+                <!-- HTE NOTICE -->
+                <div class="card border-0 shadow-sm rounded-4 mb-3">
+                    <div class="card-body p-4 d-flex align-items-start gap-3">
+
+                        <div class="fs-3" style="color:#272f54;">
+                            <i class="fa fa-info-circle"></i>
                         </div>
-                    <?php endforeach; ?>
+
+                        <div class="flex-grow-1">
+
+                            <h6 class="fw-bold mb-1" style="color:#272f54;">
+                                Before you choose a company
+                            </h6>
+
+                            <p class="text-muted mb-2 small">
+                                Please fill out the Host Training Establishment (HTE) form first.
+                                This is also where you go if your company is
+                                <strong>not on the list below</strong>, for example, if it's a new
+                                partner company that hasn't been added yet.
+                            </p>
+
+                            <a href="https://docs.google.com/forms/d/e/1FAIpQLSdKZ4TbEup2aH6AG5CgATeTcIotCjITlqlWF5VMiTHNrtJyRw/alreadyresponded?pli=1&pli=1"
+                                target="blank" class="btn btn-sm fw-semibold" style="
+                        background:#272f54;
+                        color:white;
+                        border-radius:8px;
+                    ">
+                                <i class="fa fa-file-lines me-1"></i>
+                                Go to HTE Form
+                            </a>
+
+                        </div>
+
+                    </div>
                 </div>
+
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-4">
+
+                        <h4 class="fw-bold mb-2" style="color:#272f54;">
+                            Apply for an Internship
+                        </h4>
+
+                        <p class="text-muted mb-4">
+                            Select an internship below to open your checklist.
+                        </p>
+
+                        <form action="student-progress.php" method="POST">
+
+                            <input type="hidden" name="action" value="apply_internship">
+
+                            <div class="row align-items-end g-3">
+
+                                <!-- Internship -->
+                                <div class="col-md-9">
+
+                                    <label for="internship_id" class="form-label fw-semibold">
+                                        Select Internship
+                                    </label>
+
+                                    <select name="internship_id" id="internship_id" class="form-select" required>
+
+                                        <option value="" selected disabled>
+                                            Select an internship
+                                        </option>
+
+                                        <?php foreach ($availableInternships as $internship): ?>
+
+                                            <option value="<?= htmlspecialchars($internship['id']) ?>">
+                                                <?= htmlspecialchars($internship['company']) ?>
+                                                <?php if (!empty($internship['title'])): ?>
+                                                    — <?= htmlspecialchars($internship['title']) ?>
+                                                <?php endif; ?>
+                                            </option>
+
+                                        <?php endforeach; ?>
+
+                                    </select>
+
+                                </div>
+
+                                <!-- Apply -->
+                                <div class="col-md-3">
+
+                                    <button type="submit" class="btn w-100 fw-semibold" style="
+                                            background:#272f54;
+                                            color:white;
+                                            border-radius:8px;
+                                        ">
+
+                                        <i class="fa fa-paper-plane me-1"></i>
+                                        Choose
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </form>
+
+                    </div>
+                </div>
+
             <?php endif; ?>
+
         </div>
     </div>
 
@@ -2311,22 +2375,19 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                 <!-- Summary Cards -->
                 <div class="row g-2 mb-2" style="margin-top:4px;">
                     <div class="col-md-4">
-                        <div
-                            style="border:2px solid #ababab; border-radius:8px; padding:1rem; margin-right:5px;">
+                        <div style="border:2px solid #ababab; border-radius:8px; padding:1rem; margin-right:5px;">
                             <div style="letter-spacing:.05em; color:#29335C;">MONTHLY OJT HOURS</div>
                             <div id="ojt-sum-monthly" style="font-size:20px; font-weight:500; color:#29335C;">0h 0m</div>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div
-                            style="border:2px solid #ababab; border-radius:8px; padding:1rem; margin:0 5px;">
+                        <div style="border:2px solid #ababab; border-radius:8px; padding:1rem; margin:0 5px;">
                             <div style="letter-spacing:.05em; color:#29335C;">HOURS COMPLETED</div>
                             <div id="ojt-sum-completed" style="font-size:20px; font-weight:500; color:#29335C;">0h 0m</div>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div
-                            style="border:2px solid #ababab; border-radius:8px; padding:1rem; margin-left:5px;">
+                        <div style="border:2px solid #ababab; border-radius:8px; padding:1rem; margin-left:5px;">
                             <div style="letter-spacing:.05em; color:#29335C;">REMAINING HOURS</div>
                             <div id="ojt-sum-remaining" style="font-size:20px; font-weight:500; color:#29335C;">
                                 <?= $requiredHours ?>h 0m
@@ -2539,107 +2600,126 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
     </div>
 
     <!-- PROGRESS REPORT SECTION -->
-     
+
     <div class="section <?= $current_section === 'progress_report' ? 'active' : '' ?>">
-    <div class="main" style="padding-bottom:60px;">
-        <h3 class="fw-bold mb-1">Weekly Progress Report</h3>
-        <p class="text-muted mb-4">Upload your filled-out weekly report, or download the blank template below.</p>
+        <div class="main" style="padding-bottom:60px;">
+            <h3 class="fw-bold mb-1">Weekly Progress Report</h3>
+            <p class="text-muted mb-4">Upload your filled-out weekly report, or download the blank template below.</p>
 
-        <!-- TEMPLATE DOWNLOAD -->
-        <div class="card shadow-sm rounded-3 p-3 mb-3 d-flex flex-row align-items-center justify-content-between"style="border:1px solid #e5e7eb;">
-            <div class="d-flex align-items-center gap-3">
-                <div style="width:42px;height:42px;border-radius:10px;background:#fde3d8;display:flex;align-items:center;justify-content:center;">
-                    <i class="fa-solid fa-file-lines" style="color:#ff6b2c;"></i>
+            <!-- TEMPLATE DOWNLOAD -->
+            <div class="card shadow-sm rounded-3 p-3 mb-3 d-flex flex-row align-items-center justify-content-between"
+                style="border:1px solid #e5e7eb;">
+                <div class="d-flex align-items-center gap-3">
+                    <div
+                        style="width:42px;height:42px;border-radius:10px;background:#fde3d8;display:flex;align-items:center;justify-content:center;">
+                        <i class="fa-solid fa-file-lines" style="color:#ff6b2c;"></i>
+                    </div>
+                    <div>
+                        <strong style="font-size:14px;">Weekly Report Template</strong>
+                        <div class="text-muted" style="font-size:12px;">DOCX · Download and fill out before uploading
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <strong style="font-size:14px;">Weekly Report Template</strong>
-                    <div class="text-muted" style="font-size:12px;">DOCX · Download and fill out before uploading</div>
-                </div>
+                <a href="../Sources/weekly-report-template.docx" download class="btn btn-sm fw-semibold"
+                    style="background:#272f54;color:#fff;border-radius:8px;">
+                    <i class="fa-solid fa-download me-1"></i> Download
+                </a>
             </div>
-            <a href="../Sources/weekly-report-template.docx" download
-                class="btn btn-sm fw-semibold"
-                style="background:#272f54;color:#fff;border-radius:8px;">
-                <i class="fa-solid fa-download me-1"></i> Download
-            </a>
-        </div>
 
-        <!-- UPLOAD FORM -->
-        <form method="POST" action="progress-report-db.php" enctype="multipart/form-data">
-            <input type="hidden" name="room_id" value="<?= $current_room_id ?>">
+            <!-- UPLOAD FORM -->
+            <form method="POST" action="progress-report-db.php" enctype="multipart/form-data">
+                <input type="hidden" name="room_id" value="<?= htmlspecialchars($current_room_id ?? '') ?>">
 
-            <div class="card shadow-sm rounded-3 p-4 mb-3" style="border:1px solid #e5e7eb;">
-                <label id="prDropZone" for="prFileInput" style="
-                    border: 2px dashed #ddd;
-                    border-radius: 12px;
-                    padding: 32px;
-                    text-align: center;
-                    cursor: pointer;
-                    display: block;
-                    transition: border-color .2s, background .2s;">
-                    <i class="fa-solid fa-cloud-arrow-up fa-2x mb-2" style="color:#ff6b2c;"></i>
-                    <div style="font-weight:600; font-size:14px;">Click to upload or drag and drop</div>
-                    <div class="text-muted" style="font-size:12px;">PDF or DOCX, up to 10MB</div>
-                    <div id="prFileName" style="margin-top:10px; font-size:13px; color:#272f54; font-weight:600;"></div>
-                </label>
-                <input type="file" id="prFileInput" name="report_file" accept=".pdf,.doc,.docx" style="display:none;" required onchange="prShowFileName(this)">
+                <div class="card shadow-sm rounded-3 p-4 mb-3" style="border:1px solid #e5e7eb;">
+                    <div class="d-flex gap-2 align-items-center mt-3">
+                        <span style="font-size:15px; font-weight: bold;">Week number</span>
+                        <input type="number" name="week_number" class="form-control form-control-sm"
+                            style="max-width:120px;" min="1" max="52" placeholder="e.g. 1" required>
 
-                <div class="d-flex gap-2 align-items-center mt-3">
-                    <input type="date" name="week_start" class="form-control form-control-sm" style="max-width:180px;" required>
-                    <span class="text-muted" style="font-size:12px;">Week start date</span>
+                    </div>
+                    <br>
+                    <label id="prDropZone" for="prFileInput" style="
+                border: 2px dashed #ddd;
+                border-radius: 12px;
+                padding: 32px;
+                text-align: center;
+                cursor: pointer;
+                display: block;
+                transition: border-color .2s, background .2s;">
+                        <i class="fa-solid fa-cloud-arrow-up fa-2x mb-2" style="color:#ff6b2c;"></i>
+                        <div style="font-weight:600; font-size:14px;">Click to upload or drag and drop</div>
+                        <div class="text-muted" style="font-size:12px;">PDF or DOCX, up to 10MB</div>
+                        <div id="prFileName" style="margin-top:10px; font-size:13px; color:#272f54; font-weight:600;">
+                        </div>
+                    </label>
+                    <input type="file" id="prFileInput" name="report_file" accept=".pdf,.doc,.docx"
+                        style="display:none;" required onchange="prShowFileName(this)">
+
+                    <button type="submit" class="btn btn-sm fw-semibold ms-auto mt-3 align-self-start"
+                        style="background:#ff6b2c;color:#fff;border-radius:8px;padding:8px 18px;">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Submit Report
+                    </button>
                 </div>
+            </form>
 
-                <button type="submit" class="btn btn-sm fw-semibold ms-auto mt-3 align-self-start"
-                    style="background:#ff6b2c;color:#fff;border-radius:8px;padding:8px 18px;">
-                    <i class="fa-solid fa-paper-plane me-1"></i> Submit Report
-                </button>
-            </div>
-        </form>
-
-        <!-- SUBMITTED REPORTS LIST -->
-        <h6 class="fw-bold mb-2" style="font-size:14px;">Your Submitted Reports</h6>
-        <div class="card  shadow-sm rounded-3" style="overflow:hidden; border:1px solid #e5e7eb;">
-            <table class="w-100" style="font-size:13px; border-collapse:collapse;">
-                <thead style="background:#f8f9fa;">
-                    <tr>
-                        <th class="p-3 text-start">Week Of</th>
-                        <th class="p-3 text-start">Submitted</th>
-                        <th class="p-3 text-start">Status</th>
-                        <th class="p-3 text-start">File</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    // Placeholder data — swap for real query once ready
-                    $reports = [
-                        ['week_start' => '2026-08-04', 'submitted_at' => '2026-08-10', 'status' => 'approved', 'filename' => 'week1-report.pdf'],
-                        ['week_start' => '2026-07-28', 'submitted_at' => '2026-08-03', 'status' => 'pending', 'filename' => 'week0-report.docx'],
-                    ];
-                    ?>
-                    <?php if (empty($reports)): ?>
-                        <tr><td colspan="4" class="text-center text-muted p-4">No reports submitted yet.</td></tr>
-                    <?php else: ?>
-                        <?php foreach ($reports as $r): ?>
-                            <tr style="border-top:1px solid #f0f0f0;">
-                                <td class="p-3"><?= date('M d, Y', strtotime($r['week_start'])) ?></td>
-                                <td class="p-3"><?= date('M d, Y', strtotime($r['submitted_at'])) ?></td>
-                                <td class="p-3">
-                                    <span style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;
-                                        background:<?= $r['status'] === 'approved' ? '#f0fdf4' : '#fffbeb' ?>;
-                                        color:<?= $r['status'] === 'approved' ? '#065f46' : '#92400e' ?>;">
-                                        <?= ucfirst($r['status']) ?>
-                                    </span>
-                                </td>
-                                <td class="p-3">
-                                    <i class="fa-solid fa-file-lines me-1" style="color:#888;"></i>
-                                    <?= htmlspecialchars($r['filename']) ?>
-                                </td>
+            <!-- SUBMITTED REPORTS LIST -->
+            <h6 class="fw-bold mb-2" style="font-size:14px;">Your Submitted Reports</h6>
+            <div class="card  shadow-sm rounded-3" style="overflow:hidden; border:1px solid #e5e7eb;">
+                <table class="w-100" style="font-size:13px; border-collapse:collapse;">
+                    <thead style="background:#f8f9fa;">
+                        <tr>
+                            <th class="p-3 text-start">Week</th>
+                            <th class="p-3 text-start">Submitted</th>
+                            <th class="p-3 text-start">File</th>
+                            <th class="p-3 text-start">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $reportsStmt = $pdo->prepare("
+                        SELECT id, week_number, wr_filepath, created_at
+                        FROM weekly_reports
+                        WHERE student_id = ?
+                        ORDER BY week_number DESC
+                    ");
+                        $reportsStmt->execute([$student_id]);
+                        $reports = $reportsStmt->fetchAll(PDO::FETCH_ASSOC);
+                        ?>
+                        <?php if (empty($reports)): ?>
+                            <tr>
+                                <td colspan="4" class="text-center text-muted p-4">No reports submitted yet.</td>
                             </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                        <?php else: ?>
+                            <?php foreach ($reports as $r): ?>
+                                <tr style="border-top:1px solid #f0f0f0;">
+                                    <td class="p-3">Week <?= (int) $r['week_number'] ?></td>
+                                    <td class="p-3"><?= date('M d, Y', strtotime($r['created_at'])) ?></td>
+                                    <td class="p-3">
+                                        <i class="fa-solid fa-file-lines me-1" style="color:#888;"></i>
+                                        <?= htmlspecialchars(basename($r['wr_filepath'])) ?>
+                                    </td>
+                                    <td class="p-3">
+                                        <a href="<?= htmlspecialchars($r['wr_filepath']) ?>" target="_blank" class="btn btn-sm"
+                                            style="background:#eef2ff;color:#272f54;border-radius:6px;">
+                                            <i class="fa-solid fa-eye me-1"></i> Preview
+                                        </a>
+                                        <form action="student-progress.php" method="POST" style="display:inline;"
+                                            onsubmit="return confirm('Are you sure?')">
+                                            <input type="hidden" name="action" value="delete-weekly-report">
+                                            <input type="hidden" name="report_id" value="<?= (int) $r['id'] ?>">
+                                            <button type="submit" class="btn btn-sm"
+                                                style="background:#fef2f2;color:#dc2626;border-radius:6px;">
+                                                <i class="fa-solid fa-trash " me-1></i>Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
     </div>
 
     <!-- ===== OJT COMPLETION EVALUATION MODAL ===== -->
@@ -3587,7 +3667,7 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
         }
 
         // drag-and-drop visual support
-        (function() {
+        (function () {
             const dz = document.getElementById('prDropZone');
             const input = document.getElementById('prFileInput');
             if (!dz || !input) return;
@@ -3632,10 +3712,10 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
         /* On mobile with a chat already open, slide list away immediately */
         (function () {
             <?php if ($chatSection_id && $current_section === 'chats'): ?>
-                    if (window.innerWidth <= 768) {
-                        const list = document.getElementById('rcList');
-                        if (list) list.classList.add('slide-out');
-                    }
+                if (window.innerWidth <= 768) {
+                    const list = document.getElementById('rcList');
+                    if (list) list.classList.add('slide-out');
+                }
             <?php endif; ?>
         })();
     </script>

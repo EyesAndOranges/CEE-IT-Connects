@@ -17,6 +17,7 @@ function getUserType($role)
         'student' => 'student',
         'internship_adviser' => 'adviser',
         'hte adviser' => 'adviser',
+        'hte_adviser' => 'adviser',
         'adviser' => 'adviser',
         'internship_admin' => 'admin',
         'superadmin' => 'admin'

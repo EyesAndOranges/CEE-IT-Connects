@@ -1019,7 +1019,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </div>
 
                                 <hr>
-                                <p class="details-section-title">Application Documents</p>
+                                <!-- <p class="details-section-title">Application Documents</p>
 
                                 <div class="file-row">
                                     <span class="file-name">Memorandum of Understanding (MOU)</span>
@@ -1049,7 +1049,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <a href="download-mou.php?id=<?= $internship['id'] ?>&action=waiver"
                                             class="btn-dl">Download PDF</a>
                                     </div>
-                                </div>
+                                </div> -->
 
                             </div>
                         </div>

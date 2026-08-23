@@ -1,207 +1,532 @@
 <?php
+
 require 'auth.php';
 require 'db.php';
 
-$student_id = (int) $_SESSION['user_id'];
+$student_id = (int) ($_SESSION['user_id'] ?? 0);
+$current_room_id = $_GET['room_id'] ?? null;
+if (!$student_id) {
+    $_SESSION['error'] = 'You must be logged in.';
+    header('Location: login-ui.php');
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: application-progress.php');
+    header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
     exit;
 }
 
 $action = $_POST['action'] ?? '';
 
-if ($action === 'mark_step') {
-    $step_key = $_POST['step_key'] ?? '';
+if ($action === 'apply_internship') {
+
+    $internship_id = (int) ($_POST['internship_id'] ?? 0);
+
+    if (!$internship_id) {
+        $_SESSION['error'] = 'Please select an internship.';
+        header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
+        exit;
+    }
+
+    // Check if student already has an application
+    $check = $pdo->prepare("
+        SELECT id
+        FROM ojt_applications
+        WHERE student_id = ?
+        LIMIT 1
+    ");
+
+    $check->execute([$student_id]);
+
+    if ($check->fetch()) {
+        $_SESSION['error'] = 'You already have an internship application.';
+        header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
+        exit;
+    }
+
+    // Get internship information
+    $stmt = $pdo->prepare("
+        SELECT id, company
+        FROM internships
+        WHERE id = ?
+        LIMIT 1
+    ");
+
+    $stmt->execute([$internship_id]);
+
+    $internship = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$internship) {
+        $_SESSION['error'] = 'Internship not found.';
+        header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
+        exit;
+    }
+
+    // Create application
+    $insert = $pdo->prepare("
+        INSERT INTO ojt_applications
+            (
+                student_id,
+                internship_id,
+                company_name,
+                submitted_at,
+                status
+            )
+        VALUES
+            (?, ?, ?, CURRENT_TIMESTAMP, 'pending')
+    ");
+
+    $insert->execute([
+        $student_id,
+        $internship_id,
+        $internship['company']
+    ]);
+
+    $_SESSION['success'] = 'Internship application submitted successfully.';
+
+    header("Location: message.php?section=application");
+    exit;
+} elseif ($action === 'mark_step') {
+
+    $step_key = trim($_POST['step_key'] ?? '');
+    $internship_id = (int) ($_POST['internship_id'] ?? 0);
+
     $allowed_steps = [
         'medical_cert',
-        'hte_form',
-        'acceptance_letter',
         'company_profile',
         'addendum',
         'reco_letter',
         'waiver',
         'internship_plan',
         'vicinity_map',
-        'oath',
+        'oath'
     ];
 
-    if (!in_array($step_key, $allowed_steps)) {
-        $_SESSION['error'] = "Invalid step.";
-        header('Location: application-progress.php');
+    if (!in_array($step_key, $allowed_steps, true)) {
+
+        $_SESSION['error'] = 'Invalid step.';
+        header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
         exit;
     }
 
-    // ── Handle file upload ────────────────────────────────────────────────────
-    $file_path = null;
-    $allowed_types = ['image/jpeg', 'image/png', 'application/pdf'];
-
-    if (empty($_FILES['proof_file']['tmp_name'])) {
-        $_SESSION['error'] = "Please attach proof before marking as done.";
-        header('Location: application-progress.php');
-        exit;
-    }
-
-    $file = $_FILES['proof_file'];
-
-    if ($file['error'] !== UPLOAD_ERR_OK) {
-        $_SESSION['error'] = "Upload error. Please try again.";
-        header('Location: application-progress.php');
-        exit;
-    }
-
-    if (!in_array($file['type'], $allowed_types)) {
-        $_SESSION['error'] = "Only PNG, JPG, or PDF files are allowed.";
-        header('Location: application-progress.php');
-        exit;
-    }
-
-    if ($file['size'] > 5 * 1024 * 1024) {
-        $_SESSION['error'] = "File must be under 5MB.";
-        header('Location: application-progress.php');
-        exit;
-    }
-
-    $upload_dir = __DIR__ . '/uploads/checklist/';
-    if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0775, true);
-    }
-
-    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    $filename = $student_id . '_' . $step_key . '_' . time() . '.' . $ext;
-    $dest = $upload_dir . $filename;
-
-    if (!move_uploaded_file($file['tmp_name'], $dest)) {
-        $_SESSION['error'] = "Upload failed. Please try again.";
-        header('Location: application-progress.php');
-        exit;
-    }
-
-    $file_path = 'uploads/checklist/' . $filename;
-
-    // ── Upsert progress with file path ────────────────────────────────────────
-    $upsert = $pdo->prepare("
-        INSERT INTO student_progress (student_id, step_key, is_done, file_path, updated_at)
-        VALUES (:sid, :key, TRUE, :fp, NOW())
-        ON CONFLICT (student_id, step_key)
-        DO UPDATE SET
-            is_done    = TRUE,
-            file_path  = EXCLUDED.file_path,
-            updated_at = NOW()
+    // Verify this internship_id actually belongs to the student's application
+    $verify = $pdo->prepare("
+        SELECT id FROM ojt_applications
+        WHERE student_id = ? AND internship_id = ?
+        LIMIT 1
     ");
-    $upsert->execute([
-        ':sid' => $student_id,
-        ':key' => $step_key,
-        ':fp' => $file_path,
-    ]);
+    $verify->execute([$student_id, $internship_id]);
 
-    $_SESSION['success'] = "Step marked as complete.";
+    if (!$internship_id || !$verify->fetch()) {
 
-} elseif ($action === 'confirm_ojt') {
-    $company_name = trim($_POST['company_name'] ?? '');
-    if ($company_name !== '') {
-        $checkStmt = $pdo->prepare("
-            SELECT id, status FROM ojt_applications
-            WHERE student_id = ? AND internship_id = ?
+        $_SESSION['error'] = 'Invalid or mismatched internship.';
+        header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
+        exit;
+    }
+
+    $steps_without_proof = ['hte_form'];
+
+    if (!in_array($step_key, $steps_without_proof, true)) {
+
+        if (
+            !isset($_FILES['proof_file']) ||
+            empty($_FILES['proof_file']['tmp_name'])
+        ) {
+
+            $_SESSION['error'] = 'Please attach proof before marking as done.';
+            header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
+            exit;
+        }
+
+        $file = $_FILES['proof_file'];
+
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+
+            $_SESSION['error'] = 'Upload error. Please try again.';
+            header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
+            exit;
+        }
+
+        $max_size = 5 * 1024 * 1024; // 5 MB
+
+        if ($file['size'] > $max_size) {
+
+            $_SESSION['error'] = 'File must be under 5MB.';
+            header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
+            exit;
+        }
+
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime_type = $finfo->file($file['tmp_name']);
+
+        $allowed_types = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'application/pdf' => 'pdf'
+        ];
+
+        if (!isset($allowed_types[$mime_type])) {
+
+            $_SESSION['error'] = 'Only JPG, PNG, or PDF files are allowed.';
+            header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
+            exit;
+        }
+
+        $extension = $allowed_types[$mime_type];
+
+        $upload_dir = __DIR__ . '/uploads/checklist/';
+
+        if (!is_dir($upload_dir)) {
+
+            if (!mkdir($upload_dir, 0775, true)) {
+
+                $_SESSION['error'] = 'Unable to create upload directory.';
+                header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
+                exit;
+            }
+        }
+
+        $filename =
+            $student_id .
+            '_' .
+            $step_key .
+            '_' .
+            bin2hex(random_bytes(8)) .
+            '.' .
+            $extension;
+
+        $destination = $upload_dir . $filename;
+
+        if (!move_uploaded_file($file['tmp_name'], $destination)) {
+
+            $_SESSION['error'] = 'File upload failed. Please try again.';
+            header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
+            exit;
+        }
+
+        $file_path = 'uploads/checklist/' . $filename;
+
+    } else {
+
+        $file_path = null;
+    }
+
+    // save the student's progress
+    try {
+
+        $upsert = $pdo->prepare("
+            INSERT INTO student_progress
+                (
+                    student_id,
+                    internship_id,
+                    step_key,
+                    is_done,
+                    updated_at,
+                    file_path
+                )
+            VALUES
+                (
+                    :student_id,
+                    :internship_id,
+                    :step_key,
+                    TRUE,
+                    NOW(),
+                    :file_path
+                )
+
+            ON CONFLICT (student_id, internship_id, step_key)
+
+            DO UPDATE SET
+                is_done = TRUE,
+                updated_at = NOW(),
+                file_path = EXCLUDED.file_path
         ");
-        $checkStmt->execute([$student_id, $_POST['internship_id']]);
+
+        $upsert->execute([
+            ':student_id' => $student_id,
+            ':internship_id' => $internship_id,
+            ':step_key' => $step_key,
+            ':file_path' => $file_path
+        ]);
+
+        $_SESSION['success'] = 'Step marked as complete.';
+
+    } catch (PDOException $e) {
+
+        // Delete uploaded file if database operation fails
+        if (file_exists($destination)) {
+            unlink($destination);
+        }
+
+        $_SESSION['error'] = 'Unable to save progress. Please try again.';
+    }
+}
+
+
+// OJT Application
+elseif ($action === 'confirm_ojt') {
+
+    $company_name = trim($_POST['company_name'] ?? '');
+    $internship_id = (int) ($_POST['internship_id'] ?? 0);
+
+    if ($company_name === '') {
+
+        $_SESSION['error'] = 'Please enter your company name.';
+
+    } elseif (!$internship_id) {
+
+        $_SESSION['error'] = 'Invalid internship.';
+
+    } else {
+
+        $checkStmt = $pdo->prepare("
+            SELECT id, status
+            FROM ojt_applications
+            WHERE student_id = ?
+              AND internship_id = ?
+            LIMIT 1
+        ");
+
+        $checkStmt->execute([
+            $student_id,
+            $internship_id
+        ]);
+
         $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$existing) {
-            $insertStmt = $pdo->prepare("
-                INSERT INTO ojt_applications (student_id, internship_id, company_name)
-                VALUES (?, ?, ?)
-            ");
-            $insertStmt->execute([$student_id, $_POST['internship_id'], $company_name]);
-            $_SESSION['success'] = "Your OJT application has been submitted for adviser approval.";
-        } else {
-            $_SESSION['error'] = "You have already submitted an application (status: {$existing['status']}).";
-        }
-    } else {
-        $_SESSION['error'] = "Please enter your company name.";
-    }
 
-} elseif ($action === 'submit_hte_supervisor') {
+            $insertStmt = $pdo->prepare("
+                INSERT INTO ojt_applications
+                    (
+                        student_id,
+                        internship_id,
+                        company_name,
+                        submitted_at,
+                        status
+                    )
+                VALUES
+                    (
+                        ?,
+                        ?,
+                        ?,
+                        CURRENT_TIMESTAMP,
+                        'pending'
+                    )
+            ");
+
+            $insertStmt->execute([
+                $student_id,
+                $internship_id,
+                $company_name
+            ]);
+
+            $_SESSION['success'] =
+                'Your OJT application has been submitted for adviser approval.';
+
+        } else {
+
+            $_SESSION['error'] =
+                "You have already submitted an application " .
+                "(status: {$existing['status']}).";
+        }
+    }
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| SUBMIT HTE SUPERVISOR
+|--------------------------------------------------------------------------
+*/ elseif ($action === 'submit_hte_supervisor') {
+
     $full_name = trim($_POST['sup_full_name'] ?? '');
     $email = trim($_POST['sup_email'] ?? '');
     $contact = trim($_POST['sup_contact'] ?? '');
     $company = trim($_POST['sup_company'] ?? '');
     $int_id = (int) ($_POST['internship_id'] ?? 0);
 
-    if (!$full_name) {
-        $_SESSION['error'] = 'Supervisor full name is required.';
+    if ($full_name === '') {
+
+        $_SESSION['error'] =
+            'Supervisor full name is required.';
+
     } else {
-        $upsert = $pdo->prepare("
-            INSERT INTO student_hte_supervisor_submissions
-                (student_id, internship_id, full_name, email, contact_number, company_name, status)
-            VALUES (?, ?, ?, ?, ?, ?, 'pending')
-            ON CONFLICT (student_id) DO UPDATE SET
-                full_name      = EXCLUDED.full_name,
-                email          = EXCLUDED.email,
-                contact_number = EXCLUDED.contact_number,
-                company_name   = EXCLUDED.company_name,
-                status         = 'pending',
-                submitted_at   = NOW()
-        ");
-        $upsert->execute([$student_id, $int_id, $full_name, $email, $contact, $company]);
-        $_SESSION['success'] = 'Supervisor details submitted. Your coordinator will review shortly.';
+
+        try {
+
+            $upsert = $pdo->prepare("
+                INSERT INTO student_hte_supervisor_submissions
+                    (
+                        student_id,
+                        internship_id,
+                        full_name,
+                        email,
+                        contact_number,
+                        company_name,
+                        status
+                    )
+                VALUES
+                    (?, ?, ?, ?, ?, ?, 'pending')
+
+                ON CONFLICT (student_id)
+
+                DO UPDATE SET
+                    internship_id = EXCLUDED.internship_id,
+                    full_name = EXCLUDED.full_name,
+                    email = EXCLUDED.email,
+                    contact_number = EXCLUDED.contact_number,
+                    company_name = EXCLUDED.company_name,
+                    status = 'pending',
+                    submitted_at = NOW()
+            ");
+
+            $upsert->execute([
+                $student_id,
+                $int_id,
+                $full_name,
+                $email,
+                $contact,
+                $company
+            ]);
+
+            $_SESSION['success'] =
+                'Supervisor details submitted. Your coordinator will review shortly.';
+
+        } catch (PDOException $e) {
+
+            $_SESSION['error'] =
+                'Unable to submit supervisor details. Please try again.';
+        }
     }
+}
 
-} elseif ($action === 'cancel_application') {
-    $bookmark_id = (int) ($_POST['bookmark_id'] ?? 0);
 
-    $checkStmt = $pdo->prepare("
-        SELECT id FROM internship_bookmarks
-        WHERE id = ? AND student_id = ?
-    ");
-    $checkStmt->execute([$bookmark_id, $student_id]);
+// cancel Application
+elseif ($action === 'cancel_application') {
 
-    if (!$checkStmt->fetch()) {
-        $_SESSION['error'] = 'Bookmark not found.';
-        header('Location: application-progress.php');
+    $application_id = (int) ($_POST['application_id'] ?? 0);
+
+    if (!$application_id) {
+
+        $_SESSION['error'] = 'Invalid application.';
+        header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
         exit;
     }
 
-    $pdo->prepare("DELETE FROM internship_bookmarks WHERE id = ? AND student_id = ?")
-        ->execute([$bookmark_id, $student_id]);
-
-    // Delete uploaded proof files from disk before resetting progress
-    $filesStmt = $pdo->prepare("
-        SELECT file_path FROM student_progress
-        WHERE student_id = ?
-        AND step_key IN (
-            'hte_form', 'addendum', 'reco_letter', 'waiver',
-            'internship_plan', 'vicinity_map', 'oath', 'ojt_started'
-        )
-        AND file_path IS NOT NULL
+    $checkStmt = $pdo->prepare("
+        SELECT internship_id
+        FROM ojt_applications
+        WHERE id = ?
+          AND student_id = ?
+        LIMIT 1
     ");
-    $filesStmt->execute([$student_id]);
-    foreach ($filesStmt->fetchAll(PDO::FETCH_COLUMN) as $fp) {
-        $full = __DIR__ . '/' . $fp;
-        if (file_exists($full)) {
-            unlink($full);
-        }
+
+    $checkStmt->execute([
+        $application_id,
+        $student_id
+    ]);
+
+    $application_internship_id = $checkStmt->fetchColumn();
+
+    if ($application_internship_id === false) {
+
+        $_SESSION['error'] = 'Application not found.';
+        header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
+        exit;
     }
 
     $pdo->prepare("
-        DELETE FROM student_progress
+        DELETE FROM ojt_applications
+        WHERE id = ?
+          AND student_id = ?
+    ")->execute([
+                $application_id,
+                $student_id
+            ]);
+
+    if ($application_internship_id) {
+
+        $filesStmt = $pdo->prepare("
+            SELECT file_path
+            FROM student_progress
+            WHERE student_id = ?
+              AND internship_id = ?
+              AND file_path IS NOT NULL
+        ");
+        $filesStmt->execute([$student_id, $application_internship_id]);
+
+        foreach ($filesStmt->fetchAll(PDO::FETCH_COLUMN) as $file_path) {
+            $full_path = __DIR__ . '/' . $file_path;
+            if (is_file($full_path)) {
+                unlink($full_path);
+            }
+        }
+
+        $pdo->prepare("
+            DELETE FROM student_progress
+            WHERE student_id = ?
+              AND internship_id = ?
+        ")->execute([$student_id, $application_internship_id]);
+    }
+
+    $pdo->prepare("
+        DELETE FROM student_hte_supervisor_submissions
         WHERE student_id = ?
-        AND step_key IN (
-            'hte_form', 'addendum', 'reco_letter', 'waiver',
-            'internship_plan', 'vicinity_map', 'oath', 'ojt_started'
-        )
-    ")->execute([$student_id]);
+    ")->execute([
+                $student_id
+            ]);
 
-    $pdo->prepare("DELETE FROM student_hte_supervisor_submissions WHERE student_id = ?")
-        ->execute([$student_id]);
+    $_SESSION['success'] =
+        'Application cancelled and progress reset.';
 
-    $_SESSION['success'] = 'Application cancelled and progress reset.';
-    header('Location: applied-Internship-programs.php');
+    header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
+    exit;
+} elseif ($action === 'delete-weekly-report') {
+
+    $report_id = (int) ($_POST['report_id']);
+
+    if (!$report_id) {
+        $_SESSION['error'] = 'Invalid report.';
+        header('Location: message.php?section=progress_report&room_id=' . urlencode($current_room_id));
+        exit;
+    }
+
+    $checkStmt = $pdo->prepare("
+        SELECT id
+        FROM weekly_reports
+        WHERE id = ?
+          AND student_id = ?
+        LIMIT 1
+        ");
+    $checkStmt->execute([$report_id, $student_id]);
+    $report = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$report) {
+        $_SESSION['error'] = 'Report not found.';
+        header('Location: message.php?section=progress_report&room_id=' . urlencode($current_room_id));
+        exit;
+    }
+
+    $pdo->prepare("
+    DELETE FROM weekly_reports
+    where id = ? AND student_id = ?
+    ")->execute([$report_id, $student_id]);
+
+    $full_path = __DIR__ . '/' . $report['wr_filepath'];
+    if (is_file($full_path)) {
+        unlink($full_path);
+    }
+
+    $_SESSION['success'] = 'Weekly report deleted.';
+
+    header('Location: message.php?section=progress_report&room_id=' . urlencode($current_room_id));
     exit;
 
 } else {
-    $_SESSION['error'] = "Unknown action.";
+
+    $_SESSION['error'] = 'Unknown action.';
 }
 
-header('Location: application-progress.php');
+header('Location: message.php?section=application&room_id=' . urlencode($current_room_id));
 exit;

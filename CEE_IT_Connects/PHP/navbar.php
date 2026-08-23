@@ -996,14 +996,20 @@ function timeAgo($datetime)
 </nav>
 
 <script>
-    // ── Notification bell ──
+    // Notification Elements
     const bell = document.getElementById("notifBell");
     const popup = document.getElementById("notifPopup");
 
+    //Profile Elements
+    const profileBtn = document.getElementById('profileBtn');
+    const profileDrop = document.getElementById('profileDrop');
+
+    // ── Notification bell ──
     bell.addEventListener("click", function (e) {
         e.stopPropagation();
         const isOpen = popup.style.display === "block";
         popup.style.display = isOpen ? "none" : "block";
+        profileDrop.classList.remove('open');
 
         if (!isOpen) {
             fetch("mark-as-read.php")
@@ -1023,12 +1029,10 @@ function timeAgo($datetime)
     });
 
     // ── Profile dropdown ──
-    const profileBtn = document.getElementById('profileBtn');
-    const profileDrop = document.getElementById('profileDrop');
-
     profileBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         profileDrop.classList.toggle('open');
+        popup.style.display = "none";
     });
 
     document.addEventListener('click', function (e) {

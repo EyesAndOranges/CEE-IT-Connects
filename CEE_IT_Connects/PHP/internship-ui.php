@@ -340,15 +340,15 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
             <a href="#" onclick="showSection('postings')">
                 <i class="bi bi-pencil-fill"></i> Postings
             </a>
-            <a href="#" onclick="showSection('applicants')">
-                <i class="bi bi-people-fill"></i> Applicants
+            <a href="#" onclick="showSection('interns')">
+                <i class="bi bi-people-fill"></i> Interns
             </a>
             <a href="#" onclick="showSection('documents')">
                 <i class="bi bi-file-earmark-text-fill"></i> Documents
             </a>
-            <a href="#" onclick="showSection('interested')">
+            <!-- <a href="#" onclick="showSection('interested')">
                 <i class="bi bi-bookmarks-fill"></i> Interested
-            </a>
+            </a> -->
             <a href="#" onclick="showSection('announcements')">
                 <i class="bi bi-bell-fill"></i> Announcements
             </a>
@@ -776,8 +776,8 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
 
             <!-- ── APPLICANTS ── -->
-            <div id="applicants" class="section sysAdm-header">
-                <h2>Applicants</h2>
+            <div id="interns" class="section sysAdm-header">
+                <h2>Interns</h2>
                 <p>A place to review student credentials and track candidate progress through the hiring pipeline.</p>
 
                 <div class="table-controls">

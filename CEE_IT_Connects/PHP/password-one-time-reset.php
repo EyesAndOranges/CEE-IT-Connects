@@ -21,7 +21,7 @@ require 'db.php';
 
 // // echo "Passwords updated!";
 
-$id = 1;
+$id = 66;
 $newPassword = "12345";
 
 $hashed = password_hash($newPassword, PASSWORD_DEFAULT);

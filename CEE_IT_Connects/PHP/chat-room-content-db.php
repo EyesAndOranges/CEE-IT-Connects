@@ -11,7 +11,6 @@ if (!isset($_SESSION['user_id'])) {
 $room_id = $_POST['room_id'] ?? null;
 
 // ADD PARTICIPANT 
-// ADD PARTICIPANT 
 if (isset($_POST['users'])) {
     $users = json_decode($_POST['users'], true);
     if (!$users || !is_array($users)) {
@@ -64,8 +63,9 @@ if (isset($_POST['users'])) {
 
 // POST ANNOUNCEMENT 
 if (isset($_POST['post_announcement'])) {
-    if ($_SESSION['role'] !== 'internship_adviser') {
+    if (!in_array($_SESSION['role'], ['internship_adviser', 'hte_adviser'], true)) {
         http_response_code(403);
+        echo var_dump($_SESSION['role']);
         exit("Unauthorized");
     }
 

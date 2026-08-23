@@ -3,6 +3,7 @@ require 'db.php';
 require_once 'auth.php';
 
 $room_id = $current_room_id;
+$student_id = $_SESSION['user_id'];
 
 // ROOM INFO
 $stmt = $pdo->prepare("
@@ -93,17 +94,17 @@ $stmt = $pdo->prepare("
         FROM ojt_remarks
         ORDER BY student_id, updated_at DESC
     ) m ON s.id = m.student_id
-    WHERE r.id = ?
+    WHERE s.id = ?
     GROUP BY s.id, s.full_name, r.room_name, i.company
 ");
-$stmt->execute([$room_id]);
-$statuses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$stmt->execute([$student_id]);
+$status = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $rhStmt = $pdo->prepare("
     SELECT COALESCE(i.required_hours, 486)
-    FROM internship_bookmarks ib
-    JOIN internships i ON i.id = ib.internship_id
-    WHERE ib.student_id = ?
+    FROM ojt_applications oa
+    JOIN internships i ON i.id = oa.internship_id
+    WHERE oa.student_id = ?
     LIMIT 1
 ");
 $rhStmt->execute([$_SESSION['user_id']]);
@@ -610,7 +611,7 @@ $backLink = getDashboardByRole($_SESSION['role']);
             width: 60px;
             height: 60px;
             border-radius: 50%;
-            background: conic-gradient(#fff calc(var(--pct) * 1%), rgba(255,255,255,0.3) 0);
+            background: conic-gradient(#fff calc(var(--pct) * 1%), rgba(255, 255, 255, 0.3) 0);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -709,13 +710,13 @@ $backLink = getDashboardByRole($_SESSION['role']);
         }
     </style>
 </head>
-<?php //print_r($_SESSION); ?>
-<div class="d-flex justify-content-end mb-2">
-    <a href="<?= $backLink ?>" class="text-danger fw-semibold" style="text-decoration:none;">
-        <i class="fa-solid fa-arrow-left"></i> Back to rooms
-    </a>
-</div>
-
+<?php if (isset($_SESSION['role']) === 'student'): ?>
+    <div class="d-flex justify-content-end mb-2">
+        <a href="<?= $backLink ?>" class="text-danger fw-semibold" style="text-decoration:none;">
+            <i class="fa-solid fa-arrow-left"></i> Back to rooms
+        </a>
+    </div>
+<?php endif; ?>
 <!-- HEADER -->
 <div class="p-3 text-white rounded d-flex justify-content-between align-items-center" style="background:#d63ba5;">
 
@@ -732,7 +733,6 @@ $backLink = getDashboardByRole($_SESSION['role']);
     <!-- RIGHT SIDE -->
 
     <?php
-    $status = $statuses[0] ?? null;
     if ($_SESSION['role'] === 'student'):
         if ($status):
             $progressWidth = min(round(($status['total_hours'] / $requiredHours) * 100, 2), 100);
@@ -851,7 +851,7 @@ $backLink = getDashboardByRole($_SESSION['role']);
 
     <?php else: ?>
 
-        <?php if ($_SESSION['role'] === 'internship_adviser'): ?>
+        <?php if ($_SESSION['role'] === 'internship_adviser' || $_SESSION['role'] === 'hte_adviser'): ?>
             <div class="card mb-3 border-0 shadow-sm">
                 <div class="card-body">
                     <form action="chat-room-content-db.php" method="POST">

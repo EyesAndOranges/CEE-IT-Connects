@@ -17,7 +17,44 @@ $current_room_id = $_GET['room_id'] ?? null;
 $section = $_GET['section'] ?? '';
 $adviser_id = $_SESSION['user_id'];
 
-$isAdviser = isset($_SESSION['role']) && $_SESSION['role'] === 'internship_adviser';
+$isAdviser = isset($_SESSION['role']) && $_SESSION['role'] === 'hte_adviser';
+if ($isAdviser) {
+
+    $checkRoomStmt = $pdo->prepare("
+        SELECT id FROM rooms WHERE adviser_id = ? LIMIT 1
+    ");
+    $checkRoomStmt->execute([$adviser_id]);
+    $advisersRoomId = $checkRoomStmt->fetchColumn();
+
+    if (!$advisersRoomId) {
+
+        // Get the adviser's name to build a default room name
+        $advNameStmt = $pdo->prepare("SELECT full_name FROM advisers WHERE id = ?");
+        $advNameStmt->execute([$adviser_id]);
+        $advName = $advNameStmt->fetchColumn() ?: 'Adviser';
+
+        $roomName = $advName . "'s Room";
+
+        $insertRoom = $pdo->prepare("
+            INSERT INTO rooms (room_name, adviser_id, is_archived)
+            VALUES (?, ?, FALSE)
+            RETURNING id
+        ");
+        $insertRoom->execute([$roomName, $adviser_id]);
+        $advisersRoomId = $insertRoom->fetchColumn();
+
+        // Make the adviser a member of their own room so it shows up
+        // in the sidebar's room list query (rm.user_id = adviser_id)
+        $pdo->prepare("
+            INSERT INTO room_members (room_id, user_id, user_type)
+            VALUES (?, ?, 'adviser')
+        ")->execute([$advisersRoomId, $adviser_id]);
+    }
+    if (!$current_room_id) {
+        $current_room_id = $advisersRoomId;
+    }
+}
+
 $stmt = $pdo->prepare("
     SELECT r.*, a.full_name, a.title, a.role
     FROM rooms r
@@ -37,6 +74,11 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute();
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Get the HTE adviser's internship_id
+$adviserStmt = $pdo->prepare("SELECT internship_id FROM advisers WHERE id = ?");
+$adviserStmt->execute([$adviser_id]);
+$adviserInternshipId = $adviserStmt->fetchColumn();
 
 $stmt = $pdo->prepare("
     SELECT 
@@ -63,12 +105,6 @@ $stmt = $pdo->prepare("
 $stmt->execute();
 $statuses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-
-// Get the HTE adviser's internship_id
-$adviserStmt = $pdo->prepare("SELECT internship_id FROM advisers WHERE id = ?");
-$adviserStmt->execute([$adviser_id]);
-$adviserInternshipId = $adviserStmt->fetchColumn();
-
 // Fetch all students bookmarked to this adviser's internship
 $roomStatusesStmt = $pdo->prepare("
     SELECT
@@ -90,17 +126,53 @@ $roomStatusesStmt = $pdo->prepare("
             ), 0
         ) AS total_hours
     FROM students s
-    JOIN internship_bookmarks ib ON ib.student_id = s.id
-    JOIN internships i ON i.id = ib.internship_id
+    JOIN ojt_applications oa ON oa.student_id = s.id
+    JOIN internships i ON i.id = oa.internship_id
     JOIN room_members rm ON rm.user_id = s.id AND rm.user_type = 'student'
     LEFT JOIN ojt_hours oh ON oh.user_id = s.id AND oh.user_type = 'student'
-    WHERE ib.internship_id = ?
+    WHERE oa.internship_id = ?
     GROUP BY s.id, s.full_name, i.company, i.required_hours
 ");
 $roomStatusesStmt->execute([$adviserInternshipId]);
 $roomStatuses = $roomStatusesStmt->fetchAll(PDO::FETCH_ASSOC);
 
+$adviserDtrStmt = $pdo->prepare("
+    SELECT
+        s.id AS student_id,
+        s.full_name,
+        i.company,
+        i.required_hours,
+        COALESCE(
+            SUM(
+                CASE WHEN oh.m_in IS NOT NULL AND oh.m_out IS NOT NULL
+                    THEN EXTRACT(EPOCH FROM (oh.m_out - oh.m_in)) / 3600
+                    ELSE 0
+                END
+                +
+                CASE WHEN oh.a_in IS NOT NULL AND oh.a_out IS NOT NULL
+                    THEN EXTRACT(EPOCH FROM (oh.a_out - oh.a_in)) / 3600
+                    ELSE 0
+                END
+            ), 0
+        ) AS total_hours
+    FROM students s
+    JOIN ojt_applications oa ON oa.student_id = s.id
+    JOIN internships i ON i.id = oa.internship_id
+    LEFT JOIN ojt_hours oh ON oh.user_id = s.id AND oh.user_type = 'student'
+    WHERE oa.internship_id = ?
+    GROUP BY s.id, s.full_name, i.company, i.required_hours
+    ORDER BY s.full_name
+");
+$adviserDtrStmt->execute([$adviserInternshipId]);
+$adviserDtrRows = $adviserDtrStmt->fetchAll(PDO::FETCH_ASSOC);
 
+foreach ($adviserDtrRows as &$row) {
+    $required = (float) $row['required_hours'];
+    $completed = (float) $row['total_hours'];
+    $row['remaining'] = max($required - $completed, 0);
+    $row['percent'] = $required > 0 ? min(100, round(($completed / $required) * 100)) : 0;
+}
+unset($row);
 // echo '<pre>';
 // echo "current_room_id: " . $current_room_id . "\n";
 // echo "requiredHours: " . $requiredHours . "\n";
@@ -122,8 +194,8 @@ $chattableStmt = $pdo->prepare("
         s.full_name,
         'student'     AS user_type
     FROM students s
-    JOIN internship_bookmarks ib ON ib.student_id = s.id
-    JOIN advisers a ON a.internship_id = ib.internship_id
+    JOIN ojt_applications oa ON oa.student_id = s.id
+    JOIN advisers a ON a.internship_id = oa.internship_id
     WHERE a.id = ? AND a.role = 'HTE_adviser'
 
     UNION
@@ -137,8 +209,8 @@ $chattableStmt = $pdo->prepare("
     JOIN rooms r ON r.adviser_id = adv.id
     JOIN room_members rm ON rm.room_id = r.id AND rm.user_type = 'student'
     JOIN students s ON s.id = rm.user_id
-    JOIN internship_bookmarks ib ON ib.student_id = s.id
-    JOIN advisers hte ON hte.internship_id = ib.internship_id
+    JOIN ojt_applications oa ON oa.student_id = s.id
+    JOIN advisers hte ON hte.internship_id = oa.internship_id
     WHERE hte.id = ? AND hte.role = 'HTE_adviser'
     AND adv.role = 'internship_adviser'
 
@@ -312,7 +384,6 @@ foreach ($roomStatuses as $s) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
-
         /* * {
             outline: 1px solid red !important;
         }
@@ -1196,8 +1267,11 @@ foreach ($roomStatuses as $s) {
         <a href="#" onclick="showSection('status', event)" id="nav-status">
             <i class="fa-solid fa-calendar-check me-2"></i><span class="sidebar-text">Status</span>
         </a>
-        <a href="#" onclick="showSection('weekly_reports', event)" id="nav-weekly_reports">
+        <!-- <a href="#" onclick="showSection('weekly_reports', event)" id="nav-weekly_reports">
             <i class="fa-solid fa-file-lines me-2"></i> <span class="sidebar-text">Weekly Reports</span>
+        </a> -->
+        <a href="#" onclick="showSection('dtr_summary', event)" id="nav-dtr_summary">
+            <i class="fa-solid fa-clock me-2"></i><span class="sidebar-text">DTR</span>
         </a>
         <a href="#" onclick="showSection('chats', event)" id="nav-chats">
             <i class="fa-solid fa-comments me-2"></i><span class="sidebar-text">Chats</span>
@@ -1235,70 +1309,37 @@ foreach ($roomStatuses as $s) {
 
         <!-- ROOMS SECTION -->
         <div id="rooms" class="section-panel active">
-            <?php
-            // var_dump($_SESSION);
-            if ($current_room_id): ?>
-
+            <?php if ($current_room_id): ?>
                 <?php include 'chat-room-content.php'; ?>
-
             <?php else: ?>
-
-                <div class="d-flex justify-content-between align-items-center">
-                    <h3><strong>Virtual Rooms</strong></h3>
-                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
-                        + Join a Room
-                    </button>
-                </div>
-
-                <div class="row mt-1 g-4">
-                    <?php foreach ($rooms as $room): ?>
-                        <div class="col-12 col-sm-6 col-lg-4">
-                            <div class="card shadow-sm border-0" style="border-radius:12px;">
-
-                                <div class="room-card" style="background: <?= $color ?>">
-                                    <h5><?= htmlspecialchars($room['room_name']) ?></h5>
-                                    <small>
-                                        <?= htmlspecialchars($room['full_name']) ?>
-                                        (<?= htmlspecialchars($room['role']) ?>)
-                                    </small>
-                                </div>
-
-                                <div class="room-footer">
-                                    <form method="GET">
-                                        <input type="hidden" name="room_id" value="<?= $room['id'] ?>">
-                                        <button class="enter-btn">Enter Room</button>
-                                    </form>
-                                </div>
-
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-
+                <?= var_dump($current_room_id) ?>
+                <?= var_dump($_SESSION['role']) ?>
             <?php endif; ?>
         </div>
 
         <!-- STATUS SECTION -->
         <div id="status" class="section-panel">
             <h4 class="fw-bold mb-1">OJT Status</h4>
-            <p class="text-muted mb-3" style="font-size:.85rem;">Monitor student progress on their OJT program</p>
+            <p class="text-muted mb-3" style="font-size:.85rem;">Monitor student progress on their
+                OJT program</p>
 
-            <div
-                style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+            <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center; 
+                justify-content:space-between;">
                 <div class="search-box">
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <input type="text" id="searchInput" placeholder="Search student" oninput="filterTable()">
                 </div>
                 <?php if ($isAdviser): ?>
-                    <form method="POST" action="ojt-required-hours.php" style="display:flex; align-items:center; gap:8px;">
+                    <form method="POST" action="ojt-required-hours.php" style="display:flex; 
+                    align-items:center; gap:8px;">
                         <input type="hidden" name="room_id" value="<?= $current_room_id ?>">
                         <label style="font-size:13px; color:#555; font-weight:500; white-space:nowrap;">
                             Required OJT Hours:
                         </label>
                         <input type="number" name="required_hours" value="<?= $requiredHours ?>" min="1" style="width:70px; border:1.5px solid #e5e7eb; border-radius:8px;
                        padding:6px 8px; font-size:13px; text-align:center; outline:none;">
-                        <button type="submit" class="btn btn-sm"
-                            style="background:#ff6b2c; color:white; border-radius:8px; font-size:13px; font-weight:600;">
+                        <button type="submit" class="btn btn-sm" style="background:#ff6b2c; color:white; border-radius:8px; font-size:13px; 
+                            font-weight:600;">
                             <i class="fa fa-save me-1"></i> Save
                         </button>
                     </form>
@@ -1471,83 +1512,145 @@ foreach ($roomStatuses as $s) {
             </div>
         </div>
 
-        
-<!-- WEEKLY REPORTS SECTION -->
-<div id="weekly_reports" class="section-panel">
-    <h4><strong>Weekly Progress Reports</strong></h4><br>
 
-    <div style="display:flex; gap:10px; margin-bottom:16px; align-items:center;">
-        <div class="search-box">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" id="reportsSearchInput" placeholder="Search student" oninput="filterReportsTable()">
-        </div>
-        <select id="reportsRoomFilter" onchange="filterReportsTable()"
-            style="padding:7px 14px; border:1px solid #bbb; border-radius:24px; font-size:12px;">
-            <option value="">All Rooms</option>
-            <?php foreach ($rooms as $r): ?>
-                <option value="<?= htmlspecialchars($r['room_name']) ?>">
-                    <?= htmlspecialchars($r['room_name']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
+        <!-- WEEKLY REPORTS SECTION -->
+        <div id="weekly_reports" class="section-panel">
+            <h4><strong>Weekly Progress Reports</strong></h4><br>
 
-    <div class="ojt-table-wrapper">
-        <table class="ojt-status-table">
-            <thead style="background:#f8f9fa;">
-                <tr>
-                    <th>Student</th>
-                    <th>Room</th>
-                    <th>Week #</th>
-                    <th>Submitted</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="reports-tbody">
-                <?php
-                $reports = [
-                    ['student_name' => 'Jake Cob', 'room_name' => 'Norma Castillo\'s Room', 'week_start' => '2026-08-04', 'submitted_at' => '2026-08-10'],
-                    
-                ];
-                ?>
-                <?php if (empty($reports)): ?>
-                    <tr>
-                        <td colspan="5" class="text-center text-muted py-4">
-                            No weekly reports submitted yet.
-                        </td>
-                    </tr>
-                <?php else: ?>
-                    <?php foreach ($reports as $r):
-                        $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22'];
-                        $avatarColor = $avatarColors[crc32($r['student_name']) % count($avatarColors)];
-                    ?>
-                        <tr data-room="">
-                            <td>
-                                <div class="student-cell">
-                                    <div class="avatar" style="background:<?= $avatarColor ?>;">
-                                        <strong><?= strtoupper(substr($r['student_name'], 0, 1)) ?></strong>
-                                    </div>
-                                    <span><?= htmlspecialchars($r['student_name']) ?></span>
-                                </div>
-                            </td>
-                            <td><?= htmlspecialchars($r['room_name']) ?></td>
-                            <td><?= date('M d, Y', strtotime($r['week_start'])) ?></td>
-                            <td><?= date('M d, Y', strtotime($r['submitted_at'])) ?></td>
-                            <td>
-                                <a href="#" style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+            <div style="display:flex; gap:10px; margin-bottom:16px; align-items:center;">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="reportsSearchInput" placeholder="Search student"
+                        oninput="filterReportsTable()">
+                </div>
+                <select id="reportsRoomFilter" onchange="filterReportsTable()"
+                    style="padding:7px 14px; border:1px solid #bbb; border-radius:24px; font-size:12px;">
+                    <option value="">All Rooms</option>
+                    <?php foreach ($rooms as $r): ?>
+                        <option value="<?= htmlspecialchars($r['room_name']) ?>">
+                            <?= htmlspecialchars($r['room_name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="ojt-table-wrapper">
+                <table class="ojt-status-table">
+                    <thead style="background:#f8f9fa;">
+                        <tr>
+                            <th>Student</th>
+                            <th>Room</th>
+                            <th>Week #</th>
+                            <th>Submitted</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reports-tbody">
+                        <?php
+                        $reports = [
+                            ['student_name' => 'Jake Cob', 'room_name' => 'Norma Castillo\'s Room', 'week_start' => '2026-08-04', 'submitted_at' => '2026-08-10'],
+
+                        ];
+                        ?>
+                        <?php if (empty($reports)): ?>
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    No weekly reports submitted yet.
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($reports as $r):
+                                $avatarColors = ['#ff2c8f', '#2c6fff', '#1abc9c', '#9b59b6', '#e67e22'];
+                                $avatarColor = $avatarColors[crc32($r['student_name']) % count($avatarColors)];
+                                ?>
+                                <tr data-room="">
+                                    <td>
+                                        <div class="student-cell">
+                                            <div class="avatar" style="background:<?= $avatarColor ?>;">
+                                                <strong><?= strtoupper(substr($r['student_name'], 0, 1)) ?></strong>
+                                            </div>
+                                            <span><?= htmlspecialchars($r['student_name']) ?></span>
+                                        </div>
+                                    </td>
+                                    <td><?= htmlspecialchars($r['room_name']) ?></td>
+                                    <td><?= date('M d, Y', strtotime($r['week_start'])) ?></td>
+                                    <td><?= date('M d, Y', strtotime($r['submitted_at'])) ?></td>
+                                    <td>
+                                        <a href="#" style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
                                     background:#dbeafe;color:#1e40af;border-radius:6px;font-size:11px;
                                     font-weight:600;border:1px solid #93c5fd;text-decoration:none;white-space:nowrap;">
-                                    <i class="fa fa-download"></i> Download
-                                </a>
-                            </td>
+                                            <i class="fa fa-download"></i> Download
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="dtr_summary" class="section-panel <?= $section === 'dtr_summary' ? 'active' : '' ?>">
+            <div class="page-section">
+                <h2>Student DTR Summary</h2>
+                <p>Overview of rendered OJT hours per student</p>
+            </div>
+
+            <?php if (empty($adviserDtrRows)): ?>
+                <div class="text-center mt-5 py-5">
+                    <i class="fa fa-inbox fa-3x text-muted mb-3 d-block"></i>
+                    <h5 class="fw-bold text-muted">No Students Yet</h5>
+                    <p class="text-muted" style="font-size:14px;">
+                        You don't have any students under your supervision yet.
+                    </p>
+                </div>
+            <?php else: ?>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Company</th>
+                            <th>Required Hours</th>
+                            <th>Completed</th>
+                            <th>Remaining</th>
+                            <th>Progress</th>
+                            <th></th>
                         </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
-</div>
-        
+                    </thead>
+                    <tbody>
+                        <?php foreach ($adviserDtrRows as $row): ?>
+                            <tr>
+                                <td>
+                                    <div class="student-cell">
+                                        <span class="avatar" style="background:#ff6b2c;">
+                                            <?= strtoupper(substr(trim($row['full_name']), 0, 1)) ?>
+                                        </span>
+                                        <?= htmlspecialchars($row['full_name']) ?>
+                                    </div>
+                                </td>
+                                <td><?= htmlspecialchars($row['company']) ?></td>
+                                <td><?= number_format($row['required_hours'], 1) ?> hrs</td>
+                                <td><?= number_format($row['total_hours'], 1) ?> hrs</td>
+                                <td><?= number_format($row['remaining'], 1) ?> hrs</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress-bar-bg">
+                                            <div class="progress-bar-fill" style="width:<?= $row['percent'] ?>%;"></div>
+                                        </div>
+                                        <span style="font-size:12px; color:#888;"><?= $row['percent'] ?>%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <button class="btn-log" onclick="viewStudentDtr(<?= $row['student_id'] ?>)">
+                                        View DTR
+                                    </button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
 
         <div id="chats" class="section-panel <?= $section === 'chats' ? 'active' : '' ?>">
             <?php
@@ -2131,13 +2234,15 @@ foreach ($roomStatuses as $s) {
                         <div class="mb-1">
                             <label style="font-size:11px;color:#64748b;font-weight:700;
                                       text-transform:uppercase;letter-spacing:.05em;">
-                                Department / Note <span style="color:#94a3b8;font-weight:400;">(optional)</span>
+                                Department / Note <span style="color:#94a3b8;font-weight:400;">
+                                    (optional)</span>
                             </label>
                             <input type="text" name="department_note" id="assignSup_dept" class="form-control mt-1"
                                 placeholder="e.g. Finance Dept, Design Team">
                         </div>
 
-                        <div id="assignSup_error" style="display:none;color:#dc2626;font-size:12px;margin-top:10px;">
+                        <div id="assignSup_error" style="display:none;color:#dc2626;font-size:12px;
+                        margin-top:10px;">
                         </div>
                     </form>
                 </div>
@@ -2154,8 +2259,125 @@ foreach ($roomStatuses as $s) {
             </div>
         </div>
     </div>
+
+    <!-- Student dtr summary -->
+    <div id="dtr-view-modal" class="modal" tabindex="-1" style="display:none;">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="dtr-view-modal-title">Student DTR</h5>
+                    <button type="button" class="btn-close" onclick="closeDtrModal()"></button>
+                </div>
+                <div class="modal-body" id="dtr-view-modal-body">
+                    <div class="text-center py-5"><i class="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        function openDtrModal() {
+            document.getElementById('dtr-view-modal').style.display = 'block';
+            document.getElementById('dtr-view-modal').classList.add('show');
+        }
+
+        function closeDtrModal() {
+            document.getElementById('dtr-view-modal').style.display = 'none';
+            document.getElementById('dtr-view-modal').classList.remove('show');
+        }
+
+        async function viewStudentDtr(studentId) {
+            openDtrModal();
+            const body = document.getElementById('dtr-view-modal-body');
+            body.innerHTML = '<div class="text-center py-5"><i class="fa fa-spinner fa-spin fa-2x text-muted"></i></div>';
+
+            try {
+                const res = await fetch(`get-student-dtr.php?student_id=${studentId}`);
+                const data = await res.json();
+
+                if (!data.success) {
+                    body.innerHTML = `<p class="text-danger">${data.message}</p>`;
+                    return;
+                }
+
+                document.getElementById('dtr-view-modal-title').textContent =
+                    `${data.student.full_name} — ${data.student.company}`;
+
+                if (data.weeks.length === 0) {
+                    body.innerHTML = '<p class="text-muted">No DTR entries logged yet.</p>';
+                    return;
+                }
+
+                body.innerHTML = data.weeks.map(week => renderDtrWeekReadOnly(week)).join('');
+            } catch (err) {
+                body.innerHTML = '<p class="text-danger">Failed to load DTR.</p>';
+            }
+        }
+
+        function renderDtrWeekReadOnly(week) {
+            const rows = week.rows.length > 0 ? week.rows : Array.from({ length: 6 }, (_, i) => ({
+                row_index: i, date: '', m_in: '', m_out: '', a_in: '', a_out: ''
+            }));
+
+            const rowsHtml = rows.map(row => {
+                const mHrs = calcHrs(row.m_in, row.m_out);
+                const aHrs = calcHrs(row.a_in, row.a_out);
+                const daily = (mHrs + aHrs).toFixed(2);
+                const dayName = row.date ? new Date(row.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short' }) : '—';
+
+                return `
+            <tr>
+                <td>${row.date || '—'}</td>
+                <td style="text-align:center">${dayName}</td>
+                <td class="td-morning">${row.m_in || '—'}</td>
+                <td class="td-morning">${row.m_out || '—'}</td>
+                <td class="td-morning">${mHrs ? mHrs.toFixed(2) : '—'}</td>
+                <td class="td-afternoon">${row.a_in || '—'}</td>
+                <td class="td-afternoon">${row.a_out || '—'}</td>
+                <td class="td-afternoon">${aHrs ? aHrs.toFixed(2) : '—'}</td>
+                <td>${daily}</td>
+            </tr>`;
+            }).join('');
+
+            return `
+        <div class="ojt-week-block mb-3">
+            <div class="ojt-week-header">
+                <strong>${week.week_label}</strong>
+            </div>
+            <div class="ojt-table-scroll">
+                <table class="ojt-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="ojt-group">Date</th>
+                            <th rowspan="2" class="ojt-group">Day</th>
+                            <th colspan="3" style="background:#FFB62F;">Morning</th>
+                            <th colspan="3" style="background:#FF673A;">Afternoon</th>
+                            <th rowspan="2" class="ojt-group">Daily<br>Hours</th>
+                        </tr>
+                        <tr>
+                            <th style="background:#f9c565;">In</th>
+                            <th style="background:#f9c565;">Out</th>
+                            <th style="background:#f9c565;">Hrs</th>
+                            <th style="background:#f49679;">In</th>
+                            <th style="background:#f49679;">Out</th>
+                            <th style="background:#f49679;">Hrs</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>
+        </div>`;
+        }
+
+        function calcHrs(t1, t2) {
+            if (!t1 || !t2) return 0;
+            const [h1, m1] = t1.split(':').map(Number);
+            const [h2, m2] = t2.split(':').map(Number);
+            return Math.max(0, (h2 * 60 + m2 - (h1 * 60 + m1)) / 60);
+        }
+
         function showSection(sectionId, e) {
             if (e) e.preventDefault();
 
