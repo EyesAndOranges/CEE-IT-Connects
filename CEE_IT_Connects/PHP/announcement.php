@@ -16,6 +16,15 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     }
     $announcements[$row['category']][] = $row;
 }
+
+$docAvailStmt = $pdo->query("
+    SELECT ida.internship_id, ida.mou_available, ida.recommendation_letter_available,
+           ida.waiver_available, ida.updated_at, i.title, i.company
+    FROM internship_document_availability ida
+    JOIN internships i ON i.id = ida.internship_id
+    ORDER BY ida.updated_at DESC
+");
+$docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -323,6 +332,91 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 border-bottom: none;
             }
         }
+
+        /* AVAILABLE DOCS TABLE */
+        .docs-table-wrap {
+            background: #fff;
+            border: 1px solid #e8eaf0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .docs-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .docs-table thead th {
+            background: #f8f9fc;
+            color: #56585c;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e8eaf0;
+            text-align: left;
+        }
+
+        .docs-table tbody td {
+            padding: 13px 16px;
+            font-size: 13.5px;
+            color: #1a1f36;
+            border-bottom: 1px solid #f3f4f7;
+            vertical-align: middle;
+        }
+
+        .docs-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .docs-table tbody tr:hover {
+            background: #fafbfc;
+        }
+
+        .docs-table .company-cell {
+            color: #E4572E;
+            font-weight: 600;
+            font-size: 12.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .doc-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 99px;
+        }
+
+        .doc-status.available {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .doc-status.unavailable {
+            background: #f3f4f6;
+            color: #9ca3af;
+        }
+
+        .doc-status i {
+            font-size: 9px;
+        }
+
+        .docs-table .updated-cell {
+            color: #b0b8cc;
+            font-size: 12px;
+        }
+
+        .docs-empty-state {
+            padding: 30px 18px;
+            text-align: center;
+            font-size: 13px;
+            color: #b0b8cc;
+        }
     </style>
 </head>
 
@@ -358,6 +452,51 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                     <p class="prep-tip-title">Punctuality is everything</p>
                     <p class="prep-tip-desc">Being on time reflects your work ethic and attitude.</p>
                 </div>
+            </div>
+
+            <!-- Available Internship Docs -->
+            <p class="section-label">Documents Now Available</p>
+            <div class="docs-table-wrap">
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Company</th>
+                            <th>MOU</th>
+                            <th>Recommendation Letter</th>
+                            <th>Waiver</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($docAvailability)): ?>
+                            <tr>
+                                <td colspan="6" class="docs-empty-state">No document availability announced yet.</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($docAvailability as $d): ?>
+                                <tr>
+                                    <td class="company-cell"><?= htmlspecialchars($d['company']) ?></td>
+                                    <td>
+                                        <span class="doc-status <?= $d['mou_available'] ? 'available' : 'unavailable' ?>">
+                                            <i class="fas fa-circle"></i> <?= $d['mou_available'] ? 'Available' : 'N/A' ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span
+                                            class="doc-status <?= $d['recommendation_letter_available'] ? 'available' : 'unavailable' ?>">
+                                            <i class="fas fa-circle"></i>
+                                            <?= $d['recommendation_letter_available'] ? 'Available' : 'N/A' ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="doc-status <?= $d['waiver_available'] ? 'available' : 'unavailable' ?>">
+                                            <i class="fas fa-circle"></i> <?= $d['waiver_available'] ? 'Available' : 'N/A' ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
 
             <!-- NEWS — from DB -->

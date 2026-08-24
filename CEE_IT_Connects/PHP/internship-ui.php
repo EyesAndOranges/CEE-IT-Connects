@@ -51,12 +51,12 @@ $credentialStmt = $pdo->query("
 $credentials = $credentialStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $stmtinterest = $pdo->prepare("
-    SELECT ib.id AS interest_id, ib.student_id, ib.created_at,
+    SELECT oa.id AS interest_id, oa.student_id, oa.submitted_at,
            s.full_name, s.email, i.company, i.title
-    FROM internship_bookmarks ib
-    JOIN students s ON s.id = ib.student_id
-    JOIN internships i ON i.id = ib.internship_id
-    ORDER BY ib.created_at DESC
+    FROM ojt_applications oa
+    JOIN students s ON s.id = oa.student_id
+    JOIN internships i ON i.id = oa.internship_id
+    ORDER BY oa.submitted_at DESC
 ");
 $stmtinterest->execute();
 $interests = $stmtinterest->fetchAll(PDO::FETCH_ASSOC);
@@ -100,6 +100,16 @@ $recentAnnouncementsStmt = $pdo->query("
     SELECT title, category, created_at FROM announcements ORDER BY created_at DESC LIMIT 5
 ");
 $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$docAvailStmt = $pdo->query("
+    SELECT ida.internship_id, ida.mou_available, ida.recommendation_letter_available,
+           ida.waiver_available, ida.updated_at, i.title, i.company
+    FROM internship_document_availability ida
+    JOIN internships i ON i.id = ida.internship_id
+    ORDER BY ida.updated_at DESC
+");
+$docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1009,7 +1019,85 @@ $recentAnnouncements = $recentAnnouncementsStmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                     <button type="submit" class="submit-btn">Post Announcement</button>
                 </form>
+
+                <div class="form-card mt-4">
+                    <h3>Announce Document Availability</h3>
+                    <p class="text-muted" style="font-size:13px;">
+                        Let students know which documents are ready for a given internship.
+                    </p>
+                    <form action="internship-db.php" method="POST">
+                        <input type="hidden" name="form_type" value="document_availability">
+
+                        <div class="mb-3">
+                            <label>Internship</label>
+                            <select name="internship_id" required>
+                                <option value="" disabled selected>Select Internship</option>
+                                <?php foreach ($internships as $intn): ?>
+                                    <option value="<?= $intn['id'] ?>">
+                                        <?= htmlspecialchars($intn['company']) ?> —
+                                        <?= htmlspecialchars($intn['title']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="mb-3 d-flex gap-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="mou_available" id="mouCheck">
+                                <label class="form-check-label" for="mouCheck">MOU</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="recommendation_letter_available"
+                                    id="rlCheck">
+                                <label class="form-check-label" for="rlCheck">Recommendation Letter</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="waiver_available"
+                                    id="waiverCheck">
+                                <label class="form-check-label" for="waiverCheck">Waiver</label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="submit-btn">Save Availability</button>
+                    </form>
+                </div>
+
+                <div class="table-container mt-4">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Internship</th>
+                                <th>Company</th>
+                                <th>MOU</th>
+                                <th>Recommendation Letter</th>
+                                <th>Waiver</th>
+                                <th>Last Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($docAvailability)): ?>
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">No document availability announced yet.
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($docAvailability as $d): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($d['title']) ?></td>
+                                        <td><?= htmlspecialchars($d['company']) ?></td>
+                                        <td><?= $d['mou_available'] ? 'Yes' : 'X' ?></td>
+                                        <td><?= $d['recommendation_letter_available'] ? 'Yes' : 'X' ?></td>
+                                        <td><?= $d['waiver_available'] ? 'Yes' : 'X' ?></td>
+                                        <td><?= date("M d, Y", strtotime($d['updated_at'])) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
             </div>
+
 
             <!-- ── MANAGE ANNOUNCEMENTS ── -->
             <div id="manage_announcement" class="section sysAdm-header">

@@ -321,5 +321,39 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         header("location: internship-ui.php?updated=1");
         exit;
     }
+
+    if (($_POST['form_type'] ?? '') === 'document_availability') {
+        $internshipId = $_POST['internship_id'] ?? null;
+        $mou = isset($_POST['mou_available']) ? 1 : 0;
+        $rl = isset($_POST['recommendation_letter_available']) ? 1 : 0;
+        $waiver = isset($_POST['waiver_available']) ? 1 : 0;
+
+        if (!$internshipId) {
+            $_SESSION['error'] = "Please select an internship.";
+        } else {
+            $stmt = $pdo->prepare("
+            INSERT INTO internship_document_availability
+                (internship_id, mou_available, recommendation_letter_available, waiver_available, updated_at)
+            VALUES (:internship_id, :mou1, :rl1, :waiver1, NOW())
+            ON CONFLICT (internship_id) DO UPDATE
+            SET mou_available = :mou2,
+                recommendation_letter_available = :rl2,
+                waiver_available = :waiver2,
+                updated_at = NOW()
+        ");
+            $stmt->execute([
+                ':internship_id' => $internshipId,
+                ':mou1' => $mou,
+                ':rl1' => $rl,
+                ':waiver1' => $waiver,
+                ':mou2' => $mou,
+                ':rl2' => $rl,
+                ':waiver2' => $waiver,
+            ]);
+            $_SESSION['success'] = "Document availability updated.";
+        }
+        header("Location: " . $_SERVER['HTTP_REFERER']);
+        exit;
+    }
 }
 ?>
