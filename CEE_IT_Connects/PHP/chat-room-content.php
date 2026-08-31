@@ -724,9 +724,18 @@ $backLink = getDashboardByRole($_SESSION['role']);
     <div>
         <h5 class="mb-0"><?= htmlspecialchars($room['room_name']) ?></h5>
         <small>
-            <?= htmlspecialchars($room['full_name']) ?>
-            |
-            <?= htmlspecialchars($room['role']) ?>
+            <?php if ($current_room_id == 24): ?>
+                Information Technology
+            <?php elseif ($current_room_id == 25): ?>
+                Electrical Engineering
+            <?php elseif ($current_room_id == 26): ?>
+                Civil Engineering
+            <?php else: ?>
+                <?= htmlspecialchars($room['full_name']) ?>
+                |
+                <?= htmlspecialchars($room['role']) ?>
+            <?php endif; ?>
+
         </small>
     </div>
 

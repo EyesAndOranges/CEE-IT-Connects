@@ -14,6 +14,13 @@ $hideStudentNav = in_array($role, [
     'internship_adviser'
 ]);
 
+$hideAdviserNav = in_array($role, [
+    'admin',
+    'superadmin',
+    'internship_admin',
+    'adviser',
+]);
+
 $roleMap = [
     'student' => 'student',
     'internship_adviser' => 'adviser',
@@ -383,16 +390,30 @@ function timeAgo($datetime)
         </a>
 
         <!-- Center Menu (students only) -->
-        <?php if (!$hideStudentNav): ?>
+        <?php if (!$hideAdviserNav): ?>
             <div class="navbar-center d-none d-lg-flex">
                 <ul class="navbar-nav gap-5">
                     <li class="nav-item">
-                        <a class="nav-link <?= ($page == 'home') ? 'active' : '' ?>" href="index.php">Home</a>
+                        <a class="nav-link <?= ($page == 'home') ? 'active' : '' ?>" href="<?php
+                                if ($role == 'students') {
+                                    echo 'index.php';
+                                } else if ($role == 'hte_adviser') {
+                                    echo 'hte-ui.php';
+                                } else if ($role == 'internship_adviser') {
+                                    echo 'ojt-rooms.php';
+                                } else {
+                                    echo 'index.php';
+
+                                } ?>">Home</a>
                     </li>
+                <?php endif; ?>
+                <?php if (!$hideStudentNav): ?>
                     <li class="nav-item">
                         <a class="nav-link <?= ($page == 'opportunity') ? 'active' : '' ?>"
                             href="applied-internship-programs.php">Internships</a>
                     </li>
+                <?php endif; ?>
+                <?php if (!$hideAdviserNav): ?>
                     <li class="nav-item">
                         <a class="nav-link <?= ($page == 'announcements') ? 'active' : '' ?>"
                             href="announcement.php">Announcements</a>

@@ -3,29 +3,97 @@ session_start();
 require 'db.php';
 require 'auth.php';
 
+$role = $_SESSION['role'] ?? null;
 $isAdviser = isset($_SESSION['role']) && $_SESSION['role'] === 'internship_adviser';
 $adviser_id = $_SESSION['user_id'];
 $current_room_id = $_GET['room_id'] ?? null;
 
-function generateRoomCode($length = 9)
-{
-    $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    $code = '';
-    for ($i = 0; $i < $length; $i++) {
-        $code .= $chars[random_int(0, strlen($chars) - 1)];
-    }
-    return $code;
+$roleMap = [
+    'hte_adviser' => ['user_type' => 'adviser', 'table' => 'advisers'],
+    'internship_adviser' => ['user_type' => 'adviser', 'table' => 'advisers'],
+    'superadmin' => ['user_type' => 'admin', 'table' => 'admins'],
+];
+
+if (!isset($roleMap[$role])) {
+    die('Unauthorized: no room mapping for role "' . htmlspecialchars((string) $role) . '"');
 }
 
-function generateUniqueRoomCode($pdo)
-{
-    do {
-        $code = generateRoomCode();
-        $stmt = $pdo->prepare("SELECT id FROM rooms WHERE room_code = ?");
-        $stmt->execute([$code]);
-    } while ($stmt->fetch());
-    return $code;
+$user_type = $roleMap[$role]['user_type'];
+$table = $roleMap[$role]['table'];
+
+$departmentRoomIds = [
+    'information technology' => 24,
+    'electrical engineering' => 25,
+    'civil engineering' => 26,
+];
+
+if (!isset($_GET['room_id'])) {
+    // Get the department
+    $stmt = $pdo->prepare("SELECT department FROM {$table} WHERE id = ?");
+    $stmt->execute([$adviser_id]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user || !$user['department']) {
+        die('No department assigned to this account.');
+    }
+
+    $roomId = $departmentRoomIds[$user['department']] ?? null;
+
+    if (!$roomId) {
+        die('No room mapped for department: ' . htmlspecialchars($user['department']));
+    }
+
+    // Find the room by id
+    $roomStmt = $pdo->prepare("
+        SELECT id FROM rooms
+        WHERE id = ? AND is_archived = FALSE
+        LIMIT 1
+    ");
+    $roomStmt->execute([$roomId]);
+    $room = $roomStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$room) {
+        die('Room not found or archived for department: ' . htmlspecialchars($user['department']));
+    }
+
+    // Ensure membership
+    $checkStmt = $pdo->prepare("
+        SELECT 1 FROM room_members
+        WHERE room_id = ? AND user_id = ? AND user_type = ?
+    ");
+    $checkStmt->execute([$room['id'], $user_id, $user_type]);
+
+    if (!$checkStmt->fetch()) {
+        $joinStmt = $pdo->prepare("
+            INSERT INTO room_members (room_id, user_id, user_type)
+            VALUES (?, ?, ?)
+        ");
+        $joinStmt->execute([$room['id'], $user_id, $user_type]);
+    }
+
+    header("Location: ojt-rooms.php?room_id=" . $room['id']);
+    exit;
 }
+
+// function generateRoomCode($length = 9)
+// {
+//     $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+//     $code = '';
+//     for ($i = 0; $i < $length; $i++) {
+//         $code .= $chars[random_int(0, strlen($chars) - 1)];
+//     }
+//     return $code;
+// }
+
+// function generateUniqueRoomCode($pdo)
+// {
+//     do {
+//         $code = generateRoomCode();
+//         $stmt = $pdo->prepare("SELECT id FROM rooms WHERE room_code = ?");
+//         $stmt->execute([$code]);
+//     } while ($stmt->fetch());
+//     return $code;
+// }
 
 if (!isset($_GET['room_id'])) {
     // Check if adviser already has a room
@@ -234,6 +302,16 @@ if ($chatSection_id && $section === 'chats') {
     ]);
     $chatMessages = $msgStmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
+$myRoomsStmt = $pdo->prepare("
+    SELECT r.id, r.room_name
+    FROM rooms r
+    JOIN room_members rm ON r.id = rm.room_id
+    WHERE rm.user_id = ? AND rm.user_type = ? AND r.is_archived = FALSE
+    ORDER BY r.room_name
+");
+$myRoomsStmt->execute([$user_id, $user_type]);
+$myRooms = $myRoomsStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // helper — get name for a chat list entry
 function getRoomChatName($pdo, $id, $type)
@@ -1232,7 +1310,17 @@ $page = 'messages';
                     <i class="fa fa-file-csv me-2"></i> <span class="sidebar-text">Import Students</span>
                 </button>
             <?php endif; ?>
-
+            <hr>
+            <?php foreach ($myRooms as $room): ?>
+                <a href="ojt-rooms.php?room_id=<?= $room['id'] ?>"
+                    class="<?= ((int) $current_room_id === (int) $room['id']) ? 'active' : '' ?>"
+                    title="<?= htmlspecialchars($room['room_name']) ?>">
+                    <i class="bi bi-people-fill me-2"></i>
+                    <span class="sidebar-text">
+                        <?= htmlspecialchars($room['room_name']) ?>
+                    </span>
+                </a>
+            <?php endforeach; ?>
         </div>
     </div>
     <!-- MAIN CONTENT -->

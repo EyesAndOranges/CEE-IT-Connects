@@ -5,21 +5,31 @@ require 'auth.php';
 
 
 $page = $page ?? "";
-$current_room_id = $_GET['room_id'] ?? null;
 $isAdviser = isset($_SESSION['role']) && $_SESSION['role'] === 'internship_adviser';
+$current_room_id = $_GET['room_id'] ?? null;
+if ($current_room_id !== null && $current_room_id !== '' && ctype_digit((string) $current_room_id)) {
+    $current_room_id = (int) $current_room_id;
+} else {
+    $current_room_id = null;
+}
 
 // Auto-load assigned room for students (no redirect, just set the variable)
-if (!$current_room_id && $_SESSION['role'] === 'student') {
+if ($current_room_id === null && $_SESSION['role'] === 'student') {
     $roomStmt = $pdo->prepare("
-        SELECT r.id FROM rooms r
+        SELECT r.id
+        FROM rooms r
         JOIN room_members rm ON r.id = rm.room_id
-        WHERE rm.user_id = ? AND rm.user_type = 'student' AND r.is_archived = FALSE
+        WHERE rm.user_id = ?
+          AND rm.user_type = 'student'
+          AND r.is_archived = FALSE
         LIMIT 1
     ");
+
     $roomStmt->execute([$_SESSION['user_id']]);
     $assignedRoom = $roomStmt->fetch(PDO::FETCH_ASSOC);
+
     if ($assignedRoom) {
-        $current_room_id = $assignedRoom['id'];
+        $current_room_id = (int) $assignedRoom['id'];
     }
 }
 
@@ -129,20 +139,25 @@ $stmt = $pdo->prepare("
 $stmt->execute(['uid' => $_SESSION['user_id']]);
 $chatUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$chatStudentsStmt = $pdo->prepare("
-    SELECT
-        s.id          AS user_id,
-        s.full_name,
-        'student'     AS user_type
-    FROM students s
-    JOIN room_members rm
-        ON s.id = rm.user_id
-       AND rm.user_type = 'student'
-    WHERE rm.room_id = ?
-    ORDER BY s.full_name
-");
-$chatStudentsStmt->execute([$current_room_id]);
-$chatStudents = $chatStudentsStmt->fetchAll(PDO::FETCH_ASSOC);
+$chatStudents = [];
+
+if ($current_room_id !== null) {
+    $chatStudentsStmt = $pdo->prepare("
+        SELECT
+            s.id AS user_id,
+            s.full_name,
+            'student' AS user_type
+        FROM students s
+        JOIN room_members rm
+            ON s.id = rm.user_id
+           AND rm.user_type = 'student'
+        WHERE rm.room_id = ?
+        ORDER BY s.full_name
+    ");
+
+    $chatStudentsStmt->execute([$current_room_id]);
+    $chatStudents = $chatStudentsStmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
 $chatHteAdvisersStmt = $pdo->prepare("
     SELECT DISTINCT

@@ -16,6 +16,73 @@ use PHPMailer\PHPMailer\Exception;
 $current_room_id = $_GET['room_id'] ?? null;
 $section = $_GET['section'] ?? '';
 $adviser_id = $_SESSION['user_id'];
+$role = $_SESSION['role'] ?? null;
+$roleMap = [
+    'hte_adviser' => ['user_type' => 'adviser', 'table' => 'advisers'],
+    'internship_adviser' => ['user_type' => 'adviser', 'table' => 'advisers'],
+    'superadmin' => ['user_type' => 'admin', 'table' => 'admins'],
+];
+
+if (!isset($roleMap[$role])) {
+    die('Unauthorized: no room mapping for role "' . htmlspecialchars((string) $role) . '"');
+}
+
+$user_type = $roleMap[$role]['user_type'];
+$table = $roleMap[$role]['table'];
+
+$departmentRoomIds = [
+    'information technology' => 24,
+    'electrical engineering' => 25,
+    'civil engineering' => 26,
+];
+
+if (!isset($_GET['room_id'])) {
+    // Get the department
+    $stmt = $pdo->prepare("SELECT department FROM {$table} WHERE id = ?");
+    $stmt->execute([$adviser_id]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user || !$user['department']) {
+        die('No department assigned to this account.');
+    }
+
+    $roomId = $departmentRoomIds[$user['department']] ?? null;
+
+    if (!$roomId) {
+        die('No room mapped for department: ' . htmlspecialchars($user['department']));
+    }
+
+    // Find the room by id
+    $roomStmt = $pdo->prepare("
+        SELECT id FROM rooms
+        WHERE id = ? AND is_archived = FALSE
+        LIMIT 1
+    ");
+    $roomStmt->execute([$roomId]);
+    $room = $roomStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$room) {
+        die('Room not found or archived for department: ' . htmlspecialchars($user['department']));
+    }
+
+    // Ensure membership
+    $checkStmt = $pdo->prepare("
+        SELECT 1 FROM room_members
+        WHERE room_id = ? AND user_id = ? AND user_type = ?
+    ");
+    $checkStmt->execute([$room['id'], $user_id, $user_type]);
+
+    if (!$checkStmt->fetch()) {
+        $joinStmt = $pdo->prepare("
+            INSERT INTO room_members (room_id, user_id, user_type)
+            VALUES (?, ?, ?)
+        ");
+        $joinStmt->execute([$room['id'], $user_id, $user_type]);
+    }
+
+    header("Location: ojt-rooms.php?room_id=" . $room['id']);
+    exit;
+}
 
 $isAdviser = isset($_SESSION['role']) && $_SESSION['role'] === 'hte_adviser';
 if ($isAdviser) {
@@ -2290,12 +2357,32 @@ foreach ($roomStatuses as $s) {
 
         async function viewStudentDtr(studentId) {
             openDtrModal();
+
             const body = document.getElementById('dtr-view-modal-body');
-            body.innerHTML = '<div class="text-center py-5"><i class="fa fa-spinner fa-spin fa-2x text-muted"></i></div>';
+
+            body.innerHTML = `
+        <div class="text-center py-5">
+            <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
+        </div>
+    `;
 
             try {
-                const res = await fetch(`get-student-dtr.php?student_id=${studentId}`);
-                const data = await res.json();
+                console.log('Student ID:', studentId);
+
+                const res = await fetch(
+                    `get-student-dtr.php?student_id=${encodeURIComponent(studentId)}`
+                );
+
+                console.log('HTTP Status:', res.status);
+                console.log('Response OK:', res.ok);
+
+                const text = await res.text();
+
+                console.log('RAW RESPONSE:', text);
+
+                const data = JSON.parse(text);
+
+                console.log('Parsed JSON:', data);
 
                 if (!data.success) {
                     body.innerHTML = `<p class="text-danger">${data.message}</p>`;
@@ -2306,13 +2393,21 @@ foreach ($roomStatuses as $s) {
                     `${data.student.full_name} — ${data.student.company}`;
 
                 if (data.weeks.length === 0) {
-                    body.innerHTML = '<p class="text-muted">No DTR entries logged yet.</p>';
+                    body.innerHTML =
+                        '<p class="text-muted">No DTR entries logged yet.</p>';
                     return;
                 }
 
-                body.innerHTML = data.weeks.map(week => renderDtrWeekReadOnly(week)).join('');
+                body.innerHTML =
+                    data.weeks.map(week => renderDtrWeekReadOnly(week)).join('');
+
             } catch (err) {
-                body.innerHTML = '<p class="text-danger">Failed to load DTR.</p>';
+                console.error('DTR ERROR:', err);
+
+                body.innerHTML = `
+            <p class="text-danger">Failed to load DTR.</p>
+            <p class="small text-muted">${err.message}</p>
+        `;
             }
         }
 

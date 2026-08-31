@@ -784,34 +784,34 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
 
                             <!-- Deadline -->
-                            <div class="filter-section">
+                            <!-- <div class="filter-section">
                                 <span class="filter-label">Deadline</span>
                                 <?php
-                                $deadlines = ['week' => 'Due this week', 'month' => 'Due this month', 'future' => 'Upcoming'];
-                                foreach ($deadlines as $val => $label):
-                                    $checked = (isset($_GET['deadline']) && $_GET['deadline'] == $val) ? 'checked' : '';
-                                    ?>
+                                // $deadlines = ['week' => 'Due this week', 'month' => 'Due this month', 'future' => 'Upcoming'];
+                                // foreach ($deadlines as $val => $label):
+                                //     $checked = (isset($_GET['deadline']) && $_GET['deadline'] == $val) ? 'checked' : '';
+                                ?>
                                     <label class="fc-item">
                                         <input type="radio" name="deadline" value="<?= $val ?>" <?= $checked ?>>
                                         <?= $label ?>
                                     </label>
-                                <?php endforeach; ?>
-                            </div>
+                                <?php //endforeach; ?>
+                            </div> -->
 
                             <!-- Internship Type -->
-                            <div class="filter-section">
+                            <!-- <div class="filter-section">
                                 <span class="filter-label">Internship Type</span>
                                 <?php
-                                $types = ['All' => 'All types', 'paid' => 'With stipend', 'unpaid' => 'Without stipend'];
-                                foreach ($types as $val => $label):
-                                    $checked = (isset($_GET['internship_type']) && $_GET['internship_type'] == $val) ? 'checked' : '';
-                                    ?>
+                                // $types = ['All' => 'All types', 'paid' => 'With stipend', 'unpaid' => 'Without stipend'];
+                                // foreach ($types as $val => $label):
+                                //     $checked = (isset($_GET['internship_type']) && $_GET['internship_type'] == $val) ? 'checked' : '';
+                                ?>
                                     <label class="fc-item">
                                         <input type="radio" name="internship_type" value="<?= $val ?>" <?= $checked ?>>
                                         <?= $label ?>
                                     </label>
-                                <?php endforeach; ?>
-                            </div>
+                                <?php //endforeach; ?>
+                            </div> -->
 
                             <!-- Company Classification -->
                             <div class="filter-section">
@@ -949,12 +949,12 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         </div>
                                     <?php endif; ?>
 
-                                    <?php if (!empty($internship['year_level'])): ?>
+                                    <!-- <?php //if (!empty($internship['year_level'])): ?>
                                         <div class="detail-row">
-                                            <span class="detail-label">Year Level:</span>
+                                            <span class="detail-label">Year dnjwadnjanjdwhdahLevel:</span>
                                             <span class="detail-val"><?= htmlspecialchars($internship['year_level']) ?></span>
                                         </div>
-                                    <?php endif; ?>
+                                    <?php //endif; ?> -->
 
                                     <?php if (!empty($internship['internship_type'])): ?>
                                         <div class="detail-row">
@@ -972,12 +972,12 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         </div>
                                     <?php endif; ?>
 
-                                    <?php if (!empty($internship['deadline'])): ?>
+                                    <!-- <?php // if (!empty($internship['deadline'])): ?>
                                         <div class="detail-row">
                                             <span class="detail-label">Deadline:</span>
                                             <span class="detail-val"><?= htmlspecialchars($internship['deadline']) ?></span>
                                         </div>
-                                    <?php endif; ?>
+                                    <?php //endif; ?> -->
 
                                     <?php if (!empty($internship['phone_numbers'])): ?>
                                         <div class="detail-row">
