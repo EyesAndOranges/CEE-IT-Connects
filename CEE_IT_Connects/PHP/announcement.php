@@ -477,19 +477,21 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
                                     <td class="company-cell"><?= htmlspecialchars($d['company']) ?></td>
                                     <td>
                                         <span class="doc-status <?= $d['mou_available'] ? 'available' : 'unavailable' ?>">
-                                            <i class="fas fa-circle"></i> <?= $d['mou_available'] ? 'Available' : 'N/A' ?>
+                                            <!-- <i class="fas fa-circle"></i> -->
+                                            <?= $d['mou_available'] ? 'Available' : 'N/A' ?>
                                         </span>
                                     </td>
                                     <td>
                                         <span
                                             class="doc-status <?= $d['recommendation_letter_available'] ? 'available' : 'unavailable' ?>">
-                                            <i class="fas fa-circle"></i>
+                                            <!-- <i class="fas fa-circle"></i> -->
                                             <?= $d['recommendation_letter_available'] ? 'Available' : 'N/A' ?>
                                         </span>
                                     </td>
                                     <td>
                                         <span class="doc-status <?= $d['waiver_available'] ? 'available' : 'unavailable' ?>">
-                                            <i class="fas fa-circle"></i> <?= $d['waiver_available'] ? 'Available' : 'N/A' ?>
+                                            <!-- <i class="fas fa-circle"></i> -->
+                                            <?= $d['waiver_available'] ? 'Available' : 'N/A' ?>
                                         </span>
                                     </td>
                                 </tr>

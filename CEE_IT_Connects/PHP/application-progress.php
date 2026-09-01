@@ -110,7 +110,6 @@ $checklist = [
     'internship_plan' => false,
     'vicinity_map' => false,
     'oath' => false,
-    'ojt_started' => false,
 ];
 
 $checklist['internship'] = is_array($selectedInternship) && !empty($selectedInternship['internship_id']);
@@ -124,7 +123,6 @@ $checklist['medical_cert'] = isDone($progress, 'medical_cert');
 $checklist['internship_plan'] = isDone($progress, 'internship_plan');
 $checklist['vicinity_map'] = isDone($progress, 'vicinity_map');
 $checklist['oath'] = isDone($progress, 'oath');
-$checklist['ojt_started'] = isDone($progress, 'ojt_started');
 
 $total = count($checklist);
 $doneCount = count(array_filter($checklist));
@@ -1289,46 +1287,7 @@ function uploadBlock(string $step_key, string $label, array $progress, ?int $int
             </div>
 
             <!-- STEP 12: Start OJT -->
-            <?php $s12done = $checklist['ojt_started'] ?? false; ?>
-            <div class="step-card <?= $s12done ? 'is-done' : 'is-active' ?>">
-                <div class="step-header" onclick="toggle(this)">
-                    <div class="step-num <?= $s12done ? 'sn-done' : 'sn-active' ?>">
-                        <?= $s12done ? '<i class="fa fa-check"></i>' : 'X' ?>
-                    </div>
-                    <div class="step-meta">
-                        <h3>Start OJT</h3>
-                        <p>All pre-deployment requirements complete — begin rendering hours</p>
-                    </div>
-                    <div class="step-right">
-                        <span class="pill <?= $s12done ? 'pill-done' : 'pill-active' ?>">
-                            <?= $s12done ? '<i class="fa fa-check"></i> Done' : 'Pending' ?>
-                        </span>
-                        <span class="chevron"><i class="fa fa-chevron-down"></i></span>
-                    </div>
-                </div>
-                <div class="step-body">
-                    <div class="info-box green">
-                        <i class="fa fa-circle-check"></i>
-                        <div>
-                            <p>All pre-deployment requirements submitted!</p>
-                            <span>You are now cleared to start rendering your OJT hours.
-                                Download and submit the OJT Approval document to the CEIT OJT office before you
-                                begin.</span>
-                        </div>
-                    </div>
-                    <div class="action-row">
-                        <a href="mou-preview.php?action=approval" target="_blank" class="btn-action btn-outline-action">
-                            <i class="fa fa-eye"></i> Preview
-                        </a>
-                        <a href="download-form.php?action=approval" class="btn-action btn-primary-action">
-                            <i class="fa fa-download"></i> Download Approval Document
-                        </a>
-                    </div>
-                    <?php if (!$s12done): ?>
-                        <?= uploadBlock('internship_plan', 'The Internship Plan has been completed, signed by all required parties, and submitted to my OJT Coordinator.', $progress, $internship_id) ?>
-                    <?php endif; ?>
-                </div>
-            </div>
+            
 
         </div><!-- /.checklist -->
         <?php if ($selectedInternship): ?>
