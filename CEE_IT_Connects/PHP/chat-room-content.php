@@ -860,7 +860,10 @@ $backLink = getDashboardByRole($_SESSION['role']);
 
     <?php else: ?>
 
-        <?php if ($_SESSION['role'] === 'internship_adviser' || $_SESSION['role'] === 'hte_adviser'): ?>
+        <?php if (
+            $_SESSION['role'] === 'internship_adviser' || $_SESSION['role'] === 'hte_adviser'
+            || $_SESSION['role'] === 'superadmin' || $_SESSION['role'] === 'internship_admin'
+        ): ?>
             <div class="card mb-3 border-0 shadow-sm">
                 <div class="card-body">
                     <form action="chat-room-content-db.php" method="POST">

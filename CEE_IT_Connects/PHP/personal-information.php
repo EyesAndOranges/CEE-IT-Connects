@@ -494,12 +494,12 @@ $initials = strtoupper(
                             <select name="year_level" class="form-select">
                                 
                                 <?php /* ?>
-                                <?php for ($y = 1; $y <= 5; $y++): ?>
-                                    <option value="<?= $y ?>" <?= $val_year_level === $y ? 'selected' : '' ?>>
-                                        Year <?= $y ?>
-                                    </option>
-                                <?php endfor; ?>
-                                <?php */ ?>
+                           <?php for ($y = 1; $y <= 5; $y++): ?>
+                               <option value="<?= $y ?>" <?= $val_year_level === $y ? 'selected' : '' ?>>
+                                   Year <?= $y ?>
+                               </option>
+                           <?php endfor; ?>
+                           <?php */ ?>
 
                             </select>
                         </div> -->
@@ -508,7 +508,7 @@ $initials = strtoupper(
                             <label class="form-label">Program</label>
                             <select name="program" class="form-control">
                                 <?php foreach (['Information Technology', 'Electrical Engineering', 'Civil Engineering'] as $p): ?>
-                                    <option value="<?= $p ?>" <?=$val_program === $p ? 'selected ' : '' ?>>
+                                    <option value="<?= $p ?>" <?= $val_program === $p ? 'selected ' : '' ?>>
                                         Bachelor of Science in <?= $p ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -608,7 +608,8 @@ $initials = strtoupper(
                                 pattern="^(?=.*[a-z])(?=.*[A-Z]).{8,16}$">
                             <i class="fa fa-eye toggle-eye" onclick="togglePass('newPass',this)"></i>
                         </div>
-                        <span style="font-weight:400;text-transform:none;font-size:12px;color:#aaa;">8-16 characters with at least one uppercase and one lowercase
+                        <span style="font-weight:400;text-transform:none;font-size:12px;color:#aaa;">8-16 characters
+                            with at least one uppercase and one lowercase
                             letter</span>
                     </div>
                     <div class="col-md-6">
@@ -629,7 +630,7 @@ $initials = strtoupper(
 
             </form>
         </div>
-        
+
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

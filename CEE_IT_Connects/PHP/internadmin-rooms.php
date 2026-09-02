@@ -12,6 +12,7 @@ $roleMap = [
     'hte_adviser' => ['user_type' => 'adviser', 'table' => 'advisers'],
     'internship_adviser' => ['user_type' => 'adviser', 'table' => 'advisers'],
     'superadmin' => ['user_type' => 'admin', 'table' => 'admins'],
+    'internship_admin' => ['user_type' => 'admin', 'table' => 'admins'],
 ];
 
 if (!isset($roleMap[$role])) {
@@ -73,7 +74,7 @@ if (!isset($_GET['room_id'])) {
         $joinStmt->execute([$room['id'], $user_id, $user_type]);
     }
 
-    header("Location: ojt-rooms.php?room_id=" . $room['id']);
+    header("Location: internadmin-rooms.php?room_id=" . $room['id']);
     exit;
 }
 
@@ -97,46 +98,42 @@ if (!isset($_GET['room_id'])) {
 //     return $code;
 // }
 
-if (!isset($_GET['room_id'])) {
-    // Check if adviser already has a room
-    $stmt = $pdo->prepare("
-        SELECT r.id FROM rooms r
-        LEFT JOIN room_members rm ON r.id = rm.room_id
-        WHERE (r.adviser_id = ? OR (rm.user_id = ? AND rm.user_type = 'adviser'))
-        AND r.is_archived = FALSE
-        LIMIT 1
+if ($_SESSION['role'] === 'internship_admin') {
+    $admin_id = $_SESSION['user_id'];
+
+    // Every dedicated department room (no adviser attached)
+    $roomsStmt = $pdo->prepare("
+        SELECT id
+        FROM rooms
+        WHERE adviser_id IS NULL
+        AND is_archived = FALSE
     ");
-    $stmt->execute([$adviser_id, $adviser_id]);
-    $room = $stmt->fetch(PDO::FETCH_ASSOC);
+    $roomsStmt->execute();
+    $rooms = $roomsStmt->fetchAll(PDO::FETCH_COLUMN);
 
-    if (!$room) {
-        // Auto-create a room for this adviser
-        $advStmt = $pdo->prepare("SELECT full_name FROM advisers WHERE id = ?");
-        $advStmt->execute([$adviser_id]);
-        $adviser = $advStmt->fetch(PDO::FETCH_ASSOC);
-
-        $room_name = ($adviser['full_name'] ?? 'Adviser') . "'s Room";
-        $room_code = generateUniqueRoomCode($pdo);
-
-        $createStmt = $pdo->prepare("
-            INSERT INTO rooms (room_name, room_code, adviser_id, is_archived)
-            VALUES (?, ?, ?, FALSE)
+    // Add the admin as a member of each, if not already
+    $pdo->beginTransaction();
+    try {
+        $checkStmt = $pdo->prepare("
+            SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND user_type = 'admin'
         ");
-        $createStmt->execute([$room_name, $room_code, $adviser_id]);
-        $room_id = $pdo->lastInsertId();
-
-        $memberStmt = $pdo->prepare("
+        $joinStmt = $pdo->prepare("
             INSERT INTO room_members (room_id, user_id, user_type)
-            VALUES (?, ?, 'adviser')
+            VALUES (?, ?, 'admin')
         ");
-        $memberStmt->execute([$room_id, $adviser_id]);
 
-        header("Location: ojt-rooms.php?room_id=" . $room_id);
-        exit;
+        foreach ($rooms as $room_id) {
+            $checkStmt->execute([$room_id, $admin_id]);
+            if (!$checkStmt->fetch()) {
+                $joinStmt->execute([$room_id, $admin_id]);
+            }
+        }
+
+        $pdo->commit();
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        throw $e;
     }
-
-    header("Location: ojt-rooms.php?room_id=" . $room['id']);
-    exit;
 }
 
 $section = $_GET['section'] ?? '';
@@ -1275,53 +1272,13 @@ $page = 'messages';
     <div class="sidebar">
         <div style="display:flex; flex-direction:column; width:100%;">
 
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>" class="<?= $section === '' ? 'active' : '' ?>"
-                title="Room">
+            <a href="internadmin-rooms.php?room_id=<?= $current_room_id ?>"
+                class="<?= $section === '' ? 'active' : '' ?>" title="Room">
                 <i class="bi bi-display-fill me-2" style="font-weight: 800;"></i> <span class="sidebar-text">Room</span>
             </a>
-
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=status"
-                class="<?= $section === 'status' ? 'active' : '' ?>" title="Status">
-                <i class="fa-solid fa-calendar-check me-2"></i> <span class="sidebar-text">Status</span>
-            </a>
-
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=ojt_applications"
-                class="<?= $section === 'ojt_applications' ? 'active' : '' ?>" title="OJT Applications">
-                <i class="bi bi-book-fill me-2"></i> <span class="sidebar-text">Requirements</span>
-                <?php
-                $pendingStmt = $pdo->prepare("
-                SELECT COUNT(*) FROM ojt_applications oa 
-                JOIN room_members rm ON oa.student_id = rm.user_id AND rm.user_type = 'student'
-                WHERE rm.room_id = ? AND oa.status = 'pending'
-            ");
-                $pendingStmt->execute([$current_room_id]);
-                $pCount = $pendingStmt->fetchColumn();
-                if ($pCount > 0):
-                    ?>
-                    <span class="ms-auto badge rounded-pill"
-                        style="background:#ff6b2c;font-size:10px;"><?= $pCount ?></span>
-                <?php endif; ?>
-            </a>
-
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=weekly_reports"
-                class="<?= $section === 'weekly_reports' ? 'active' : '' ?>" title="Weekly Reports">
-                <i class="fa-solid fa-file-lines me-2"></i> <span class="sidebar-text">Weekly Reports</span>
-            </a>
-
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=chats"
-                class="<?= $section === 'chats' ? 'active' : '' ?>" title="Chats">
-                <i class="fa-solid fa-comments me-2"></i> <span class="sidebar-text">Chats</span>
-            </a>
-
-            <?php if ($isAdviser): ?>
-                <hr style="border-color:#eee; margin:10px 0;">
-                <button class="btn-create" data-bs-toggle="modal" data-bs-target="#csvUploadModal" title="Import Students">
-                    <i class="fa fa-file-csv me-2"></i> <span class="sidebar-text">Import Students</span>
-                </button>
-            <?php endif; ?>
-            <hr>
+            <hr style="width: 80%; align-self: center;"> <br>
             <?php foreach ($myRooms as $room): ?>
-                <a href="ojt-rooms.php?room_id=<?= $room['id'] ?>"
+                <a href="internadmin-rooms.php?room_id=<?= $room['id'] ?>"
                     class="<?= ((int) $current_room_id === (int) $room['id']) ? 'active' : '' ?>"
                     title="<?= htmlspecialchars($room['room_name']) ?>">
                     <i class="bi bi-people-fill me-2"></i>

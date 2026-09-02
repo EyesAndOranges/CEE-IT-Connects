@@ -73,7 +73,7 @@ if (!isset($_GET['room_id'])) {
         $joinStmt->execute([$room['id'], $user_id, $user_type]);
     }
 
-    header("Location: ojt-rooms.php?room_id=" . $room['id']);
+    header("Location: systemadmin-rooms.php?room_id=" . $room['id']);
     exit;
 }
 
@@ -1275,53 +1275,13 @@ $page = 'messages';
     <div class="sidebar">
         <div style="display:flex; flex-direction:column; width:100%;">
 
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>" class="<?= $section === '' ? 'active' : '' ?>"
-                title="Room">
+            <a href="systemadmin-rooms.php?room_id=<?= $current_room_id ?>"
+                class="<?= $section === '' ? 'active' : '' ?>" title="Room">
                 <i class="bi bi-display-fill me-2" style="font-weight: 800;"></i> <span class="sidebar-text">Room</span>
             </a>
-
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=status"
-                class="<?= $section === 'status' ? 'active' : '' ?>" title="Status">
-                <i class="fa-solid fa-calendar-check me-2"></i> <span class="sidebar-text">Status</span>
-            </a>
-
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=ojt_applications"
-                class="<?= $section === 'ojt_applications' ? 'active' : '' ?>" title="OJT Applications">
-                <i class="bi bi-book-fill me-2"></i> <span class="sidebar-text">Requirements</span>
-                <?php
-                $pendingStmt = $pdo->prepare("
-                SELECT COUNT(*) FROM ojt_applications oa 
-                JOIN room_members rm ON oa.student_id = rm.user_id AND rm.user_type = 'student'
-                WHERE rm.room_id = ? AND oa.status = 'pending'
-            ");
-                $pendingStmt->execute([$current_room_id]);
-                $pCount = $pendingStmt->fetchColumn();
-                if ($pCount > 0):
-                    ?>
-                    <span class="ms-auto badge rounded-pill"
-                        style="background:#ff6b2c;font-size:10px;"><?= $pCount ?></span>
-                <?php endif; ?>
-            </a>
-
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=weekly_reports"
-                class="<?= $section === 'weekly_reports' ? 'active' : '' ?>" title="Weekly Reports">
-                <i class="fa-solid fa-file-lines me-2"></i> <span class="sidebar-text">Weekly Reports</span>
-            </a>
-
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=chats"
-                class="<?= $section === 'chats' ? 'active' : '' ?>" title="Chats">
-                <i class="fa-solid fa-comments me-2"></i> <span class="sidebar-text">Chats</span>
-            </a>
-
-            <?php if ($isAdviser): ?>
-                <hr style="border-color:#eee; margin:10px 0;">
-                <button class="btn-create" data-bs-toggle="modal" data-bs-target="#csvUploadModal" title="Import Students">
-                    <i class="fa fa-file-csv me-2"></i> <span class="sidebar-text">Import Students</span>
-                </button>
-            <?php endif; ?>
-            <hr>
+            <hr style="width: 80%; align-self: center;"> <br>
             <?php foreach ($myRooms as $room): ?>
-                <a href="ojt-rooms.php?room_id=<?= $room['id'] ?>"
+                <a href="systemadmin-rooms.php?room_id=<?= $room['id'] ?>"
                     class="<?= ((int) $current_room_id === (int) $room['id']) ? 'active' : '' ?>"
                     title="<?= htmlspecialchars($room['room_name']) ?>">
                     <i class="bi bi-people-fill me-2"></i>

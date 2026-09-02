@@ -3,7 +3,7 @@ session_start();
 require 'db.php';
 require 'auth.php';
 
-
+$student_id = $_SESSION['user_id'];
 $page = $page ?? "";
 $isAdviser = isset($_SESSION['role']) && $_SESSION['role'] === 'internship_adviser';
 $current_room_id = $_GET['room_id'] ?? null;
@@ -13,23 +13,61 @@ if ($current_room_id !== null && $current_room_id !== '' && ctype_digit((string)
     $current_room_id = null;
 }
 
+
+$stmt = $pdo->prepare("
+    SELECT r.id, r.room_name, r.adviser_id
+    FROM room_members rm
+    JOIN rooms r ON r.id = rm.room_id
+    WHERE rm.user_id = ? AND rm.user_type = 'student' AND r.is_archived = FALSE
+    ORDER BY r.id
+");
+$stmt->execute([$student_id]);
+$my_rooms = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 // Auto-load assigned room for students (no redirect, just set the variable)
-if ($current_room_id === null && $_SESSION['role'] === 'student') {
-    $roomStmt = $pdo->prepare("
-        SELECT r.id
-        FROM rooms r
-        JOIN room_members rm ON r.id = rm.room_id
-        WHERE rm.user_id = ?
-          AND rm.user_type = 'student'
-          AND r.is_archived = FALSE
+if ($_SESSION['role'] === 'student') {
+    $stmt = $pdo->prepare("
+        SELECT a.id AS adviser_id
+        FROM ojt_applications oa
+        JOIN students s ON s.id = oa.student_id
+        JOIN advisers a ON a.internship_id = oa.internship_id
+                        AND a.department = s.program
+                        AND a.role = 'HTE_adviser'
+        WHERE oa.student_id = ?
+        ORDER BY oa.submitted_at DESC
         LIMIT 1
     ");
+    $stmt->execute([$student_id]);
+    $placement = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $roomStmt->execute([$_SESSION['user_id']]);
-    $assignedRoom = $roomStmt->fetch(PDO::FETCH_ASSOC);
+    if ($placement && $placement['adviser_id']) {
+        $adviser_id = $placement['adviser_id'];
 
-    if ($assignedRoom) {
-        $current_room_id = (int) $assignedRoom['id'];
+        $stmt = $pdo->prepare("
+            SELECT id FROM rooms
+            WHERE adviser_id = ?
+            AND is_archived = FALSE
+            LIMIT 1
+        ");
+        $stmt->execute([$adviser_id]);
+        $room = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($room) {
+            $checkStmt = $pdo->prepare("
+                SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND user_type = 'student'
+            ");
+            $checkStmt->execute([$room['id'], $student_id]);
+
+            if (!$checkStmt->fetch()) {
+                $joinStmt = $pdo->prepare("
+                    INSERT INTO room_members (room_id, user_id, user_type)
+                    VALUES (?, ?, 'student')
+                ");
+                $joinStmt->execute([$room['id'], $student_id]);
+            }
+
+            $current_room_id = (int) $room['id'];
+        }
     }
 }
 
@@ -102,7 +140,7 @@ $stmt = $pdo->prepare("
     FROM rooms r
     LEFT JOIN advisers a ON r.adviser_id = a.id
     JOIN room_members rm ON r.id = rm.room_id
-    WHERE rm.user_id = ?
+    WHERE rm.user_id = ? AND rm.user_type = 'student'
     " . (!$isAdviser ? "AND r.is_archived = FALSE" : "") . "
 ");
 $stmt->execute([$_SESSION['user_id']]);
@@ -140,6 +178,68 @@ $stmt->execute(['uid' => $_SESSION['user_id']]);
 $chatUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $chatStudents = [];
+
+if (isset($_GET['room_id'])) {
+    // verify they're actually a member of this room before trusting it
+    $verify = $pdo->prepare("
+        SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND user_type = 'student'
+    ");
+    $verify->execute([$_GET['room_id'], $student_id]);
+    if ($verify->fetch()) {
+        $current_room_id = (int) $_GET['room_id'];
+    }
+}
+
+// //This is for adding the student to hte adviser's room
+// if (!isset($_GET['room_id'])) {
+//     // Find HTE Adv
+//     $stmt = $pdo->prepare("
+//         SELECT i.adviser_id
+//         FROM ojt_applications oa
+//         JOIN internships i ON i.id = oa.internship_id
+//         WHERE oa.student_id = ?
+//         ORDER BY oa.submitted_at DESC
+//         LIMIT 1
+//     ");
+//     $stmt->execute([$student_id]);
+//     $placement = $stmt->fetch(PDO::FETCH_ASSOC);
+
+//     if (!$placement || !$placement['adviser_id']) {
+//         die("No internship application with an assigned adviser found.");
+//     }
+
+//     $adviser_id = $placement['adviser_id'];
+
+//     // Find The Specific Room Of The HTE
+//     $stmt = $pdo->prepare("
+//         SELECT id FROM rooms
+//         WHERE adviser_id = ? 
+//         AND is_archived = FALSE
+//         LIMIT 1
+//     ");
+//     $stmt->execute([$adviser_id]);
+//     $room = $stmt->fetch(PDO::FETCH_ASSOC);
+
+//     if (!$room) {
+//         die("Your adviser hasn't set up a room yet. Please check back later.");
+//     }
+//     // Get the room ID
+//     $checkStmt = $pdo->prepare("
+//         SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND user_type = 'student'
+//     ");
+//     $checkStmt->execute([$room['id'], $student_id]);
+
+//     if (!$checkStmt->fetch()) {
+//         $joinStmt = $pdo->prepare("
+//             INSERT INTO room_members (room_id, user_id, user_type)
+//             VALUES (?, ?, 'student')
+//         ");
+//         $joinStmt->execute([$room['id'], $student_id]);
+//     }
+
+//     header("Location: message.php?room_id=" . $room['id']);
+//     exit;
+// }
 
 if ($current_room_id !== null) {
     $chatStudentsStmt = $pdo->prepare("
@@ -1898,28 +1998,6 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
             <i class="fa-solid fa-user-group"></i> <span class="sidebar-text">Application</span>
         </a>
 
-        <?php if ($isAdviser): ?>
-            <div class="rooms-list">
-                <hr><br>
-                <h6>ROOMS</h6>
-                <?php foreach ($rooms as $room): ?>
-                    <?php if ($current_room_id == $room['id']): ?>
-                        <div class="room-item active-room">
-                            <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
-                            <span class="sidebar-text"><?= $room['room_name'] ?></span>
-                        </div>
-                    <?php else: ?>
-                        <a href="?room_id=<?= $room['id'] ?>" class="room-link">
-                            <div class="room-item">
-                                <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
-                                <span class="sidebar-text"><?= $room['room_name'] ?></span>
-                            </div>
-                        </a>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-
         <?php if ($hasActiveProgress): ?>
             <a href="?section=hours<?php if ($current_room_id)
                 echo "&room_id=$current_room_id"; ?>"
@@ -1939,6 +2017,26 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
             class="sidebar-link <?= $current_section === 'progress_report' ? 'active' : '' ?>">
             <i class="fa-solid fa-file m-1"></i> <span class="sidebar-text">Progress Report</span>
         </a>
+
+        <div class="rooms-list">
+            <hr><br>
+            <h6>ROOMS</h6>
+            <?php foreach ($rooms as $room): ?>
+                <?php if ($current_room_id == $room['id']): ?>
+                    <div class="room-item active-room">
+                        <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
+                        <span class="sidebar-text"><?= $room['room_name'] ?></span>
+                    </div>
+                <?php else: ?>
+                    <a href="?room_id=<?= $room['id'] ?>" class="room-link">
+                        <div class="room-item">
+                            <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
+                            <span class="sidebar-text"><?= $room['room_name'] ?></span>
+                        </div>
+                    </a>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
     </div>
 
     <!-- HOME SECTION -->

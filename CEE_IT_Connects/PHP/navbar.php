@@ -21,6 +21,12 @@ $hideAdviserNav = in_array($role, [
     'adviser',
 ]);
 
+$hideFromAdviser = in_array($role, [
+    'adviser',
+    'hte_adviser',
+    'internship_adviser'
+]);
+
 $roleMap = [
     'student' => 'student',
     'internship_adviser' => 'adviser',
@@ -420,15 +426,26 @@ function timeAgo($datetime)
                     </li>
                 </ul>
             </div>
+
         <?php endif; ?>
 
         <!-- Right Icons -->
         <div class="navbar-icons d-flex align-items-center position-relative">
 
             <!-- Messages (students only) -->
-            <?php if (!$hideStudentNav): ?>
+            <?php if (!$hideFromAdviser): ?>
                 <div>
-                    <a href="Message.php">
+                    <a href="<?php
+                    if ($role == 'students') {
+                        echo 'message.php';
+                    } else if ($role == 'superadmin' || $role == 'admin') {
+                        echo 'systemadmin-rooms.php';
+                    } else if ($role == 'internship_admin') {
+                        echo 'internadmin-rooms.php';
+                    } else {
+                        echo 'messages.php';
+
+                    } ?>">
                         <i class="fa-solid fa-desktop"></i>
                     </a>
                 </div>
