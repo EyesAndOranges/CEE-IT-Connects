@@ -727,7 +727,7 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
                                 <div><label>Contact Number</label><input type="tel" name="phonenumber"
                                         placeholder="Contact Number"></div>
                                 <div>
-                                    <label>Contract Duration</label>
+                                    <!-- <label>Contract Duration</label>
                                     <select name="year">
                                         <option value="" disabled selected>Select Duration</option>
                                         <option value="1">1 year</option>
@@ -735,6 +735,24 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
                                         <option value="3">3 years</option>
                                         <option value="4">4 years</option>
                                         <option value="5">5 years</option>
+                                    </select> -->
+                                    <label>Company Classification</label>
+                                    <select name="company_classification" required>
+                                        <option value="" disabled selected>Select Classification</option>
+                                        <option value="private">Private Sector</option>
+                                        <option value="public">Public / Government Sector</option>
+                                        <option value="academic">Academic & Research</option>
+                                        <option value="nonprofit">Nonprofit & Civil Society</option>
+                                        <option value="international">International Organizations</option>
+                                        <option value="creative">Creative & Media</option>
+                                        <option value="technology">Technology & Innovation</option>
+                                        <option value="healthcare">Healthcare & Social Services</option>
+                                        <option value="industrial">Industrial & Manufacturing</option>
+                                        <option value="financial">Financial & Business</option>
+                                        <option value="hospitality">Hospitality & Tourism</option>
+                                        <option value="freelance">Freelance / Gig-Based</option>
+                                        <option value="religious">Religious & Faith-Based</option>
+                                        <option value="public-private">Public-Private Sector</option>
                                     </select>
                                 </div>
                                 <div style="grid-column:span 2;">
@@ -752,7 +770,7 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
                                     location.</p>
                                 <div id="posting-map"
                                     style="width:100%;height:350px;border-radius:10px;border:1px solid #dee2e6;"></div>
-                                <div class="row g-3 mt-2">
+                                <!-- <div class="row g-3 mt-2">
                                     <div class="col-md-6">
                                         <label>Latitude</label>
                                         <input type="text" name="latitude" id="post-lat" placeholder="Click map to set"
@@ -763,6 +781,14 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
                                         <input type="text" name="longitude" id="post-lng" placeholder="Click map to set"
                                             readonly>
                                     </div>
+                                </div> -->
+                                <div class="row g-3 mt-2">
+                                        <div type="text" name="latitude" id="post-lat" placeholder="Click map to set"
+                                            readonly>
+                                        </div>
+                                        <div type="text" name="longitude" id="post-lng" placeholder="Click map to set"
+                                            readonly>
+                                        </div>
                                 </div>
                                 <div id="pin-label" class="d-none mt-2">
                                     <span class="p-1 rounded text-bg-success">
