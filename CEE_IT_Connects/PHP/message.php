@@ -179,14 +179,16 @@ $chatUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $chatStudents = [];
 
-if (isset($_GET['room_id'])) {
+if (!empty($_GET['room_id']) && ctype_digit((string) $_GET['room_id'])) {
+    $room_id = (int) $_GET['room_id'];
+
     // verify they're actually a member of this room before trusting it
     $verify = $pdo->prepare("
         SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND user_type = 'student'
     ");
-    $verify->execute([$_GET['room_id'], $student_id]);
+    $verify->execute([$room_id, $student_id]);
     if ($verify->fetch()) {
-        $current_room_id = (int) $_GET['room_id'];
+        $current_room_id = $room_id;
     }
 }
 

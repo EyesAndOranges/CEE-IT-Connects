@@ -127,7 +127,7 @@ $stmt = $pdo->prepare("
     FROM rooms r
     LEFT JOIN advisers a ON r.adviser_id = a.id
     JOIN room_members rm ON r.id = rm.room_id
-    WHERE rm.user_id = ?
+    WHERE rm.user_id = ? and rm.user_type = 'adviser'
     " . (!$isAdviser ? "AND r.is_archived = FALSE" : "") . "
 ");
 $stmt->execute([$_SESSION['user_id']]);

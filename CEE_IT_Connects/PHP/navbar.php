@@ -436,14 +436,14 @@ function timeAgo($datetime)
             <?php if (!$hideFromAdviser): ?>
                 <div>
                     <a href="<?php
-                    if ($role == 'students') {
+                    if ($role == 'student') {
                         echo 'message.php';
                     } else if ($role == 'superadmin' || $role == 'admin') {
                         echo 'systemadmin-rooms.php';
                     } else if ($role == 'internship_admin') {
                         echo 'internadmin-rooms.php';
                     } else {
-                        echo 'messages.php';
+                        echo 'message.php';
 
                     } ?>">
                         <i class="fa-solid fa-desktop"></i>

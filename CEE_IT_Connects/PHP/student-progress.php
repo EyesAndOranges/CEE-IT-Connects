@@ -99,7 +99,8 @@ if ($action === 'apply_internship') {
         'waiver',
         'internship_plan',
         'vicinity_map',
-        'oath'
+        'oath',
+        'resume'
     ];
 
     if (!in_array($step_key, $allowed_steps, true)) {

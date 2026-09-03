@@ -116,6 +116,7 @@ $checklist['internship'] = is_array($selectedInternship) && !empty($selectedInte
 // $checklist['acceptance_letter'] = isDone($progress, 'acceptance_letter');
 $checklist['company_profile'] = isDone($progress, 'company_profile');
 // $checklist['hte_form'] = isDone($progress, 'hte_form');
+$checklist['resume'] = isDone($progress, 'resume');
 $checklist['addendum'] = isDone($progress, 'addendum');
 $checklist['reco_letter'] = !$needs_reco_letter || isDone($progress, 'reco_letter');
 $checklist['waiver'] = !$needs_waiver || isDone($progress, 'waiver');
@@ -182,7 +183,6 @@ function uploadBlock(string $step_key, string $label, array $progress, ?int $int
     <?php
     return ob_get_clean();
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -765,7 +765,6 @@ function uploadBlock(string $step_key, string $label, array $progress, ?int $int
                 Mark each item done as you complete it.
             </div>
         </div>
-
         <div class="checklist">
             <!-- STEP 2: Apply for Internship / Choose Company -->
             <?php $s2done = $checklist['internship'] ?? false; ?>
@@ -821,6 +820,71 @@ function uploadBlock(string $step_key, string $label, array $progress, ?int $int
                                 <i class="fa fa-magnifying-glass"></i> Browse Internships
                             </a>
                         </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- STEP 3: Resume Upload -->
+            <?php $s3done = $checklist['resume'] ?? false; ?>
+            <div class="step-card <?= $s3done ? 'is-done' : 'is-active' ?>">
+                <div class="step-header" onclick="toggle(this)">
+                    <div class="step-num <?= $s3done ? 'sn-done' : 'sn-active' ?>">
+                        <?= $s3done ? '<i class="fa fa-check"></i>' : 'X' ?>
+                    </div>
+                    <div class="step-meta">
+                        <h3>Resume/Curriculum Vitae</h3>
+                        <p>Upload your resume/curriculim vitae</p>
+                    </div>
+                    <div class="step-right">
+                        <span class="pill <?= $s3done ? 'pill-done' : 'pill-active' ?>">
+                            <?= $s3done ? '<i class="fa fa-check"></i> Done' : 'Pending' ?>
+                        </span>
+                        <span class="chevron"><i class="fa fa-chevron-down"></i></span>
+                    </div>
+                </div>
+                <div class="step-body">
+                    <?php if ($s3done): ?>
+                        <div class="confirmed">
+                            <i class="fa fa-check-circle"></i> Marked complete &middot;
+                            <?= stepDate($progress, 'resume') ?>
+                        </div>
+                    <?php endif; ?>
+                    <div class="info-box blue">
+                        <i class="fa fa-circle-info"></i>
+                        <div>
+                            <p>About this requirement</p>
+                            <span>
+                                Your Resume/Curriculum Vitae is a summary of your academic background, skills,
+                                and relevant experience that your Host Training Establishment (HTE) will use to
+                                get to know you before you start your internship. It should be updated and
+                                accurate at the time of submission.
+                                <br><br>
+                                Prepare your resume ahead of time, then wait for your OJT Coordinator to confirm
+                                that pre-deployment requirements are ready for pickup at the college secretary's
+                                office. Once confirmed, go to the college secretary to pick it up.
+                                <br><br>
+                                Submit a photocopy of your resume to your OJT Coordinator for their records, and
+                                give the original copy directly to your HTE upon deployment.
+                            </span>
+                        </div>
+                    </div>
+                    <!-- <div class="doc-row">
+                        <i class="fa fa-file-lines" style="color:var(--brand);"></i>
+                        <span class="doc-name">Addendum for Student Intern Placement</span>
+                        <?php if ($internship_id): ?>
+                            <a href="mou-preview.php?id=<?= $internship_id ?>&student_id=<?= $student_id ?>&action=addendum"
+                                target="_blank" class="btn-action btn-outline-action"
+                                style="padding:5px 10px;font-size:11.5px;">
+                                <i class="fa fa-eye"></i> Preview
+                            </a>
+                            <a href="download-form.php?id=<?= $internship_id ?>&action=resume"
+                                class="btn-action btn-outline-action" style="padding:5px 10px;font-size:11.5px;">
+                                <i class="fa fa-download"></i> Download
+                            </a>
+                        <?php endif; ?>
+                    </div> -->
+                    <?php if (!$s3done): ?>
+                        <?= uploadBlock('resume', 'I have picked up the MOU/Partnership Letter and submitted the Addendum to the college.', $progress, $internship_id) ?>
                     <?php endif; ?>
                 </div>
             </div>
@@ -1287,7 +1351,7 @@ function uploadBlock(string $step_key, string $label, array $progress, ?int $int
             </div>
 
             <!-- STEP 12: Start OJT -->
-            
+
 
         </div><!-- /.checklist -->
         <?php if ($selectedInternship): ?>

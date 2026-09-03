@@ -24,6 +24,15 @@ $stmt = $pdo->prepare("
 $stmt->execute([$room_id]);
 $posts = $stmt->fetchAll();
 
+$mouStmt = $pdo->query("
+    SELECT mu.id, mu.file_path, mu.updated_at, mu.internship_id,
+           i.company, i.title
+    FROM mou_uploads mu
+    LEFT JOIN internships i ON i.id = mu.internship_id
+    ORDER BY mu.updated_at DESC
+");
+$mouUploads = $mouStmt->fetchAll(PDO::FETCH_ASSOC);
+
 // ROOM MEMBERS
 $stmt = $pdo->prepare("
     SELECT rm.user_id, rm.user_type, 
@@ -740,7 +749,14 @@ $backLink = getDashboardByRole($_SESSION['role']);
     </div>
 
     <!-- RIGHT SIDE -->
-
+    <?php if ($_SESSION['role'] === 'hte_adviser'): ?>
+        <?php foreach ($mouUploads as $m): ?>
+            <a href="<?= htmlspecialchars($m['file_path']) ?>" target="_blank" class="submit-btn"
+                style="font-size: 15px;font-weight:bold;color:#ffffff;display:inline-block;width:auto;padding:11px 24px;text-align:center;text-decoration:none;">
+                <i class="bi bi-file-earmark-pdf me-1"></i> View MOU
+            </a>
+        <?php endforeach; ?>
+    <?php endif; ?>
     <?php
     if ($_SESSION['role'] === 'student'):
         if ($status):

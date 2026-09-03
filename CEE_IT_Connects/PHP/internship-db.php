@@ -355,5 +355,84 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         header("Location: " . $_SERVER['HTTP_REFERER']);
         exit;
     }
+    if (($_POST['form_type'] ?? '') === 'mou_upload') {
+
+        if (empty($_POST['internship_id']) || !ctype_digit($_POST['internship_id'])) {
+            $_SESSION['error'] = 'Please select a valid internship.';
+            header('Location: internship-ui.php#upload_mou');
+            exit;
+        }
+        $internship_id = (int) $_POST['internship_id'];
+
+        if (empty($_FILES['mou_file']['name'])) {
+            $_SESSION['error'] = 'Please choose a file to upload.';
+            header('Location: internship-ui.php#upload_mou');
+            exit;
+        }
+
+        $file = $_FILES['mou_file'];
+
+        // Basic validation
+        $allowedExt = ['pdf'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, $allowedExt) || $file['error'] !== UPLOAD_ERR_OK || $file['size'] > 5 * 1024 * 1024) {
+            $_SESSION['error'] = 'Invalid file. Must be a PDF under 5MB.';
+            header('Location: internship-ui.php#upload_mou');
+            exit;
+        }
+
+        $uploadDir = __DIR__ . '/uploads/mou/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $filename = 'mou_' . $internship_id . '_' . time() . '.' . $ext;
+        $destPath = $uploadDir . $filename;
+        $webPath = 'uploads/mou/' . $filename; // path stored in DB, used in <a href>
+
+        if (!move_uploaded_file($file['tmp_name'], $destPath)) {
+            $_SESSION['error'] = 'Failed to save file.';
+            header('Location: internship-ui.php#upload_mou');
+            exit;
+        }
+
+        $stmt = $pdo->prepare("
+        INSERT INTO mou_uploads (file_path, internship_id, updated_at)
+        VALUES (:file_path, :internship_id, NOW())
+    ");
+        $stmt->execute([
+            ':file_path' => $webPath,
+            ':internship_id' => $internship_id,
+        ]);
+
+        $_SESSION['success'] = 'MOU uploaded successfully.';
+        header('Location: internship-ui.php#upload_mou');
+        exit;
+    }
+
+    if (($_POST['form_type'] ?? '') === 'mou_delete') {
+
+        if (empty($_POST['mou_id']) || !ctype_digit($_POST['mou_id'])) {
+            header('Location: internship-ui.php#upload_mou');
+            exit;
+        }
+        $mou_id = (int) $_POST['mou_id'];
+
+        // Fetch file path first so we can remove it from disk
+        $stmt = $pdo->prepare("SELECT file_path FROM mou_uploads WHERE id = ?");
+        $stmt->execute([$mou_id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row && file_exists(__DIR__ . '/' . $row['file_path'])) {
+            unlink(__DIR__ . '/' . $row['file_path']);
+        }
+
+        $del = $pdo->prepare("DELETE FROM mou_uploads WHERE id = ?");
+        $del->execute([$mou_id]);
+
+        $_SESSION['success'] = 'MOU deleted.';
+        header('Location: internship-ui.php#upload_mou');
+        exit;
+    }
 }
 ?>

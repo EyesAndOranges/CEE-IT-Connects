@@ -68,6 +68,15 @@ $stmtannouncement = $pdo->prepare("
 $stmtannouncement->execute();
 $announcements = $stmtannouncement->fetchAll(PDO::FETCH_ASSOC);
 
+$mouStmt = $pdo->query("
+    SELECT mu.id, mu.file_path, mu.updated_at, mu.internship_id,
+           i.company, i.title
+    FROM mou_uploads mu
+    LEFT JOIN internships i ON i.id = mu.internship_id
+    ORDER BY mu.updated_at DESC
+");
+$mouUploads = $mouStmt->fetchAll(PDO::FETCH_ASSOC);
+
 $internshipStmt = $pdo->query("
     SELECT id, company, title FROM internships ORDER BY company ASC, title ASC
 ");
@@ -363,7 +372,10 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
                 <i class="bi bi-bell-fill"></i> Announcements
             </a>
             <a href="#" onclick="showSection('manage_announcement')">
-                <i class="bi bi-bookmark"></i> Manage Announcement
+                <i class="bi bi-bookmark-fill"></i> Manage Announcement
+            </a>
+            <a href="#" onclick="showSection('upload_mou')">
+                <i class="bi bi-book-fill"></i> Upload MOU
             </a>
         </aside>
 
@@ -783,12 +795,12 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
                                     </div>
                                 </div> -->
                                 <div class="row g-3 mt-2">
-                                        <div type="text" name="latitude" id="post-lat" placeholder="Click map to set"
-                                            readonly>
-                                        </div>
-                                        <div type="text" name="longitude" id="post-lng" placeholder="Click map to set"
-                                            readonly>
-                                        </div>
+                                    <div type="text" name="latitude" id="post-lat" placeholder="Click map to set"
+                                        readonly>
+                                    </div>
+                                    <div type="text" name="longitude" id="post-lng" placeholder="Click map to set"
+                                        readonly>
+                                    </div>
                                 </div>
                                 <div id="pin-label" class="d-none mt-2">
                                     <span class="p-1 rounded text-bg-success">
@@ -1197,6 +1209,82 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
                                     </form>
                                 </tr>
                             <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="upload_mou" class="section">
+                <div class="sysAdm-header">
+                    <h2>Upload MOU</h2>
+                    <p>Upload signed Memorandums of Understanding and link them to an internship posting.</p>
+                </div>
+
+                <form action="internship-db.php" method="POST" enctype="multipart/form-data" class="internship-form">
+                    <input type="hidden" name="form_type" value="mou_upload">
+                    <div class="form-card">
+                        <h3>MOU File</h3>
+                        <div class="mb-3">
+                            <label>Internship Posting</label>
+                            <select name="internship_id" required>
+                                <option value="" disabled selected>Select Internship</option>
+                                <?php foreach ($internships as $p): ?>
+                                    <option value="<?= (int) $p['id'] ?>">
+                                        <?= htmlspecialchars($p['company']) ?> — <?= htmlspecialchars($p['title']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label>MOU File (PDF, max 5MB)</label>
+                            <input type="file" name="mou_file" accept=".pdf" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="submit-btn">Upload MOU</button>
+                </form>
+
+                <!-- MOU TABLE -->
+                <div class="table-container" style="margin-top:20px;">
+                    <table class="custom-table" id="mou-table">
+                        <thead>
+                            <tr>
+                                <th>Company</th>
+                                <th>Job Title</th>
+                                <th>File</th>
+                                <th>Uploaded</th>
+                                <th style="text-align:center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mou-tbody">
+                            <?php foreach ($mouUploads as $m): ?>
+                                <tr>
+                                    <td style="padding:14px 15px;"><?= htmlspecialchars($m['company'] ?? '—') ?></td>
+                                    <td style="padding:14px 15px;"><?= htmlspecialchars($m['title'] ?? '—') ?></td>
+                                    <td style="padding:14px 15px;">
+                                        <a href="<?= htmlspecialchars($m['file_path']) ?>" target="_blank">
+                                            <i class="bi bi-file-earmark-pdf"></i> View
+                                        </a>
+                                    </td>
+                                    <td style="padding:14px 15px;">
+                                        <?= date("M d, Y", strtotime($m['updated_at'])) ?>
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <form method="POST" action="internship-db.php" style="display:inline;"
+                                            onsubmit="return confirm('Delete this MOU?');">
+                                            <input type="hidden" name="form_type" value="mou_delete">
+                                            <input type="hidden" name="mou_id" value="<?= (int) $m['id'] ?>">
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                            <?php if (empty($mouUploads)): ?>
+                                <tr>
+                                    <td colspan="5" style="text-align:center;padding:14px;color:#888;">No MOUs uploaded yet.
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
