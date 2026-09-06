@@ -21,7 +21,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         // Handle internship posting
         $title = $_POST['title'] ?? '';
         $company = $_POST['company'] ?? '';
-        $duration = $_POST['year'] ?? '';
+        // $duration = $_POST['year'] ?? '';
         $email = $_POST['email'] ?? '';
         $location = $_POST['location'] ?? '';
         $description = $_POST['description'] ?? '';
@@ -49,14 +49,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         try {
             $stmt = $pdo->prepare(
-                "INSERT INTO internships (title, company, duration, email, location, description, program, latitude, longtitude, phone_numbers, deadline, available, time_open, time_close, admin_id) 
-                VALUES (:title, :company, :duration, :email, :location, :description, :program, :latitude, :longtitude, :phonenumber, :deadline, :available, :openTime, :closeTime, :admin_id)"
+                "INSERT INTO internships (title, company, email, location, description, 
+                program, latitude, longtitude, phone_numbers, deadline, available, time_open, time_close, 
+                admin_id, is_plv_internal, is_valenzuela_lgu) 
+                VALUES (:title, :company, :email, :location, :description, :program, :latitude, 
+                :longtitude, :phonenumber, :deadline, :available, :openTime, :closeTime, :admin_id, 
+                False, False)"
             );
 
             $stmt->execute([
                 'title' => $title,
                 'company' => $company,
-                'duration' => $duration,
                 'email' => $email,
                 'location' => $location,
                 'description' => $description,
@@ -65,7 +68,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 'longtitude' => $longitude,
                 'phonenumber' => $phonenumber,
                 'deadline' => $deadline,
-                'available' => $available,
+                'available' => true,
                 'openTime' => $openTime,
                 'closeTime' => $closeTime,
                 'admin_id' => $admin_id
@@ -106,8 +109,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             header("Location: internship-ui.php?success=1");
             exit();
         } catch (PDOException $e) {
-            echo "<script>alert('Database error: '); </script>" . $e->getMessage() . "<script>window.history.back();</script>";
-            exit;
+            echo "<!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Database Error</title>
+                </head>
+                <body>
+                    <h2>Database Error</h2>
+                    <pre>" . htmlspecialchars($e->getMessage()) . "</pre>
+                    <button onclick=\"window.location.href='internship-ui.php'\">
+                        Return to Internship System
+                    </button>
+                </body>
+                </html>";
+            exit();
         }
     }
     if ($form_type === 'announcement_posting') {
@@ -130,7 +145,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 ':activity' => 'Posted a new announcement: ' . $title
             ]);
         } catch (PDOException $e) {
-            echo "<script>alert('Database error: '); </script>" . $e->getMessage() . "<script>window.history.back();</script>";
+            echo "<script>
+                alert('Database error: " . addslashes($e->getMessage()) . "');
+                window.history.back();
+            </script>";
             exit;
         }
 

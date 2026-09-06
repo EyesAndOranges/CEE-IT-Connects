@@ -401,9 +401,9 @@ foreach ($roomStatuses as $s) {
 
 
 
-                // $htmlBody = "Dear <strong>{$sup['supervisor_name']}</strong>,<br><br>"
-                //     . "Student intern <strong>{$sup['student_name']}</strong> has completed their required OJT hours. "
-                //     . "Please fill out the attached evaluation form or <a href='{$evalUrl}'>click here</a> to complete it online.";
+                $htmlBody = "Dear <strong>{$sup['supervisor_name']}</strong>,<br><br>"
+                    . "Student intern <strong>{$sup['student_name']}</strong> has completed their required OJT hours. "
+                    . "Please fill out the attached evaluation form or <a href='{$evalUrl}'>click here</a> to complete it online.";
 
                 $mail = new PHPMailer(true);
                 try {
@@ -417,7 +417,7 @@ foreach ($roomStatuses as $s) {
 
                     $mail->setFrom('jamesherold25@gmail.com', 'PLV OJT System');
                     $mail->addAddress($sup['supervisor_email'], $sup['supervisor_name']);
-                    $mail->Subject = "Evaluation Request — {$sup['student_name']}";
+                    $mail->Subject = "Evaluation Request - {$sup['student_name']}";
                     $mail->isHTML(true);
                     $mail->Body = $htmlBody;
                     $mail->addAttachment($pdfPath, 'CEIT-OJTF-010_Supervisors_Evaluation.pdf');
@@ -1470,27 +1470,13 @@ foreach ($roomStatuses as $s) {
                                     <td>
                                         <div style="display:flex; flex-direction:column; gap:6px;">
 
-                                            <!-- ① Student Evaluation -->
-                                            <?php
-                                            $seStmt = $pdo->prepare("SELECT id FROM ojt_evaluations_student WHERE student_id = ?");
-                                            $seStmt->execute([$s['id']]);
-                                            $hasStudentEval = (bool) $seStmt->fetchColumn();
-                                            ?>
-                                            <?php if ($hasStudentEval): ?>
-                                                <a href="ojt-evaluation-download.php?student_id=<?= $s['id'] ?>" target="_blank"
-                                                    style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
-                      background:#dbeafe;color:#1e40af;border-radius:6px;font-size:11px;
-                      font-weight:600;text-decoration:none;white-space:nowrap;
-                      border:1px solid #93c5fd;">
-                                                    <i class="fa fa-file-pdf"></i> Student Eval
-                                                </a>
-                                            <?php else: ?>
-                                                <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
-                         background:#f3f4f6;color:#9ca3af;border-radius:6px;font-size:11px;
-                         font-weight:600;white-space:nowrap;border:1px solid #e5e7eb;">
-                                                    <i class="fa fa-file-pdf"></i> Student Eval
-                                                </span>
-                                            <?php endif; ?>
+                                            <!-- ① Fill Supervisor Evaluation (opens the modal, same as "Fill Manually") -->
+                                            <button type="button" onclick="openSupEvalModal(<?= $s['id'] ?>)"
+                                                style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+                                                background:#dbeafe;color:#1e40af;border-radius:6px;font-size:11px;
+                                                font-weight:600;border:1px solid #93c5fd;cursor:pointer;white-space:nowrap;">
+                                                <i class="fa fa-file-pdf"></i> Supervisor Eval Form
+                                            </button>
 
                                             <!-- ② Assign / Edit Supervisor -->
                                             <?php
@@ -1881,7 +1867,6 @@ foreach ($roomStatuses as $s) {
     </div><!-- /.main -->
 
     <!-- Supervisor Evaluation Modal -->
-
     <div class="modal fade" id="supEvalModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content" style="border-radius:16px; overflow:hidden;">
@@ -2217,6 +2202,9 @@ foreach ($roomStatuses as $s) {
                     <span style="font-size:12px;color:#94a3b8;flex:1;">
                         Responses will be kept within the department for record purposes only.
                     </span>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="supEvalPreviewBtn">
+                        <i class="fa-regular fa-eye me-1"></i> Preview PDF
+                    </button>
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="supEvalLaterBtn">
                         Remind Me Later
                     </button>
@@ -2709,6 +2697,44 @@ foreach ($roomStatuses as $s) {
                 btn.innerHTML = orig;
             }
         }
+        document.addEventListener('DOMContentLoaded', function () {
+            const supPreviewBtn = document.getElementById('supEvalPreviewBtn');
+            if (supPreviewBtn) {
+                supPreviewBtn.addEventListener('click', async function () {
+                    const form = document.getElementById('supEvalForm');
+                    const errorEl = document.getElementById('sup-eval-error-msg');
+                    errorEl.style.display = 'none';
+
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        errorEl.textContent = 'Please complete all required fields before previewing.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+
+                    const originalHtml = supPreviewBtn.innerHTML;
+                    supPreviewBtn.disabled = true;
+                    supPreviewBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Building preview…';
+
+                    try {
+                        const data = new FormData(form);
+                        const res = await fetch('ojt-evaluation-preview-supervisor.php', { method: 'POST', body: data });
+                        if (!res.ok) throw new Error('Preview failed');
+
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        window.open(url, '_blank');
+                        setTimeout(() => URL.revokeObjectURL(url), 60000);
+                    } catch (err) {
+                        errorEl.textContent = 'Could not generate preview. Please try again.';
+                        errorEl.style.display = 'block';
+                    } finally {
+                        supPreviewBtn.disabled = false;
+                        supPreviewBtn.innerHTML = originalHtml;
+                    }
+                });
+            }
+        });
     </script>
 </body>
 

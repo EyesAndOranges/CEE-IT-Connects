@@ -13,6 +13,13 @@ if ($current_room_id !== null && $current_room_id !== '' && ctype_digit((string)
     $current_room_id = null;
 }
 
+$stmt = $pdo->prepare("
+    SELECT *
+    FROM ojt_evaluations_student
+    WHERE student_id = ? LIMIT 1
+");
+$stmt->execute([$student_id]);
+$studentEval = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $stmt = $pdo->prepare("
     SELECT r.id, r.room_name, r.adviser_id
@@ -2966,7 +2973,6 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                                     <?php $i++; endforeach; ?>
                             </div>
                         <?php endforeach; ?>
-
                         <!-- ── PART II ── -->
                         <div
                             style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#94a3b8;text-transform:uppercase;margin:20px 0 10px;">
@@ -3150,6 +3156,9 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                     <span style="font-size:12px;color:#94a3b8;flex:1;">
                         Responses will be kept within the department for record purposes only.
                     </span>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="evalPreviewBtn">
+                        <i class="fa-regular fa-eye me-1"></i> Preview PDF
+                    </button>
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="evalLaterBtn">
                         Remind Me Later
                     </button>
@@ -3762,6 +3771,45 @@ $requiredHours = $rhStmt->fetchColumn() ?: 486;
                         errorEl.style.display = 'block';
                         submitBtn.disabled = false;
                         submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Submit Evaluation';
+                    }
+                });
+            }
+
+            const previewBtn = document.getElementById('evalPreviewBtn');
+            if (previewBtn) {
+                previewBtn.addEventListener('click', async function () {
+                    const form = document.getElementById('ojtEvalForm');
+                    const errorEl = document.getElementById('eval-error-msg');
+                    errorEl.style.display = 'none';
+
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        errorEl.textContent = 'Please complete all required fields before previewing.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+
+                    const originalHtml = previewBtn.innerHTML;
+                    previewBtn.disabled = true;
+                    previewBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Building preview…';
+
+                    try {
+                        const data = new FormData(form);
+                        const res = await fetch('ojt-evaluation-preview.php', { method: 'POST', body: data });
+
+                        if (!res.ok) throw new Error('Preview failed');
+
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        window.open(url, '_blank');
+                        // Revoke later so the opened tab has time to load the blob
+                        setTimeout(() => URL.revokeObjectURL(url), 60000);
+                    } catch (err) {
+                        errorEl.textContent = 'Could not generate preview. Please try again.';
+                        errorEl.style.display = 'block';
+                    } finally {
+                        previewBtn.disabled = false;
+                        previewBtn.innerHTML = originalHtml;
                     }
                 });
             }

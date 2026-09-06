@@ -2,6 +2,7 @@
 session_start();
 require 'db.php';
 
+
 // Second code's real queries
 $applicantsStmt = $pdo->query("
     SELECT 
@@ -118,6 +119,7 @@ $docAvailStmt = $pdo->query("
     ORDER BY ida.updated_at DESC
 ");
 $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
+
 
 ?>
 <!DOCTYPE html>
@@ -782,26 +784,26 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
                                     location.</p>
                                 <div id="posting-map"
                                     style="width:100%;height:350px;border-radius:10px;border:1px solid #dee2e6;"></div>
-                                <!-- <div class="row g-3 mt-2">
-                                    <div class="col-md-6">
-                                        <label>Latitude</label>
-                                        <input type="text" name="latitude" id="post-lat" placeholder="Click map to set"
-                                            readonly>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label>Longitude</label>
-                                        <input type="text" name="longitude" id="post-lng" placeholder="Click map to set"
-                                            readonly>
-                                    </div>
-                                </div> -->
                                 <div class="row g-3 mt-2">
+                                    <div class="col-md-6">
+                                        <!-- <label>Latitude</label> -->
+                                        <input type="hidden" name="latitude" id="post-lat"
+                                            placeholder="Click map to set" readonly>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <!-- <label>Longitude</label> -->
+                                        <input type="hidden" name="longitude" id="post-lng"
+                                            placeholder="Click map to set" readonly>
+                                    </div>
+                                </div>
+                                <!-- <div class="row g-3 mt-2">
                                     <div type="text" name="latitude" id="post-lat" placeholder="Click map to set"
                                         readonly>
                                     </div>
                                     <div type="text" name="longitude" id="post-lng" placeholder="Click map to set"
                                         readonly>
                                     </div>
-                                </div>
+                                </div> -->
                                 <div id="pin-label" class="d-none mt-2">
                                     <span class="p-1 rounded text-bg-success">
                                         <i class="bi bi-geo-alt-fill"></i> Location pinned — drag or click to adjust
