@@ -317,6 +317,22 @@ $backLink = getDashboardByRole($_SESSION['role']);
             background: #bc2e8e;
         }
 
+        .btn-update {
+            background: #FFE7B3 !important;
+            color: #7a5200 !important;
+            /* border: none !important;
+            border-radius: 10px !important;
+            padding: 8px 18px !important;
+            font-weight: 600 !important; */
+            padding: 8px 18px !important;
+            transition: background-color .15s ease, color .15s ease;
+        }
+
+        .btn-update:hover {
+            background: #E4572E !important;
+            color: #fff !important;
+        }
+
         /* ── MEMBER CARD ── */
         .member-card {
             display: flex;
@@ -751,7 +767,7 @@ $backLink = getDashboardByRole($_SESSION['role']);
     <!-- RIGHT SIDE -->
     <?php if ($_SESSION['role'] === 'hte_adviser'): ?>
         <?php foreach ($mouUploads as $m): ?>
-            <a href="<?= htmlspecialchars($m['file_path']) ?>" target="_blank" class="submit-btn"
+            <a href="<?= htmlspecialchars($m['file_path']) ?>" target="_blank" class="btn-update"
                 style="font-size: 15px;font-weight:bold;color:#ffffff;display:inline-block;width:auto;padding:11px 24px;text-align:center;text-decoration:none;">
                 <i class="bi bi-file-earmark-pdf me-1"></i> View MOU
             </a>
@@ -785,10 +801,7 @@ $backLink = getDashboardByRole($_SESSION['role']);
         class="me-3 fw-bold tab-link <?= $tab === 'members' ? 'text-danger active-tab' : 'text-dark' ?>">
         Members
     </a>
-    <a href="?room_id=<?= $room_id ?>&tab=chats"
-        class="fw-bold tab-link <?= $tab === 'chats' ? 'text-danger active-tab' : 'text-dark' ?>">
-        Chats
-    </a>
+    <!-- Chats tab removed -->
 </div>
 
 <!-- CONTENT -->
@@ -815,12 +828,19 @@ $backLink = getDashboardByRole($_SESSION['role']);
                     <div class="member-info">
                         <strong><?= htmlspecialchars($m['full_name']) ?></strong>
                     </div>
-                    <span class="badge-role badge-student">Student</span>
+                    <span class="badge-role badge-student"><?php if ($m['user_type'] === 'adviser') {
+                        echo 'Adviser';
+                    } elseif ($m['user_type'] === 'admin') {
+                        echo 'Admin';
+                    } else {
+                        echo 'Student';
+
+                    } ?></span>
                 </div>
             <?php endforeach; ?>
         </div>
 
-    <?php elseif ($tab === 'chats'): ?>
+    <!-- <?php elseif ($tab === 'chats'): ?>
 
         <div class="chat-container">
 
@@ -874,7 +894,7 @@ $backLink = getDashboardByRole($_SESSION['role']);
 
         </div>
 
-    <?php else: ?>
+    <?php else: ?> -->
 
         <?php if (
             $_SESSION['role'] === 'internship_adviser' || $_SESSION['role'] === 'hte_adviser'
@@ -912,7 +932,11 @@ $backLink = getDashboardByRole($_SESSION['role']);
                         <div>
                             <strong><?= htmlspecialchars($post['sender_name']) ?></strong><br>
                             <small class="text-muted">
-                                <?= htmlspecialchars($post['sender_role']) ?> •
+                                <?php if ($post['sender_role'] === 'superadmin') {
+                                    echo htmlspecialchars('System Admin');
+                                } else {
+                                    echo htmlspecialchars($post['sender_role']);
+                                } ?> •
                                 <?= date("M d, Y", strtotime($post['created_at'])) ?>
                             </small>
                         </div>

@@ -1271,12 +1271,12 @@ $page = 'messages';
     <!-- SIDEBAR -->
     <div class="sidebar">
         <div style="display:flex; flex-direction:column; width:100%;">
-
+<!-- 
             <a href="internadmin-rooms.php?room_id=<?= $current_room_id ?>"
                 class="<?= $section === '' ? 'active' : '' ?>" title="Room">
                 <i class="bi bi-display-fill me-2" style="font-weight: 800;"></i> <span class="sidebar-text">Room</span>
             </a>
-            <hr style="width: 80%; align-self: center;"> <br>
+            <hr style="width: 80%; align-self: center;"> <br> -->
             <?php foreach ($myRooms as $room): ?>
                 <a href="internadmin-rooms.php?room_id=<?= $room['id'] ?>"
                     class="<?= ((int) $current_room_id === (int) $room['id']) ? 'active' : '' ?>"

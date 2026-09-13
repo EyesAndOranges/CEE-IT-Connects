@@ -115,7 +115,8 @@ function timeAgo($datetime)
 
         /* ── NAVBAR ── */
         .navbar-custom {
-            background: #2c3e67;
+            /* background: #2c3e67; */
+            background: #272f54;
             padding: 12px 0;
             position: fixed;
             top: 0;
@@ -123,7 +124,8 @@ function timeAgo($datetime)
             width: 100%;
             height: 70px;
             z-index: 1000;
-
+            border-bottom: 1px solid #1b1f32;
+            box-shadow: 0 8px 6px -6px rgba(0, 0, 0, 0.3);
             /* position: sticky; */
             align-items: center;
             justify-content: space-between;
@@ -140,8 +142,8 @@ function timeAgo($datetime)
             color: #ff6b2c;
             font-weight: 700;
             letter-spacing: 1px;
-            font-size: 22px;
-            font-family: 'Questrial', sans-serif !important;
+            font-size: 26px;
+            font-family: 'Franklin Gothic Medium', sans-serif !important;
         }
 
         .navbar-nav .nav-link {
@@ -266,6 +268,139 @@ function timeAgo($datetime)
             padding-right: 15px;
         }
 
+
+        /* .notif-popup {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+            padding: 0 0 8px 0;
+            width: 340px;
+            max-height: 420px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .notif-popup-header {
+            background: linear-gradient(135deg,#272f54,#1e2647);
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .notif-popup-header-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .notif-popup-header-icon i {
+            color: #ff9d5c;
+            font-size: 16px;
+        }
+
+        .notif-popup-header h5 {
+            margin: 0 0 2px 0;
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .notif-popup-list {
+            overflow-y: auto;
+            flex: 1;
+            padding-top: 10px;
+        }
+        .notif-item:first-child {
+            margin-top: 10px;
+        }
+
+        .notif-subtitle {
+            margin: 0;
+            font-size: 12.5px;
+            color: #9aa3c7;
+        }
+
+        .notif-subtitle {
+            padding: 0 20px;
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 14px;
+        }
+
+        .notif-popup hr {
+            margin: 0 0 4px 0;
+            border-color: #f1f5f9;
+        }
+
+        .notif-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 14px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #f8fafc;
+            position: relative;
+            transition: background 0.15s ease;
+        }
+
+        .notif-item:hover {
+            background: #f8fafc;
+        }
+
+        .notif-item:last-child {
+            border-bottom: none;
+        }
+
+        .notif-item .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff6b2c;
+            flex-shrink: 0;
+            margin-top: 6px;
+        }
+
+        .notif-item > div:last-child {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .notif-item strong {
+            display: block;
+            font-size: 13.5px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+
+        .notif-item p {
+            font-size: 12.5px;
+            color: #64748b;
+            line-height: 1.5;
+            margin-bottom: 4px;
+        }
+
+        .notif-item small {
+            font-size: 11px;
+            color: #cbd5e1;
+        }
+
+        .notif-popup::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .notif-popup::-webkit-scrollbar-thumb {
+            background: #e2e8f0;
+            border-radius: 10px;
+        } */
+
         .dot {
             width: 8px;
             height: 8px;
@@ -314,25 +449,24 @@ function timeAgo($datetime)
             word-break: break-all;
         }
 
-        .btn-edit {
-            width: 100%;
-            background: linear-gradient(135deg, #FFB62F, #E4572E);
-            color: white;
-            border: none;
-            padding: 8px 12px;
+        .btn-update {
+            background: #FFE7B3 !important;
+            color: #7a5200 !important;
+            border: none !important;
+            transition: background-color .15s ease, color .15s ease;
+            padding: 4px 18px;
             border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            margin-bottom: 10px;
         }
-
-        .btn-edit:hover {
-            opacity: 0.9;
+        .btn-update i {
+            color: #7a5200 !important;
+        }
+        
+        .btn-update:hover {
+            background: #E4572E !important;
+            color: #fff !important;
+        }
+        .btn-update:hover i {
+            color: #fff !important;
         }
 
         .logout {
@@ -346,15 +480,14 @@ function timeAgo($datetime)
             text-decoration: underline;
         }
 
-        /*susu*/
         @media (max-width: 768px) {
             .brand-text {
-                font-size: 13px;
-                font-family: 'Urbanist', sans-serif !important;
+                font-size: 20px;
+                font-family: 'Franklin Gothic Medium', sans-serif !important;;
             }
 
             .nav-logo {
-                height: 30px;
+                height: 46px;
             }
 
             .navbar-icons {
@@ -375,8 +508,6 @@ function timeAgo($datetime)
 
 <nav class="navbar navbar-expand-lg navbar-custom fixed-top">
     <div class="container-fluid px-3">
-
-        <!-- Logo + Brand -->
         <a class="navbar-brand d-flex align-items-center" href="<?php if ($role == 'students') {
             echo 'index.php';
         } else if ($role == 'superadmin' || $role == 'sys_admin' || $role == 'admin') {
@@ -477,6 +608,31 @@ function timeAgo($datetime)
                         </div>
                     <?php endforeach; ?>
                 </div>
+
+                <!-- <div id="notifPopup" class="notif-popup">
+                    <div class="notif-popup-header">
+                        <div class="notif-popup-header-icon"><i class="fa fa-bell"></i></div>
+                        <div>
+                            <h5><strong>Notifications</strong></h5>
+                            <p class="notif-subtitle">You have <?= $unread_count ?> new notifications</p>
+                        </div>
+                    </div>
+
+                    <div class="notif-popup-list">
+                        <?php foreach ($notifications as $notif): ?>
+                            <div class="notif-item"
+                                onclick="window.location.href='<?= htmlspecialchars($notif['link'] ?? 'index.php') ?>'">
+                                <?php if (!$notif['is_read']): ?>
+                                    <div class="dot"></div><?php endif; ?>
+                                <div>
+                                    <strong><?= htmlspecialchars($notif['title']) ?></strong>
+                                    <p class="mb-0 small text-muted"><?= htmlspecialchars($notif['message']) ?></p>
+                                    <small><?= timeAgo($notif['created_at']) ?></small>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div> -->
             </div>
 
             <!-- Profile dropdown -->
@@ -486,14 +642,14 @@ function timeAgo($datetime)
                 </button>
 
                 <div class="profile-drop" id="profileDrop">
-                    <div style="width:52px;height:52px;border-radius:50%;background:#eef1ff;color:#272f54;
+                    <div style="width:52px;height:52px;border-radius:50%;background: #d3dbfb;color:#272f54;
                                 display:flex;align-items:center;justify-content:center;
                                 font-size:18px;font-weight:700;margin-bottom:8px;">
                         <?= htmlspecialchars($initials) ?>
                     </div>
                     <div class="p-name"><?= htmlspecialchars($displayName) ?></div>
                     <div class="p-email"><?= htmlspecialchars($displayEmail) ?></div>
-                    <button class="btn-edit" onclick="window.location.href='personal-information.php'">
+                    <button class="btn-update" onclick="window.location.href='personal-information.php'">
                         <i class="bi bi-pencil-square"></i> Edit Profile
                     </button>
                     <a onclick="openHelpModal()" class="logout"
@@ -694,15 +850,6 @@ function timeAgo($datetime)
                     </div>
                     <?php
                     $sections = [
-                        // [
-                        //     'bi-grid-fill',
-                        //     'Create & Manage Virtual Rooms',
-                        //     [
-                        //         'Go to <strong>Rooms</strong> from the sidebar.',
-                        //         'Click <strong>Create Room</strong> and fill in the room details.',
-                        //         'Use the room dashboard to manage its content and archive rooms as needed.',
-                        //     ]
-                        // ],
                         [
                             'bi-people-fill',
                             'Add Participants to a Room',

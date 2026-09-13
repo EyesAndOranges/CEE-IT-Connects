@@ -345,3 +345,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 ?>
+
+if (isset($_POST['save_program_hours'])) {
+
+        $programs = $_POST['program'] ?? [];
+        $hours = $_POST['required_hours'] ?? [];
+
+        $updateStmt = $pdo->prepare("
+        UPDATE internships
+        SET required_hours = ?
+        WHERE program = ?
+    ");
+
+        $updatedCount = 0;
+
+        foreach ($programs as $i => $prog) {
+
+            $prog = trim($prog);
+
+            $hrs = max(
+                1,
+                (int) ($hours[$i] ?? 486)
+            );
+
+            if ($prog !== '') {
+
+                $updateStmt->execute([
+                    $hrs,
+                    $prog
+                ]);
+
+                $updatedCount += $updateStmt->rowCount();
+            }
+        }
+
+        $pdo->prepare("
+        INSERT INTO audits (
+            user_id,
+            roles,
+            activity,
+            activity_date
+        )
+        VALUES (?, 'superadmin', ?, NOW())
+    ")->execute([
+                    $_SESSION['user_id'],
+                    "Updated required OJT hours for "
+                    . count($programs)
+                    . " program(s), affecting "
+                    . $updatedCount
+                    . " internship(s)"
+                ]);
+
+        $_SESSION['success'] =
+            "Required hours updated for {$updatedCount} internship(s).";
+
+        header("Location: superadmin.php?section=ojt_hours");
+        exit;
+    }

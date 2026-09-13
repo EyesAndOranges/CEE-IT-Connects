@@ -363,20 +363,16 @@ $initials = strtoupper(
             border-color: #eee;
         }
 
-        .btn-save {
-            background: linear-gradient(135deg, #FFB62F, #E4572E);
-            color: #fff;
-            padding: 10px 28px;
-            border-radius: 10px;
-            border: none;
-            font-weight: 600;
-            font-size: 15px;
-            transition: opacity .2s;
+        .btn-update {
+            background: #FFE7B3 !important;
+            color: #7a5200 !important;
+            border: none !important;
+            transition: background-color .15s ease, color .15s ease;
         }
-
-        .btn-save:hover {
-            opacity: .9;
-            color: #fff;
+        
+        .btn-update:hover {
+            background: #E4572E !important;
+            color: #fff !important;
         }
 
         .flash {
@@ -424,8 +420,10 @@ $initials = strtoupper(
     <div class="container mt-4 mb-5">
 
         <div class="d-flex align-items-center gap-2 mb-4">
-            <a href="index.php" class="text-dark"><i class="fa fa-arrow-left" style="margin-left: 5px;"></i></a>
-            <h5 class="page-title mb-0">Back to Home</h5>
+            <a href="#" onclick="history.back(); return false;" class="text-dark"><i class="fa fa-arrow-left" style="margin-left: 5px;"></i></a>
+            <a href="#" onclick="history.back(); return false;" class="text-dark" style="text-decoration:none;">
+                <h5 class="page-title mb-0">Back to Home</h5>
+            </a>
         </div>
 
         <?php if ($success != '' && empty($errors) && empty($upload_errors)): ?>
@@ -623,7 +621,7 @@ $initials = strtoupper(
                 </div>
 
                 <div class="text-end mt-4">
-                    <button type="submit" class="btn-save">
+                    <button type="submit" class="btn-update">
                         <i class="fa fa-floppy-disk me-1"></i> Apply Changes
                     </button>
                 </div>

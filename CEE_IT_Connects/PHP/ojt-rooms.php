@@ -29,6 +29,18 @@ $departmentRoomIds = [
     'civil engineering' => 26,
 ];
 
+// added para sa sidebar thingy sa baba
+$userInfoStmt = $pdo->prepare("SELECT full_name FROM {$table} WHERE id = ?");
+$userInfoStmt->execute([$adviser_id]);
+$userFullName = $userInfoStmt->fetchColumn() ?: 'User';
+
+$roleLabels = [
+    'hte_adviser' => 'HTE Adviser',
+    'internship_adviser' => 'OJT Adviser',
+    'superadmin' => 'System Admin',
+];
+$userRoleLabel = $roleLabels[$role] ?? 'User';
+
 if (!isset($_GET['room_id'])) {
     // Get the department
     $stmt = $pdo->prepare("SELECT department FROM {$table} WHERE id = ?");
@@ -354,11 +366,12 @@ $page = 'messages';
             margin: 0;
             padding-top: 70px;
             min-height: 100vh;
+            overflow-y: auto;
         }
 
-        .sidebar {
-            width: 240px;
-            background: #fff;
+        /* .sidebar {
+            width: 260px;
+            background: #272f54;
             position: fixed;
             top: 70px;
             left: 0;
@@ -378,22 +391,193 @@ $page = 'messages';
             display: flex;
             align-items: center;
             padding: 10px 20px;
-            color: #333;
+            color: #fff;
             text-decoration: none;
             border-radius: 10px;
             margin: 2px 10px;
             font-size: 15px;
             font-weight: 500;
-            transition: 0.2s;
+            width: calc(100% - 24px);
         }
 
         .sidebar a:hover {
-            background: #f0f0f0;
+            background: rgba(255, 255, 255, 0.1);
+            color: #FFB62F;
+            width: calc(100% - 24px);
+            height: 4px;
         }
 
         .sidebar a.active {
-            background: #ffdac8;
-            color: #ff6b2c;
+            background: #ff6b2c;
+            color: #fff;
+            width: calc(100% - 24px);
+        } */
+
+        .sidebar {
+            width: 240px;
+            background: #272f54;
+            position: fixed;
+            top: 70px;
+            bottom: 0;
+            height: calc(100dvh - 70px);
+            padding: 20px 0px 20px 20px;
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .sidebar a {
+            display: block;
+            align-items: center;
+            padding: 10px 20px;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            font-size: 15px;
+            font-weight: 500;
+            width: calc(100% - 24px);
+        }
+
+        .sidebar a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #FFB62F;
+            width: calc(100% - 24px);
+        }
+
+        .sidebar a.active {
+            background: #ff6b2c;
+            color: #fff;
+            width: calc(100% - 24px);
+        } 
+
+        .sidebar-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 22px 0px 22px 22px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .sidebar-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .sidebar-user {
+            margin-top: auto;
+            margin-left: -20px;
+            margin-right: 0;
+            width: calc(100% + 20px);
+            display: flex;
+            align-items: center;
+            margin-bottom: -20px;
+            gap: 10px;
+            padding: 14px 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            background: #232a4a;
+            cursor: pointer;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #3a4374;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 15px;
+            flex-shrink: 0;
+            margin-bottom: 0px;
+        }
+
+        .sidebar-user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sidebar-user-name {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-user-role {
+            font-size: 11px;
+            color: #9aa3c7;
+        }
+
+        .sidebar a.active-room-link:hover {
+            background: transparent !important;
+            width: calc(100% - 24px) !important;
+            /* color: inherit !important; */
+        }
+
+        .sidebar-action-btn {
+            display: flex;
+            align-items: center;
+            width: calc(100% - 24px);
+            background: none;
+            border: none;
+            color: #fff;
+            text-align: left;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .sidebar-action-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #FFB62F;
+        }
+
+        /* ── ROOMS LIST ── */
+        .rooms-list {
+            font-size: 11px;
+            color: #fff;
+            margin-top: 20px;
+        }
+
+        .room-item {
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .room-link {
+            text-decoration: none;
+            display: block;
+            margin: 4px;
+            padding:0;
+            width:auto;
+        }
+
+        .room-link .room-item:hover {
+            cursor: pointer;
+            color: #FFB62F;
+            padding: 0px !important;
+        }
+
+        .active-room {
+            background: #ff6b2c;
+            color: #fff;
+            font-weight: bold;
+            cursor: default;
+            width: calc(100% - 24px);
+            padding: 10px 10px;
         }
 
         .main {
@@ -1064,13 +1248,168 @@ $page = 'messages';
             border-color: #ff6b2c;
         }
 
-        /*susu*/
         .room-initial {
             display: none;
         }
 
         .room-name-text {
             display: inline;
+        }
+
+        /* ADDED FOR BETTER LAYOUT */
+        .sysAdm-header--danger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, #f7dddd 7%, #fbdad9 50%, #f1cecd 100%);
+            border-radius: 14px 14px 0 0;
+            padding: 22px 28px;
+            /* margin-bottom: 20px; */
+            margin: -24px -24px 20px -24px;
+            width: calc(100% + 48px);
+
+        }
+
+        .sysAdm-header--danger h2 {
+            color: var(--primary-dark-blue);
+            font-size: 26px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .sysAdm-header--danger p {
+            margin-bottom: 0 !important;
+        }
+
+        .sysAdm-header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .sysAdm-header-icon {
+            background-color: #f6c3bd;
+            color: var(--gradient-end);
+            width: 64px;
+            height: 64px;
+            min-width: 64px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .sysAdm-header-deco {
+            width: 100px;
+            height: 100px;
+            /* height: auto; */
+        }
+
+        .sysAdm-header--blue {
+            background: linear-gradient(135deg, #dce2ef 0%, #dde3f0 50%, #c0cfef 100%);
+        }
+
+        .sysAdm-header--blue .sysAdm-header-icon {
+            background-color: #c7d2e8;
+            color: var(--primary-dark-blue);
+        }
+
+        .sysAdm-header-text {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        /* end of added section for delete account feature */
+
+        .sysAdm-header h2 {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--primary-dark-blue);
+            margin-bottom: 4px !important;
+            overflow-x: hidden;
+        }
+
+        .sysAdm-header p {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 0px !important;
+            overflow-x: hidden;
+        }
+
+        .sysAdm-section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            width: 100%;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            /* overflow-x: auto; */
+
+            /* puts content inside the table */
+            overflow: hidden;
+        }
+
+        .sysAdm-table {
+            width: 100%;
+            /* added */
+            min-width: 720px;
+            border-collapse: collapse;
+            /* overflow: hidden; */
+            /* overflow-x: auto; */
+        }
+
+        .sysAdm-table-wrapper {
+            overflow-x: auto;
+            width: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .sysAdm-table thead {
+            background: #eaedef;
+        }
+
+        .sysAdm-table th {
+            text-align: left;
+            padding: 14px 18px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #475569;
+            border-bottom: 2px solid #dbe1ea;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+
+        .sysAdm-table td {
+            padding: 14px 18px;
+            font-size: 14px;
+            color: #334155;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .sysAdm-table tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        .sysAdm-table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .btn-update {
+            background: #FFE7B3 !important;
+            color: #7a5200 !important;
+            /* border: none !important;
+            border-radius: 10px !important;
+            padding: 8px 18px !important;
+            font-weight: 600 !important; */
+            padding: 8px 18px !important;
+            transition: background-color .15s ease, color .15s ease;
+        }
+
+        .btn-update:hover {
+            background: #E4572E !important;
+            color: #fff !important;
         }
 
         /*===(MEDIA QUERY)===*/
@@ -1104,6 +1443,19 @@ $page = 'messages';
             .rooms-list hr {
                 display: none !important;
             }
+            
+            .sidebar-user {
+                flex-direction: column;
+                justify-content: center;
+                padding: 10px 0;
+                gap: 4px;
+                width: 100%;
+                margin-left: 0;
+                margin-bottom: -10px;
+            }
+            .sidebar-user-info {
+                display: none;
+            }
 
             /* Icon nav links */
             .sidebar>div>a {
@@ -1127,6 +1479,7 @@ $page = 'messages';
                 flex-direction: column !important;
                 align-items: center !important;
                 margin-top: 0 !important;
+                width: (100% - 24px) !important;
                 width: 100% !important;
                 max-height: unset !important;
                 overflow: hidden !important;
@@ -1160,13 +1513,20 @@ $page = 'messages';
             }
 
             .room-item.active-room {
-                background: #ffdac8 !important;
-                color: #ff6b2c !important;
+                background: #ff6b2c !important;
+                color: #fff !important;
+                margin: 0 auto;
             }
 
             .room-item.text-muted {
                 background: #f0f0f0 !important;
                 color: #bbb !important;
+            }
+
+            .room-item:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: #FFB62F;
+                width: calc(100% - 24px);
             }
 
             .room-name-text {
@@ -1232,9 +1592,7 @@ $page = 'messages';
 </head>
 
 <body>
-
     <?php include 'navbar.php'; ?>
-
     <?php if (isset($_SESSION['success'])): ?>
         <div class="alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3"
             style="z-index:9999; min-width:350px;" role="alert" id="flashAlert">
@@ -1273,21 +1631,31 @@ $page = 'messages';
 
     <!-- SIDEBAR -->
     <div class="sidebar">
+        <div class="rooms-list" style="margin-top: 0;">
+            <h6>ROOMS</h6>
+            <?php foreach ($myRooms as $room): ?>
+                <a href="ojt-rooms.php?room_id=<?= $room['id'] ?>"
+                    class="<?= ((int) $current_room_id === (int) $room['id']) ? 'active' : '' ?>"
+                    title="<?= htmlspecialchars($room['room_name']) ?>">
+                    <i class="bi bi-people-fill me-2"></i>
+                    <span class="sidebar-text">
+                        <?= htmlspecialchars($room['room_name']) ?>
+                    </span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+        
+        <hr style="border-top: 2px solid rgba(255,255,255,0.59); margin: 16px auto; width: calc(100% - 32px);">
+
         <div style="display:flex; flex-direction:column; width:100%;">
-
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>" class="<?= $section === '' ? 'active' : '' ?>"
-                title="Room">
-                <i class="bi bi-display-fill me-2" style="font-weight: 800;"></i> <span class="sidebar-text">Room</span>
-            </a>
-
-            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=status"
+            <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=status" tooltip="Status"
                 class="<?= $section === 'status' ? 'active' : '' ?>" title="Status">
                 <i class="fa-solid fa-calendar-check me-2"></i> <span class="sidebar-text">Status</span>
             </a>
 
             <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=ojt_applications"
-                class="<?= $section === 'ojt_applications' ? 'active' : '' ?>" title="OJT Applications">
-                <i class="bi bi-book-fill me-2"></i> <span class="sidebar-text">Requirements</span>
+                class="<?= $section === 'ojt_applications' ? 'active' : '' ?>" tooltip="Requirements" title="Requirements">
+                <i class="bi bi-file-earmark-fill me-2"></i> <span class="sidebar-text">Requirements</span>
                 <?php
                 $pendingStmt = $pdo->prepare("
                 SELECT COUNT(*) FROM ojt_applications oa 
@@ -1304,7 +1672,7 @@ $page = 'messages';
             </a>
 
             <a href="ojt-rooms.php?room_id=<?= $current_room_id ?>&section=weekly_reports"
-                class="<?= $section === 'weekly_reports' ? 'active' : '' ?>" title="Weekly Reports">
+                class="<?= $section === 'weekly_reports' ? 'active' : '' ?>" tooltip="Weekly Reports" title="Weekly Reports">
                 <i class="fa-solid fa-file-lines me-2"></i> <span class="sidebar-text">Weekly Reports</span>
             </a>
 
@@ -1312,26 +1680,25 @@ $page = 'messages';
                 class="<?= $section === 'chats' ? 'active' : '' ?>" title="Chats">
                 <i class="fa-solid fa-comments me-2"></i> <span class="sidebar-text">Chats</span>
             </a>
+                <hr style="border-top: 2px solid rgba(255,255,255,0.59); margin: 16px auto; width: calc(100% - 32px);">
 
             <?php if ($isAdviser): ?>
-                <hr style="border-color:#eee; margin:10px 0;">
-                <button class="btn-create" data-bs-toggle="modal" data-bs-target="#csvUploadModal" title="Import Students">
+                <button class="sidebar-action-btn" data-bs-toggle="modal" data-bs-target="#csvUploadModal" title="Import Students">
                     <i class="fa fa-file-csv me-2"></i> <span class="sidebar-text">Import Students</span>
                 </button>
             <?php endif; ?>
             <hr>
-            <?php foreach ($myRooms as $room): ?>
-                <a href="ojt-rooms.php?room_id=<?= $room['id'] ?>"
-                    class="<?= ((int) $current_room_id === (int) $room['id']) ? 'active' : '' ?>"
-                    title="<?= htmlspecialchars($room['room_name']) ?>">
-                    <i class="bi bi-people-fill me-2"></i>
-                    <span class="sidebar-text">
-                        <?= htmlspecialchars($room['room_name']) ?>
-                    </span>
-                </a>
-            <?php endforeach; ?>
+            
+        </div>
+        <div class="sidebar-user">
+            <div class="sidebar-user-avatar"><?= strtoupper(substr($userFullName, 0, 1)) ?></div>
+            <div class="sidebar-user-info">
+                <div class="sidebar-user-name"><?= htmlspecialchars($userFullName) ?></div>
+                <div class="sidebar-user-role"><?= htmlspecialchars($userRoleLabel) ?></div>
+            </div>
         </div>
     </div>
+
     <!-- MAIN CONTENT -->
     <div class="main">
 
@@ -1339,17 +1706,30 @@ $page = 'messages';
             <?php include 'chat-room-content.php'; ?>
 
         <?php elseif ($section === 'status'): ?>
-            <div>
-                <h4 class="fw-bold mb-1">OJT Status</h4>
-                <p class="text-muted mb-3" style="font-size:.85rem;">Monitor student progress on their OJT program</p>
+            <div id="status" class="section sysAdm-section">
+                <div class="sysAdm-header--danger sysAdm-header--blue mb-4">
+                    <div class="sysAdm-header-left">
+                        <div class="sysAdm-header-icon">
+                            <i class="bi bi-calendar-fill"></i>
+                        </div>
+                        <div class="sysAdm-header-text">
+                            <h2>OJT Status</h2>
+                            <p>Monitor student progress on their OJT program</p>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Adviser: Set Required Hours -->
                 <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;
-            align-items:center; justify-content:space-between;">
+                align-items:center; justify-content:space-between;">
 
-                    <div class="search-box">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="searchInput" placeholder="Search student" oninput="filterTable()">
+                    <div style="position:relative; flex:1; min-width:200px;">
+                        <i class="fa fa-search"
+                            style="position:absolute; color: #f97316; left:10px; top:50%; transform:translateY(-50%); font-size:13px;"></i>
+                        <input type="text" id="searchInput" placeholder="Search student..."
+                            oninput="filterTable()" style="width:50%; padding:8px 12px 8px 32px; border:1.5px solid #aeaeae; border-radius:22px;
+                            font-size:13px; font-family:inherit; outline:none; transition:border-color .2s;"
+                            onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
                     </div>
 
                     <div style="display:flex; align-items:center; gap:8px; padding:8px 14px;
@@ -1361,10 +1741,10 @@ $page = 'messages';
 
                 </div>
 
-
+        
                 <div style="background:white; border:1px solid #ddd; border-radius:8px; overflow:hidden;">
-                    <div class="ojt-table-wrapper">
-                        <table class="ojt-status-table">
+                    <div class="sysAdm-table-wrapper">
+                        <table class="sysAdm-table" id="ojt-status-table">
                             <thead style="background:#f8f9fa;">
                                 <tr>
                                     <th>STUDENT</th>
@@ -1471,21 +1851,31 @@ $page = 'messages';
                 'ojt_started' => 'OJT Started',
             ];
             ?>
-            <div>
-                <h4 class="fw-bold mb-1">Requirements</h4>
-                <p class="text-muted mb-3">Track students' pre-deployment requirements submission progress.</p>
-
+            
+            <!-- REQUIREMENTS -->
+            <div id="status" class="section-panel section sysAdm-section">
+                <div class="sysAdm-header--danger sysAdm-header--blue mb-4">
+                    <div class="sysAdm-header-left">
+                        <div class="sysAdm-header-icon">
+                            <i class="bi bi-file-earmark-fill"></i>
+                        </div>
+                        <div class="sysAdm-header-text">
+                            <h2>Requirements</h2>
+                            <p>Track students' pre-deployment requirements submission progress.</p>
+                        </div>
+                    </div>
+                </div>
                 <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
                     <div style="position:relative; flex:1; min-width:200px;">
                         <i class="fa fa-search"
-                            style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#aaa; font-size:13px;"></i>
+                            style="position:absolute; color: #f97316; left:10px; top:50%; transform:translateY(-50%); font-size:13px;"></i>
                         <input type="text" id="search-input" placeholder="Search by name, student no., or company..."
-                            oninput="filterApps()" style="width:100%; padding:8px 12px 8px 32px; border:1.5px solid #e5e7eb; border-radius:8px;
-                font-size:13px; font-family:inherit; outline:none; transition:border-color .2s;"
+                            oninput="filterApps()" style="width:50%; padding:8px 12px 8px 32px; border:1.5px solid #aeaeae; border-radius:22px;
+                            font-size:13px; font-family:inherit; outline:none; transition:border-color .2s;"
                             onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
                     </div>
                     <select id="progress-filter" onchange="filterApps()" style="padding:8px 12px; border:1.5px solid #e5e7eb; border-radius:8px; font-size:13px;
-            font-family:inherit; outline:none; background:white; cursor:pointer; transition:border-color .2s;"
+                        font-family:inherit; outline:none; background:white; cursor:pointer; transition:border-color .2s;"
                         onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
                         <option value="all">All Progress</option>
                         <option value="0">Not Started (0%)</option>
@@ -1669,11 +2059,18 @@ $page = 'messages';
                 </table>
             </div> -->
         <?php elseif ($section === 'weekly_reports'): ?>
-            <div>
-                <h4 class="fw-bold mb-1">Weekly Progress Reports</h4>
-                <p class="text-muted mb-3" style="font-size:.85rem;">
-                    View weekly reports submitted by students in this room.
-                </p>
+            <div id="status" class="section-panel section sysAdm-section">
+            <div class="sysAdm-header--danger sysAdm-header--blue mb-4">
+                <div class="sysAdm-header-left">
+                    <div class="sysAdm-header-icon">
+                        <i class="bi bi-file-earmark-text-fill"></i>
+                    </div>
+                    <div class="sysAdm-header-text">
+                        <h2>Weekly Progress Reports</h2>
+                        <p>View weekly reports submitted by students in this room.</p>
+                    </div>
+                </div>
+            </div>
                 <?php
                 $reportsStmt = $pdo->prepare("
                     SELECT wr.id, wr.week_number, wr.wr_filepath, wr.created_at,
@@ -1691,10 +2088,19 @@ $page = 'messages';
                 ?>
                 <div
                     style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
-                    <div class="search-box">
+                    <!-- <div class="search-box">
                         <i class="fa-solid fa-magnifying-glass"></i>
                         <input type="text" id="reportsSearchInput" placeholder="Search student"
                             oninput="filterReportsTable()">
+                    </div> -->
+
+                    <div style="position:relative; flex:1; min-width:200px;">
+                        <i class="fa fa-search"
+                            style="position:absolute; color: #f97316; left:10px; top:50%; transform:translateY(-50%); font-size:13px;"></i>
+                        <input type="text" id="reportsSearchInput" placeholder="Search student..."
+                            oninput="filterReportsTable()" style="width:50%; padding:8px 12px 8px 32px; border:1.5px solid #aeaeae; border-radius:22px;
+                            font-size:13px; font-family:inherit; outline:none; transition:border-color .2s;"
+                            onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
                     </div>
 
 
@@ -1923,50 +2329,69 @@ $page = 'messages';
     <!-- CSV UPLOAD MODAL -->
     <div class="modal fade" id="csvUploadModal" tabindex="-1">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content rounded-4">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <strong><i class="fa fa-file-csv me-2"></i>Import Students via CSV</strong>
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-content" style="border-radius:16px; overflow:hidden;">
+
+                <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2563eb); color:#fff; padding:20px 28px; border:none;">
+                    <div>
+                        <div style="font-size:11px; letter-spacing:.12em; opacity:.7; text-transform:uppercase; margin-bottom:4px;">
+                            Bulk Enrollment
+                        </div>
+                        <h5 class="modal-title fw-bold mb-0" style="font-size:1.2rem;">
+                            Import Students via CSV
+                        </h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
+
+                <div class="modal-body" style="padding:28px 32px; background:#f8f9fb;">
 
                     <div id="csv-step-1">
-                        <p style="font-size:13px;color:#888;">
-                            Upload a <code>.csv</code> file with a single column:
-                            <strong>student_id</strong><br>
-                            Students matching those IDs will be added to your room.
-                        </p>
-                        <a href="download-csv-temp.php?type=student_room" name="add_student_room_temp"
-                            class="btn btn-sm btn-outline-secondary mb-3">
-                            <i class="fa fa-download me-1"></i> Download Template
-                        </a>
-                        <input type="file" id="csvFileInput" accept=".csv,.tsv,.txt" class="form-control mb-3"
-                            onchange="previewCSV(this)">
-                        <div id="csv-error" class="alert alert-danger d-none"></div>
+                        <div style="background:#fff; border-radius:10px; padding:18px 22px; margin-bottom:16px; border:1px solid #e2e8f0;">
+                            <p style="font-size:13px; color:#64748b; margin-bottom:14px;">
+                                Upload a <code>.csv</code> file with a single column: <strong style="color:#1e3a5f;">student_id</strong>.
+                                Students matching those IDs will be added to your room.
+                            </p>
+                            <a href="download-csv-temp.php?type=student_room" name="add_student_room_temp"
+                                class="btn btn-sm btn-outline-secondary">
+                                <i class="fa fa-download me-1"></i> Download Template
+                            </a>
+                        </div>
+
+                        <div style="background:#fff; border-radius:10px; padding:18px 22px; border:1px solid #e2e8f0;">
+                            <label style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:8px;">
+                                Choose file
+                            </label>
+                            <input type="file" id="csvFileInput" accept=".csv,.tsv,.txt" class="form-control"
+                                onchange="previewCSV(this)">
+                            <div id="csv-error" class="alert alert-danger d-none mt-3" style="border-radius:8px; font-size:13px;"></div>
+                        </div>
                     </div>
 
                     <div id="csv-step-2" class="d-none">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span style="font-size:13px;color:#555;" id="csv-preview-count"></span>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="resetCSV()">
-                                <i class="fa fa-rotate-left me-1"></i> Choose different file
-                            </button>
-                        </div>
-                        <div style="overflow-x:auto;max-height:380px;border:1px solid #eee;border-radius:8px;">
-                            <table class="table table-sm table-bordered mb-0" id="csv-preview-table"
-                                style="font-size:12px;min-width:300px;"></table>
+                        <div style="background:#fff; border-radius:10px; padding:18px 22px; border:1px solid #e2e8f0;">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span style="font-size:13px; color:#64748b;" id="csv-preview-count"></span>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="resetCSV()">
+                                    <i class="fa fa-rotate-left me-1"></i> Choose different file
+                                </button>
+                            </div>
+                            <div style="overflow-x:auto; max-height:380px; border:1px solid #eee; border-radius:8px;">
+                                <table class="table table-sm table-bordered mb-0" id="csv-preview-table"
+                                    style="font-size:12px; min-width:300px;"></table>
+                            </div>
                         </div>
                     </div>
 
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button class="btn btn-success" id="csv-confirm-btn" onclick="submitCSV()" disabled>
+
+                <div class="modal-footer" style="background:#f8f9fb; padding:16px 28px; gap:10px; border:none;">
+                    <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-sm fw-semibold px-4" id="csv-confirm-btn" onclick="submitCSV()" disabled
+                        style="background:#2563eb; color:#fff; border-radius:8px;">
                         <i class="fa fa-upload me-1"></i> Confirm & Import
                     </button>
                 </div>
+
             </div>
         </div>
     </div>

@@ -48,13 +48,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 
         try {
+            $hoursStmt = $pdo->prepare("
+                SELECT required_hours
+                FROM internships
+                WHERE program = :program
+                LIMIT 1
+            ");
+
+            $hoursStmt->execute([
+                'program' => $program
+            ]);
+
+            $required_hours = $hoursStmt->fetchColumn();
+            
             $stmt = $pdo->prepare(
                 "INSERT INTO internships (title, company, email, location, description, 
-                program, latitude, longtitude, phone_numbers, deadline, available, time_open, time_close, 
-                admin_id, is_plv_internal, is_valenzuela_lgu) 
+                program, latitude, longtitude, phone_numbers, available, time_open, time_close, 
+                admin_id, is_plv_internal, is_valenzuela_lgu, required_hours) 
                 VALUES (:title, :company, :email, :location, :description, :program, :latitude, 
-                :longtitude, :phonenumber, :deadline, :available, :openTime, :closeTime, :admin_id, 
-                False, False)"
+                :longtitude, :phonenumber, :available, :openTime, :closeTime, :admin_id, 
+                False, False, :required_hours)"
             );
 
             $stmt->execute([
@@ -67,11 +80,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 'latitude' => $latitude,
                 'longtitude' => $longitude,
                 'phonenumber' => $phonenumber,
-                'deadline' => $deadline,
                 'available' => true,
                 'openTime' => $openTime,
                 'closeTime' => $closeTime,
-                'admin_id' => $admin_id
+                'admin_id' => $admin_id,
+                'required_hours' => $required_hours
             ]);
 
             // This is for notifying students about the new internship posting

@@ -63,7 +63,7 @@ if (isset($_POST['users'])) {
 
 // POST ANNOUNCEMENT 
 if (isset($_POST['post_announcement'])) {
-    if (!in_array($_SESSION['role'], ['internship_adviser', 'hte_adviser'], true)) {
+    if (!in_array($_SESSION['role'], ['internship_adviser', 'hte_adviser', 'superadmin', 'internship_admin'], true)) {
         http_response_code(403);
         echo var_dump($_SESSION['role']);
         exit("Unauthorized");
@@ -121,6 +121,14 @@ if (isset($_POST['post_announcement'])) {
         ]);
     }
 
-    header("Location: ojt-rooms.php?room_id={$room_id}&tab=updates");
+    if ($_SESSION['role'] === 'hte_adviser') {
+        header("Location: hte-ui.php?room_id={$room_id}&tab=updates");
+    } elseif ($_SESSION['role'] === 'superadmin') {
+        header("Location: systemadmin-rooms.php?room_id={$room_id}&tab=members");
+    } elseif ($_SESSION['role'] === 'internship_adviser') {
+        header("Location: ojt-rooms.php?room_id={$room_id}&tab=updates");
+    } elseif ($_SESSION['role'] === 'internship_admin') {
+        header("Location: hte-rooms.php?room_id={$room_id}&tab=updates");
+    }
     exit;
 }

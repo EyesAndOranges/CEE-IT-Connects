@@ -29,6 +29,24 @@ $totalInterested = $interestedStmt->fetchColumn();
 $announcementsStmt = $pdo->query("SELECT COUNT(*) AS total FROM announcements");
 $totalAnnouncements = $announcementsStmt->fetchColumn();
 
+// added
+$accountsStmt = $pdo->query("
+    SELECT
+        (SELECT COUNT(*) FROM students) +
+        (SELECT COUNT(*) FROM advisers) +
+        (SELECT COUNT(*) FROM admins)
+    AS total
+");
+
+$totalAccounts = $accountsStmt->fetchColumn();
+
+
+$programsStmt = $pdo->query("
+        SELECT COUNT(*) FROM role_department_access
+");
+
+$totalPrograms = $programsStmt->fetchColumn();
+
 $recentInternshipsStmt = $pdo->query("
     SELECT title, company, location, created_at 
     FROM internships 
@@ -74,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
     }
 
     if ($superadmincount > 3) {
-        $_SESSION['error'] = "Only three superadmins are allowed.";
+        $_SESSION['error'] = "Only three system administrators are allowed.";
         header("Location: superadmin.php");
         exit;
     }
@@ -96,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
             $notifStmt->execute([
                 $admin_ids[$i],
                 'Role Updated',
-                'Your role has been changed from ' . $oldRole . ' to ' . $roles[$i] . ' by the superadmin.',
+                'Your role has been changed from ' . $oldRole . ' to ' . $roles[$i] . ' by a system administrator.',
                 $roles[$i] === 'superadmin' ? 'superadmin.php' : 'internship-ui.php'
             ]);
         }
@@ -392,6 +410,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
         .sidebar {
             width: 220px;
             margin-top: 10px;
+            /* background: #2c3e67; */
             background: #272f54;
             color: white;
             padding: 25px;
@@ -419,11 +438,17 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
 
         .sidebar a:hover {
             background: rgba(255, 255, 255, 0.1);
+            color: #FFB62F;
+        }
+
+        .sidebar a:hover i {
+            color: #FFB62F;
         }
 
         .sidebar a.active {
-            background: #ffbd41;
-            color: #272f54;
+            background: #e35f36;
+            color: #fff;
+            font-weight: 600;
         }
 
         .main-content {
@@ -584,9 +609,9 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
             background: #f8fafc;
         }
 
+/* commented out */
 
-
-        .btn-update {
+        /* .btn-update {
             margin-top: 18px;
             padding: 11px 24px;
             font-size: 15px;
@@ -604,7 +629,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
 
         .btn-update:hover {
             background: #3A3B7B;
-        }
+        } */
 
         .btn-create {
             padding: 14px;
@@ -721,6 +746,12 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
             background: #3A3B7B;
         }
 
+        .assign-select:disabled {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 100%;
+        }
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -832,12 +863,14 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
 
             .row.g-3.mb-4 .card-body {
                 padding: 8px !important;
+                font-size: 0.8rem !important;
             }
 
             .row.g-3.mb-4 .card-body p {
                 font-size: 10px !important;
                 margin-bottom: 4px !important;
                 letter-spacing: 0 !important;
+                font-size: 0.5rem !important;
             }
 
             .row.g-3.mb-4 .card-body .d-flex {
@@ -847,12 +880,12 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                 gap: 4px !important;
             }
 
-            .row.g-3.mb-4 .card-body .d-flex>div:first-child {
+            .row.g-3.mb-4 .card-body .d-flex>div:first-child:not(.rounded-3) {
                 flex: 1 !important;
             }
 
             .row.g-3.mb-4 .card-body h2 {
-                font-size: 1.3rem !important;
+                font-size: 0.7rem !important;
                 margin-bottom: 0 !important;
             }
 
@@ -918,7 +951,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
             }
 
             .stat-card-number {
-                font-size: 1.3rem !important;
+                font-size: 0.7rem !important;
             }
         }
 
@@ -984,9 +1017,9 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
             if (current === 'superadmin' && original !== 'superadmin') hasChangeToSuperadmin = true;
             if (original === 'superadmin' && current !== 'superadmin') hasRemovalFromSuperadmin = true;
         });
-        if (superadminCount > 3) { alert("Only 3 superadmins are allowed."); return false; }
-        if (hasRemovalFromSuperadmin) return confirm("You are removing a Superadmin. Continue?");
-        if (hasChangeToSuperadmin) return confirm("You are assigning a Superadmin. Are you sure?");
+        if (superadminCount > 3) { alert("Only 3 system administrators are allowed."); return false; }
+        if (hasRemovalFromSuperadmin) return confirm("You are removing a System administrator. Continue?");
+        if (hasChangeToSuperadmin) return confirm("You are assigning a System administrator. Are you sure?");
         return true;
     }
 </script>
@@ -1026,19 +1059,11 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="layout">
 
         <div class="sidebar">
-            <h3>Superadmin</h3>
-            <a href="#" onclick="showSection(event, 'dashboard')" class="active">
+            <h3> . </h3>
+            <a href="#" onclick="showSection(event, 'dashboard')" class="active" data-tooltip="Home">
                 <i class="bi bi-person-fill-lock me-2"></i>
-                <span class="nav-label">Dashboard</span>
+                <span class="nav-label">Home</span>
             </a>
-            <!-- <a href="#" onclick="showSection(event, 'add-admin')" data-tooltip="Add Admin">
-                <i class="bi bi-person-plus me-2"></i>
-                <span class="nav-label">Add Admin</span>
-            </a>
-            <a href="#" onclick="showSection(event, 'add-adviser')" data-tooltip="Add Adviser">
-                <i class="bi bi-person-vcard me-2"></i>
-                <span class="nav-label">Add Adviser</span>
-            </a> -->
             <a href="#" onclick="showSection(event, 'roles')" data-tooltip="Account Management">
                 <i class="bi bi-person-gear"></i>
                 <span class="nav-label">Account Management</span>
@@ -1085,58 +1110,120 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
 
+                <!-- ADDED: scoped styles for this dashboard section only. Nothing below overrides
+                     other pages; classes are prefixed ojtc- to avoid collisions with existing CSS. -->
+                <style>
+                    /* ADDED: subtle blue "tab" indicator on table column headers */
+                    .ojtc-th-tab {
+                        background: rgba(39, 111, 255, 0.08) !important;
+                        color: #272f54 !important;
+                        padding: 10px 12px !important;
+                        border-radius: 6px 6px 0 0;
+                    }
+
+                    /* ADDED: hover state for Recent Account Activity rows */
+                    .ojtc-activity-row {
+                        padding: 8px;
+                        border-radius: 10px;
+                        transition: background-color .15s ease;
+                    }
+                    .ojtc-activity-row:hover {
+                        background: #f5f7ff;
+                    }
+
+                    /* ADDED: hover state for OJT Hours by Program rows */
+                    .ojtc-hours-row {
+                        padding: 6px 8px;
+                        border-radius: 10px;
+                        transition: background-color .15s ease;
+                    }
+                    .ojtc-hours-row:hover {
+                        background: #f7f8fb;
+                    }
+
+                    /* ADDED*/
+                    .ojtc-badge-it { background:#fff1e0; color:#b85c00; }
+                    .ojtc-badge-ce { background:#e7effe; color:#1b4fce; }
+                    .ojtc-badge-ee { background:#fff8dc; color:#8a6d00; }
+                    .ojtc-badge-default { background:#f0f4ff; color:#272f54; }
+
+                    /* ADDED: stat card hover lift for the redesigned cards below */
+                    .ojtc-stat-card {
+                        transition: transform .15s ease, box-shadow .15s ease;
+                    }
+                    .ojtc-stat-card:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+                    }
+
+                    /* ADDED: subtle yellow buttons by default, solid orange on hover */
+                    .btn-update {
+                        background: #FFE7B3 !important;
+                        color: #7a5200 !important;
+                        border: none !important;
+                        transition: background-color .15s ease, color .15s ease;
+                    }
+                    .btn-update:hover {
+                        background: #E4572E !important;
+                        color: #fff !important;
+                    }
+                </style>
+
                 <div class="row g-3 mb-4">
+                    <!-- CHANGED LAYOUT: Internship Postings card restyled to match new design —
+                         light tint background, colored icon box on the left -->
                     <div class="col-md-4">
-                        <div class="card border-0 rounded-4 h-100" style="background:#272f54; opacity:0.9;">
+                        <div class="card border-0 rounded-4 h-100 ojtc-stat-card" style="background:#EEF3FF;">
                             <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <p class="text-white-50 small mb-1 fw-semibold text-uppercase"
-                                            style="letter-spacing:.05em; font-size:11px;">Internship Postings</p>
-                                        <h2 class="fw-bold text-white mb-0"><?= (int) $totalInternships ?></h2>
-                                    </div>
-                                    <div class="rounded-3 d-flex align-items-center justify-content-center"
-                                        style="width:44px;height:44px;background:rgba(255,255,255,0.1);">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                                        style="width:44px;height:44px;background:#272f54;">
                                         <i class="bi bi-briefcase-fill text-white fs-5"></i>
                                     </div>
+                                    <div class="flex-grow-1" style="min-width:0; overflow: hidden;">
+                                        <p class="small mb-1 fw-semibold text-uppercase"
+                                            style="letter-spacing:.05em; font-size:11px; color:#272f54;">Internships</p>
+                                        <h2 class="fw-bold mb-0" style="color:#272f54;"><?= (int) $totalInternships ?></h2>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- CHANGE: "Active Accounts" (admins + advisers). -->
+                    <!-- CHANGED LAYOUT: Active Accounts card restyled to match new design (same pattern as above). -->
                     <div class="col-md-4">
-                        <div class="card border-0 rounded-4 h-100" style="background:#FFB62F; opacity:0.9;">
+                        <div class="card border-0 rounded-4 h-100 ojtc-stat-card" style="background:#FFF6E3;">
                             <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <p class="small mb-1 fw-semibold text-uppercase"
-                                            style="letter-spacing:.05em;font-size:11px;color:#7a5200;">Active Accounts
-                                        </p>
-                                        <h2 class="fw-bold mb-0" style="color:#3b2600;">34</h2>
-                                    </div>
-                                    <div class="rounded-3 d-flex align-items-center justify-content-center"
-                                        style="width:44px;height:44px;background:rgba(0,0,0,0.1);">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                                        style="width:44px;height:44px;background:#FFB62F;">
                                         <i class="bi bi-person-badge-fill fs-5" style="color:#3b2600;"></i>
                                     </div>
+                                    <div class="flex-grow-1" style="min-width:0; overflow: hidden;">
+                                        <p class="small mb-1 fw-semibold text-uppercase"
+                                            style="letter-spacing:.05em;font-size:11px;color:#7a5200;">Accounts
+                                        </p>
+                                        <h2 class="fw-bold mb-0" style="color:#3b2600;"><?= (int) $totalAccounts ?></h2>
+                                        
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- CHANGE: "Programs Tracked" (count of programs in Hours Rendering) -->
+                    <!-- CHANGED LAYOUT: Programs Tracked card restyled to match new design (same pattern as above). -->
                     <div class="col-md-4">
-                        <div class="card border-0 rounded-4 h-100" style="background:#E4572E; opacity:0.9;">
+                        <div class="card border-0 rounded-4 h-100 ojtc-stat-card" style="background:#FDEEE8;">
                             <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <p class="text-white-50 small mb-1 fw-semibold text-uppercase"
-                                            style="letter-spacing:.05em;font-size:11px;">Programs Tracked</p>
-                                        <h2 class="fw-bold text-white mb-0">2</h2>
-                                    </div>
-                                    <div class="rounded-3 d-flex align-items-center justify-content-center"
-                                        style="width:44px;height:44px;background:rgba(255,255,255,0.15);">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                                        style="width:44px;height:44px;background:#E4572E;">
                                         <i class="bi bi-clock-history text-white fs-5"></i>
+                                    </div>
+                                    <div class="flex-grow-1" style="min-width:0; overflow: hidden;">
+                                        <p class="small mb-1 fw-semibold text-uppercase"
+                                            style="letter-spacing:.05em;font-size:11px;color:#a13d1f;">Programs</p>
+                                        <h2 class="fw-bold mb-0" style="color:#a13d1f;"><?= (int) $totalPrograms ?></h2>
                                     </div>
                                 </div>
                             </div>
@@ -1144,13 +1231,11 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
 
-                <!-- Recent Internship Postings (unchanged) -->
+                <!-- Recent Internship Postings -->
                 <div class="card border-0 rounded-4 shadow-sm mb-4">
                     <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
                         <i class="bi bi-briefcase" style="color:#272f54;"></i>
                         <h6 class="fw-bold mb-0" style="color:#272f54;">Recent Internship Postings</h6>
-                        <span class="badge ms-auto rounded-pill"
-                            style="background:#eef1ff;color:#272f54;font-size:11px;">Latest 5</span>
                     </div>
                     <div class="card-body px-4 pb-4 pt-2">
                         <?php if (empty($recentInternships)): ?>
@@ -1160,12 +1245,14 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                                 <table id="table-internships" class="table table-hover align-middle mb-0"
                                     style="font-size:14px;">
                                     <thead>
+                                        <!-- CHANGED: added ojtc-th-tab class for the subtle blue column-header
+                                             indicator. No data/columns removed, inline styles kept. -->
                                         <tr
                                             style="color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:.04em;">
-                                            <th class="border-0 pb-2 fw-semibold">Title</th>
-                                            <th class="border-0 pb-2 fw-semibold">Company</th>
-                                            <th class="border-0 pb-2 fw-semibold">Location</th>
-                                            <th class="border-0 pb-2 fw-semibold">Posted</th>
+                                            <th class="border-0 pb-2 fw-semibold ojtc-th-tab">Title</th>
+                                            <th class="border-0 pb-2 fw-semibold ojtc-th-tab">Company</th>
+                                            <th class="border-0 pb-2 fw-semibold ojtc-th-tab">Location</th>
+                                            <th class="border-0 pb-2 fw-semibold ojtc-th-tab">Posted</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1178,11 +1265,10 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                                                 <td class="text-muted"><i
                                                         class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($ri['location']) ?>
                                                 </td>
-                                                <td>
-                                                    <span class="badge rounded-pill px-3"
-                                                        style="background:#f0f4ff;color:#272f54;font-weight:500;font-size:12px;">
-                                                        <?= date("M d, Y", strtotime($ri['created_at'])) ?>
-                                                    </span>
+                                                <!-- CHANGED: removed the highlighted pill background on the
+                                                     Posted date, now plain muted text as requested. -->
+                                                <td class="text-muted" style="font-size:13px;">
+                                                    <?= date("M d, Y", strtotime($ri['created_at'])) ?>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -1200,16 +1286,16 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
                                 <i class="bi bi-person-plus" style="color:#272f54;"></i>
                                 <h6 class="fw-bold mb-0" style="color:#272f54;">Recent Account Activity</h6>
-                                <span class="badge ms-auto rounded-pill"
-                                    style="background:#eef1ff;color:#272f54;font-size:11px;">#</span>
                             </div>
                             <div id="table-account-activity" class="card-body px-4 pb-4 pt-2">
                                 <?php if (empty($recentAccounts)): ?>
                                     <p class="text-muted small mb-0">No accounts created recently.</p>
                                 <?php else: ?>
-                                    <div class="d-flex flex-column gap-3">
+                                    <div class="d-flex flex-column gap-2">
                                         <?php foreach ($recentAccounts as $ra): ?>
-                                            <div class="d-flex align-items-center gap-3">
+                                            <!-- CHANGED: added ojtc-activity-row class for a subtle hover
+                                                 background, matching the "List Item (Hover)" style. -->
+                                            <div class="d-flex align-items-center gap-3 ojtc-activity-row">
                                                 <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 fw-bold"
                                                     style="width:38px;height:38px;background:#eef1ff;color:#272f54;font-size:13px;">
                                                     <?= strtoupper(substr($ra['full_name'], 0, 1)) ?>
@@ -1244,21 +1330,37 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex align-items-center gap-2">
                                 <i class="bi bi-clock-history" style="color:#272f54;"></i>
                                 <h6 class="fw-bold mb-0" style="color:#272f54;">OJT Hours by Program</h6>
-                                <span class="badge ms-auto rounded-pill"
-                                    style="background:#eaf3de;color:#27500a;font-size:11px;">All Programs</span>
                             </div>
                             <div id="table-hours-summary" class="card-body px-4 pb-4 pt-2">
                                 <?php if (empty($programHoursList)): ?>
                                     <p class="text-muted small mb-0">No programs configured yet.</p>
                                 <?php else: ?>
-                                    <div class="d-flex flex-column gap-3">
+                                    <div class="d-flex flex-column gap-2">
                                         <?php foreach ($programHoursList as $ph): ?>
-                                            <div class="d-flex align-items-center justify-content-between">
+                                            <?php
+                                                // ADDED: presentation-only color mapping for the hours badge.
+                                                // Does not change $ph['program'] or how it is stored/echoed —
+                                                // only picks which existing badge class to apply below.
+                                                $ojtcProgramName = strtoupper((string) $ph['program']);
+                                                if (strpos($ojtcProgramName, 'IT') !== false) {
+                                                    $ojtcBadgeClass = 'ojtc-badge-it';
+                                                } elseif (strpos($ojtcProgramName, 'CE') !== false) {
+                                                    $ojtcBadgeClass = 'ojtc-badge-ce';
+                                                } elseif (strpos($ojtcProgramName, 'EE') !== false) {
+                                                    $ojtcBadgeClass = 'ojtc-badge-ee';
+                                                } else {
+                                                    $ojtcBadgeClass = 'ojtc-badge-default';
+                                                }
+                                            ?>
+                                            <!-- CHANGED: added ojtc-hours-row class for a subtle row hover. -->
+                                            <div class="d-flex align-items-center justify-content-between ojtc-hours-row">
                                                 <p class="fw-semibold mb-0" style="color:#272f54;font-size:14px;">
                                                     <?= htmlspecialchars($ph['program']) ?>
                                                 </p>
-                                                <span class="badge rounded-pill px-3"
-                                                    style="background:#f0f4ff;color:#272f54;font-weight:500;font-size:12px;">
+                                                <!-- CHANGED: badge now uses the color-coded class above instead
+                                                     of a single fixed blue background. -->
+                                                <span class="badge rounded-pill px-3 <?= $ojtcBadgeClass ?>"
+                                                    style="font-weight:500;font-size:12px;">
                                                     <?= (int) $ph['required_hours'] ?> hrs
                                                 </span>
                                             </div>
@@ -1288,10 +1390,17 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                         <p class="text-muted small">Control whether the registration link is visible on the login page.
                         </p>
                         <form method="POST" class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                            <p class="mb-0">Current Status:
-                                <strong style="color: <?= $registerVisible === 'show' ? 'green' : 'red' ?>">
-                                    <?= $registerVisible === 'show' ? 'Visible' : 'Hidden' ?>
-                                </strong>
+                            <!-- CHANGED: status now shown as an icon pill instead of plain colored text,
+                                 same $registerVisible conditional and copy, just restyled. -->
+                            <p class="mb-0 d-flex align-items-center gap-2">Current Status:
+                                <span class="badge rounded-pill px-3 py-2 d-inline-flex align-items-center gap-1"
+                                    style="background: <?= $registerVisible === 'show' ? '#e6f4ea' : '#fdeaea' ?>;">
+                                    <i class="bi <?= $registerVisible === 'show' ? 'bi-check-circle-fill' : 'bi-x-circle-fill' ?>"
+                                        style="font-size:11px; color: <?= $registerVisible === 'show' ? 'green' : 'red' ?>;"></i>
+                                    <strong style="color: <?= $registerVisible === 'show' ? 'green' : 'red' ?>">
+                                        <?= $registerVisible === 'show' ? 'Visible' : 'Hidden' ?>
+                                    </strong>
+                                </span>
                             </p>
                             <button type="submit" name="toggle_register" class="btn-update">
                                 <?= $registerVisible === 'show' ? 'Hide Registration Link' : 'Show Registration Link' ?>
@@ -1307,7 +1416,6 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                 <div class="sysAdm-header--danger">
                     <div class="sysAdm-header-left">
                         <div class="sysAdm-header-icon">
-                            <!-- DITO NAHINTO -->
                             <i class="fa-solid fa-trash"></i>
                         </div>
                         <h2>Account Deletion</h2>
@@ -1458,8 +1566,8 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                     <input type="text" name="name" placeholder="Full Name" required>
                     <input type="email" name="email" placeholder="Email Address" required>
                     <input type="password" name="password" placeholder="Password" required>
+                    <div style="color: #888; font-size: 10px;">Password must be at least 8 characters long, contains an uppercase and lowercase letter, a number, and a special character.</div>
                     <select name="role" required>
-                        <option value="" disabled selected>Select Role</option>
                         <option value="internship_admin">Internship Admin</option>
                     </select>
                     <div style="display:flex;width:100%;justify-content:space-between;margin-top:12px;">
@@ -1467,7 +1575,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             style="background:#eee;color:#555;">
                             <i class="bi bi-arrow-left me-1"></i>Back
                         </button>
-                        <button type="submit" name="create-admin" class="btn-create">Create Admin</button>
+                        <button type="submit" name="create-admin" class="btn-update">Create Admin</button>
                     </div>
                 </form>
             </div>
@@ -1489,6 +1597,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                     <input type="text" name="name" placeholder="Full Name" required>
                     <input type="email" name="email" placeholder="Email Address" required>
                     <input type="password" name="password" placeholder="Password" required>
+                    <div style="color: #888; font-size: 10px;">Password must be at least 8 characters long, contains an uppercase and lowercase letter, a number, and a special character.</div>
                     <select name="role" id="adviserRole" required>
                         <option value="" disabled selected>Select Role</option>
                         <option value="HTE_adviser">HTE Adviser</option>
@@ -1510,7 +1619,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             style="background:#eee;color:#555;">
                             <i class="bi bi-arrow-left me-1"></i>Back
                         </button>
-                        <button type="submit" name="create-adviser" class="btn-create">Create Adviser</button>
+                        <button type="submit" name="create-adviser" class="btn-update">Create Adviser</button>
                     </div>
                 </form>
             </div>
@@ -1528,7 +1637,6 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </div>
                 </div>
-                <?= var_dump($_SESSION['role']) ?>
                 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                     <div class="d-flex gap-2 flex-wrap">
                         <input type="text" id="search-monitor" oninput="filterMonitor()"
@@ -1560,7 +1668,11 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php foreach ($activityLogs as $log): ?>
                                 <tr data-role="<?= htmlspecialchars(strtolower($log['roles'])) ?>">
                                     <td><?= htmlspecialchars($log['name']) ?></td>
-                                    <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $log['roles']))) ?></td>
+                                    <td><?php if ($log['roles'] === 'superadmin') {
+                                        echo htmlspecialchars('System Admin');
+                                    } else {
+                                        echo htmlspecialchars(ucwords(str_replace('_', ' ', $log['roles'])));
+                                    } ?></td>
                                     <td><?= htmlspecialchars($log['activity']) ?></td>
                                     <td><?= date('M j, Y • g:i A', strtotime($log['activity_date'])) ?></td>
                                 </tr>
@@ -1633,7 +1745,77 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
 
             <!-- EDIT CSV -->
             <div id="edit_csv" class="section sysAdm-header">
+
+                <!-- ADDED: scoped styles for this section only (prefixed ojtc-csv- to avoid collisions). -->
+                <style>
+                    /* ADDED: card wrapper polish to match the rest of the dashboard's card style */
+                    #edit_csv .form-card {
+                        border-radius: 16px;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+                        padding: 24px;
+                    }
+
+                    /* ADDED: section title + "Editing: file.csv" line spacing */
+                    #edit_csv h2 {
+                        color: #272f54;
+                        margin-bottom: 16px;
+                    }
+                    #edit_csv .ojtc-csv-filename {
+                        background: #eef1ff;
+                        color: #272f54;
+                        display: inline-block;
+                        padding: 2px 10px;
+                        border-radius: 999px;
+                        font-weight: 600;
+                    }
+
+                    /* ADDED: table header now reads like column titles, not raw db field names —
+                       subtle blue background (same "tab" indicator style used on the dashboard table),
+                       spacing, and no more all-lowercase/underscore look. */
+                    #edit_csv #csv-table thead th {
+                        background: rgba(39, 111, 255, 0.08);
+                        color: #272f54;
+                        font-size: 12px;
+                        text-transform: uppercase;
+                        letter-spacing: .04em;
+                        padding: 12px 10px;
+                        border-bottom: 2px solid rgba(39, 111, 255, 0.15);
+                        white-space: nowrap;
+                    }
+
+                    /* ADDED: row hover + tidier cell padding for readability */
+                    #edit_csv #csv-table tbody tr:hover {
+                        background: #f8f9ff;
+                    }
+                    #edit_csv #csv-table td {
+                        padding: 6px 8px;
+                        vertical-align: middle;
+                    }
+
+                    /* ADDED: input fields inside the table — softer border, focus highlight */
+                    #edit_csv #csv-table .form-control {
+                        border-radius: 8px;
+                        border: 1px solid #e0e3ec;
+                        font-size: 13px;
+                        padding: 8px 10px;
+                    }
+                    #edit_csv #csv-table .form-control:focus {
+                        border-color: #272f54;
+                        box-shadow: 0 0 0 3px rgba(39, 47, 84, 0.1);
+                    }
+
+                    /* ADDED: Add Row / Save / Back buttons — consistent rounded shape and spacing */
+                    #edit_csv .btn-success,
+                    #edit_csv .submit-btn {
+                        border-radius: 10px !important;
+                        padding: 8px 18px !important;
+                        font-weight: 600 !important;
+                        border: none !important;
+                    }
+                </style>
+
                 <h2>Edit Student CSV</h2>
+                <br>
                 <div class="form-card">
                     <?php
                     $sourceDir = __DIR__ . '/../Sources/';
@@ -1654,49 +1836,72 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             array_shift($csvRows);
                         }
                     }
+
+                    // ADDED: presentation-only formatter for the column header labels shown in <th>.
+                    // Turns "student_id" into "Student Id", "full_name" into "Full Name", etc.
+                    // This ONLY changes what is displayed in the <th> below — the original
+                    // $headerCell value (used in the hidden "headers[]" inputs for form submission)
+                    // is left completely untouched.
+                    if (!function_exists('ojtc_format_header_label')) {
+                        function ojtc_format_header_label($raw)
+                        {
+                            $label = str_replace(['_', '-'], ' ', $raw);
+                            return ucwords(strtolower($label));
+                        }
+                    }
                     ?>
                     <?php if (empty($csvRows)): ?>
                         <p class="text-muted">No CSV file found. Please upload one first.</p>
                     <?php else: ?>
-                        <p class="text-muted small mb-3">Editing: <strong><?= htmlspecialchars($activeFile) ?></strong></p>
+                        <p class="text-muted small mb-3">Editing:
+                            <span class="ojtc-csv-filename"><?= htmlspecialchars($activeFile) ?></span>
+                        </p><br>
                         <form method="POST" action="auto-register-save-csv.php">
                             <input type="hidden" name="edit_csv">
                             <?php foreach ($csvRows[0] as $colIndex => $headerCell): ?>
                                 <input type="hidden" name="headers[<?= $colIndex ?>]"
                                     value="<?= htmlspecialchars($headerCell) ?>">
                             <?php endforeach; ?>
-                            <table class="table table-bordered" id="csv-table">
-                                <thead>
-                                    <tr>
-                                        <?php foreach ($csvRows[0] as $headerCell): ?>
-                                            <th><?= htmlspecialchars($headerCell) ?></th>
-                                        <?php endforeach; ?>
-                                    </tr>
-                                </thead>
-                                <tbody id="csv-tbody">
-                                    <?php foreach ($csvRows as $rowIndex => $row): ?>
-                                        <?php if ($rowIndex === 0)
-                                            continue; ?>
+                            <div class="table-responsive">
+                                <table class="table table-bordered" id="csv-table">
+                                    <thead>
                                         <tr>
-                                            <?php foreach ($row as $colIndex => $cell): ?>
-                                                <td>
-                                                    <input type="text" name="csv[<?= $rowIndex ?>][<?= $colIndex ?>]"
-                                                        value="<?= htmlspecialchars($cell) ?>" class="form-control">
-                                                </td>
+                                            <?php foreach ($csvRows[0] as $headerCell): ?>
+                                                <!-- CHANGED: display uses the formatted label (ojtc_format_header_label)
+                                                     instead of the raw db-style field name. Underlying data/name
+                                                     attributes elsewhere are unaffected. -->
+                                                <th><?= htmlspecialchars(ojtc_format_header_label($headerCell)) ?></th>
                                             <?php endforeach; ?>
                                         </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody id="csv-tbody">
+                                        <?php foreach ($csvRows as $rowIndex => $row): ?>
+                                            <?php if ($rowIndex === 0)
+                                                continue; ?>
+                                            <tr>
+                                                <?php foreach ($row as $colIndex => $cell): ?>
+                                                    <td>
+                                                        <input type="text" name="csv[<?= $rowIndex ?>][<?= $colIndex ?>]"
+                                                            value="<?= htmlspecialchars($cell) ?>" class="form-control">
+                                                    </td>
+                                                <?php endforeach; ?>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
                             <input type="hidden" id="col-count" value="<?= count($csvRows[0]) ?>">
                             <input type="hidden" id="row-count" value="<?= count($csvRows) ?>">
+                            <!-- CHANGED: buttons now reuse the existing .btn-update class (subtle yellow
+                                 by default, solid orange on hover) instead of bootstrap's btn-success/
+                                 btn-danger/submit-btn, for the same look as the dashboard buttons. -->
                             <div class="d-flex gap-2 mt-3">
-                                <button type="button" class="btn btn-success" onclick="addRow()">
-                                    <i class="bi bi-plus-circle"></i> Add Row
+                                <button type="button" class="btn-update" onclick="addRow()">
+                                    <i class="bi bi-plus-circle me-1"></i> Add Row
                                 </button>
                                 <div style="flex:1; text-align:right;">
-                                    <button type="submit" class="submit-btn">Save CSV</button>
-                                    <button type="button" class="submit-btn btn-danger"
+                                    <button type="submit" class="btn-update">Save CSV</button>
+                                    <button type="button" class="btn-update"
                                         onclick="showSection(event, 'student_register')">Back</button>
                                 </div>
                             </div>
@@ -1738,7 +1943,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <button class="btn-button" data-bs-toggle="modal" data-bs-target="#csvAssignModal">
+                    <button class="btn-update" data-bs-toggle="modal" data-bs-target="#csvAssignModal">
                         <i class="bi bi-file-earmark-spreadsheet me-1"></i> Import via CSV
                     </button>
                 </div>
@@ -1770,8 +1975,8 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                                     <td><?= htmlspecialchars($st['email']) ?></td>
                                     <td>
                                         <?php if ($st['adviser_name']): ?>
-                                            <span class="badge rounded-pill px-3"
-                                                style="background:#eef1ff;color:#272f54;font-size:12px;">
+                                            <span 
+                                                style="color:#272f54;font-size:12px; font-weight:550;">
                                                 <?= htmlspecialchars($st['adviser_name']) ?>
                                             </span>
                                         <?php else: ?>
@@ -1807,7 +2012,7 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                                             </span>
                                         <?php else: ?>
                                             <button type="submit" form="assign-form-<?= $st['id'] ?>" name="assign_adviser"
-                                                class="assign-btn">
+                                                class="btn-update" style="padding:8px; important;">
                                                 <i class="bi bi-person-check me-1"></i> Assign
                                             </button>
                                         <?php endif; ?>
@@ -2065,42 +2270,67 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                             $programCounts[$row['program']] = $row['total'];
                         }
 
+                        $hoursStmt = $pdo->prepare("
+                            SELECT programs
+                            FROM intenrships
+                        ");
+
                         $cardStyles = [
-                            ['color' => '#4f51a8', 'icon' => 'bi-buildings'],   // blue
-                            ['color' => '#e0483e', 'icon' => 'bi-pc-display'],    // red/orange
-                            ['color' => '#f2b705', 'icon' => 'bi-lightning-charge'], // yellow
+                            'Civil Engineering' => ['color' => '#4f51a8', 'icon' => 'bi-pc-display'],
+                            'Information Technology' => ['color' => '#e0483e', 'icon' => 'bi-code-slash'],
+                            'Electrical Engineering' => ['color' => '#f2b705', 'icon' => 'bi-lightning-charge'],
                         ];
                         ?>
 
                         <div style="display:flex; flex-wrap:wrap; gap:20px; margin-bottom:24px;">
-                            <?php foreach ($programHoursList as $programIndex => $ph):
-                                $style = $cardStyles[$programIndex % count($cardStyles)];
-                                $count = (int) ($programCounts[$ph['program']] ?? 0);
+                            <?php foreach ($programHoursList as $ph):
+
+                                $program = $ph['program'];
+
+                                $style = $cardStyles[$program] ?? [
+                                    'color' => '#6b7280',
+                                    'icon' => 'bi-mortarboard'
+                                ];
+
+                                $count = (int) ($programCounts[$program] ?? 0);
                                 ?>
                                 <div style="flex:1; min-width:260px; background:#fff;
-                                            border:1.5px solid #e5e7eb; border-left:5px solid <?= $style['color'] ?>;
-                                            border-radius:10px; padding:18px 20px;">
+                                        border:1.5px solid #e5e7eb;
+                                        border-left:5px solid <?= $style['color'] ?>;
+                                        border-radius:10px; padding:18px 20px;">
 
                                     <!-- Header row: program name + icon -->
-                                    <div
-                                        style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+                                    <div style="display:flex; justify-content:space-between;
+                                        align-items:flex-start; margin-bottom:16px;">
+
                                         <div>
                                             <div style="font-weight:700; font-size:16px; color:#272f54;">
-                                                <?= htmlspecialchars($ph['program']) ?>
+                                                <?= htmlspecialchars($program) ?>
                                             </div>
+
                                             <div style="font-size:12.5px; color:#9ca3af;">
-                                                <?= (int) $count ?> internship(s) will be updated
+                                                <?= $count ?> internship(s) will be updated
                                             </div>
                                         </div>
-                                        <i class="bi <?= $style['icon'] ?>"
-                                            style="font-size:20px; color:<?= $style['color'] ?>;"></i>
+
+                                        <div style="
+                                                width:40px;
+                                                height:40px;
+                                                border-radius:10px;
+                                                background:<?= $style['color'] ?>15;
+                                                color:<?= $style['color'] ?>;
+                                                display:flex;
+                                                align-items:center;
+                                                justify-content:center;
+                                                font-size:20px;
+                                            ">
+                                            <i class="bi <?= $style['icon'] ?>"></i>
+                                        </div>
+
                                     </div>
-
-                                    <!-- Hidden field preserves program name for POST -->
-                                    <input type="hidden" name="program[]" value="<?= htmlspecialchars($ph['program']) ?>">
-
-                                    <!--  editable hours -->
                                     <div style="display:flex; align-items:baseline; gap:6px;">
+                                        <input type="hidden" name="program[]" value="<?= htmlspecialchars($program) ?>">
+
                                         <input type="number" name="required_hours[]" value="<?= (int) $ph['required_hours'] ?>"
                                             min="1" max="9999" required style="width:100%; border:none; outline:none; background:transparent;
                                                    font-size:28px; font-weight:700; color:#272f54;
@@ -2108,8 +2338,11 @@ $programHoursList = $programHoursStmt->fetchAll(PDO::FETCH_ASSOC);
                                         <span style="font-size:13px; color:#9ca3af; white-space:nowrap;">hrs</span>
                                     </div>
                                 </div>
+
                             <?php endforeach; ?>
                         </div>
+
+                        
 
                         <div style="display:flex; justify-content:flex-end;">
                             <button type="submit" name="save_program_hours" class="btn-update">

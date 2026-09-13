@@ -95,7 +95,8 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         body {
             font-family: 'DM Sans', sans-serif;
-            background: var(--cream);
+            /* background: #e8f1ff !important; */
+            background: var(--cream) !important;
             color: var(--text);
             padding-top: 80px;
 
@@ -130,12 +131,13 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         /* ── Sidebar ── */
         .sidebar-card {
-            background: #fff;
+            /* background: #fff; */
             border: 1px solid var(--border);
             border-radius: 14px;
             padding: 22px 20px;
             position: sticky;
             top: 20px;
+            background: var(--cream); border:1px solid #ffd4b8; 
         }
 
         .sidebar-card .sidebar-title {
@@ -145,6 +147,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
             text-transform: uppercase;
             color: var(--muted);
             margin-bottom: 16px;
+            
         }
 
         .search-wrap {
@@ -279,7 +282,7 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         /* ── Listing card ── */
         .listing-card {
-            background: #fff;
+            background: var(--cream);
             border: 1px solid var(--border);
             border-radius: 16px;
             padding: 26px 28px;
@@ -288,6 +291,8 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
             transition: transform .22s ease, box-shadow .22s ease;
             overflow: hidden;
             position: relative;
+            /* background:#fff5f0;  */
+            border:1px solid #ffd4b8; 
         }
 
         .listing-card:hover {
@@ -734,6 +739,74 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .mobile-filter-icon-btn {
             display: none;
         }
+        
+        .page-banner {
+            background: #e8f1ff;
+            border: 1px solid #2563eb;
+            border-radius: 12px;
+            padding: 24px 28px;
+            /* margin-bottom: 24px;
+            margin-top: 40px; */
+            margin: 24px 48px 0px 48px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .page-banner-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            background: #e8f1ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .page-banner-icon i {
+            color: #2563eb;
+            font-size: 32px;
+        }
+
+        .page-banner-text {
+            min-width: 0;
+        }
+
+        .page-banner-text h2 {
+            color: #2563eb;
+            font-weight: 700;
+            font-size: 1.8rem;
+            margin: 0 0 2px 0;
+            word-wrap: break-word;
+        }
+
+        .page-banner-text p {
+            color: #4a68a8;
+            font-size: 20px;
+            margin: 0;
+        }
+
+        @media (max-width: 480px) {
+            .page-banner {
+                padding: 16px 18px;
+                margin-top: 24px;
+                gap: 12px;
+            }
+            .page-banner-icon {
+                width: 38px;
+                height: 38px;
+            }
+            .page-banner-icon i {
+                font-size: 20px;
+            }
+            .page-banner-text h2 {
+                font-size: 1.2rem;
+            }
+            .page-banner-text p {
+                font-size: 14px;
+            }
+        }
     </style>
 </head>
 
@@ -743,10 +816,36 @@ $internships = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- Page header -->
     <div class="page-header">
-        <div class="container-fluid px-5">
+        <!-- <div class="container-fluid px-5">
             <h1>Internship Opportunities</h1>
             <p style="font-family: 'Poppins', sans-serif;">Find and apply for internships matching your interests</p>
-        </div>
+        </div> -->
+        <!-- <div style="background:linear-gradient(135deg,#272f54,#ff6b2c); border-radius:14px; padding:28px 32px; margin-bottom:24px; color:#fff;">
+            <h2 style="font-weight:700; margin:0 0 4px 0; font-size:1.6rem;">Internship Opportunities</h2>
+            <p style="margin:0; font-size:14px; opacity:.85;">Find and apply for internships matching your interests</p>
+        </div> -->
+        <!-- <div style="background:#272f54; border-radius:12px; padding:24px 28px; margin-bottom:24px; position:relative; overflow:hidden;">
+            <div style="position:absolute; top:0; right:0; bottom:0; width:6px; background:#ff6b2c;"></div>
+            <h2 style="color:#fff; font-weight:700; font-size:1.6rem; margin:0 0 4px 0;">Internship Opportunities</h2>
+            <p style="color:#9aa3c7; font-size:14px; margin:0;">Find and apply for internships matching your interests</p>
+        </div> -->
+        <!-- <div style="background:#fff5f0; border:1px solid #ffd4b8; border-radius:12px; padding:24px; margin: 24px 48px 0px 48px; display:flex; align-items:center; gap:16px;">
+            <div style="width:54px; height:54px; border-radius:10px; background:#ff6b2c; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i class="fa fa-briefcase" style="color:#fff; font-size:20px;"></i>
+            </div>
+            <div>
+                <h2 style="color: #253856; font-weight:700; font-size:1.8rem; margin:0 0 2px 0;">Internship Opportunities</h2>
+                <p style="color: #94a3b8; font-size:20px; margin:0;">Find and apply for internships matching your interests</p>
+            </div>
+        </div> -->
+
+        <div class="page-banner">
+                <div class="page-banner-icon"><i class="fa fa-briefcase"></i></div>
+                <div class="page-banner-text">
+                    <h2>Internship Opportunities</h2>
+                    <p>Find and apply for internships matching your interests.</p>
+                </div>
+            </div>
     </div>
 
     <section class="listing-wrapper">

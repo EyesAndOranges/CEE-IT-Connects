@@ -41,7 +41,7 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
 
     <style>
         body {
-            background: #f0f2f5;
+            background: #fff5f0 !important;
         }
 
         .announcement-wrapper {
@@ -58,6 +58,18 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
             margin: 24px 0 8px 0;
         }
 
+        /* .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            color: #94a3b8;
+            text-transform: uppercase;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #ff6b2c;
+            display: inline-block;
+            margin-bottom: 12px;
+        } */
+
         .section-label:first-of-type {
             margin-top: 0;
         }
@@ -68,39 +80,51 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
             grid-template-columns: repeat(4, 1fr);
             border-radius: 10px;
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid #919191;
             margin-bottom: 8px;
         }
 
         .prep-col {
-            background: #1e2647;
-            opacity: 0.90;
             padding: 22px 20px;
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            border-right: 1px solid #eee;
+            background: #fafbfc;
         }
 
         .prep-col:last-child {
             border-right: none;
         }
 
-        .prep-letter {
-            font-size: 48px;
-            font-weight: 900;
-            color: #FFB62F;
-            line-height: 1;
-            margin: 0 0 10px 0;
+        .prep-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #FFE8DC;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+
+        .prep-icon i {
+            font-size: 16px;
+            color: #ff6b2c;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .prep-tip-title {
             font-size: 16px;
             font-weight: 600;
-            color: #fff;
+            color: #333;
             margin: 0 0 5px 0;
         }
 
         .prep-tip-desc {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.45);
+            color: #555;
             margin: 0;
             line-height: 1.6;
         }
@@ -336,7 +360,7 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
         /* AVAILABLE DOCS TABLE */
         .docs-table-wrap {
             background: #fff;
-            border: 1px solid #e8eaf0;
+            border: 1px solid #919191;
             border-radius: 10px;
             overflow: hidden;
         }
@@ -417,6 +441,73 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
             font-size: 13px;
             color: #b0b8cc;
         }
+
+        .page-banner {
+            background: #e8f1ff;
+            border: 1px solid #2563eb;
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            margin-top: 40px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .page-banner-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            background: #e8f1ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .page-banner-icon i {
+            color: #2563eb;
+            font-size: 32px;
+        }
+
+        .page-banner-text {
+            min-width: 0;
+        }
+
+        .page-banner-text h2 {
+            color: #2563eb;
+            font-weight: 700;
+            font-size: 1.8rem;
+            margin: 0 0 2px 0;
+            word-wrap: break-word;
+        }
+
+        .page-banner-text p {
+            color: #4a68a8;
+            font-size: 20px;
+            margin: 0;
+        }
+
+        @media (max-width: 480px) {
+            .page-banner {
+                padding: 16px 18px;
+                margin-top: 24px;
+                gap: 12px;
+            }
+            .page-banner-icon {
+                width: 38px;
+                height: 38px;
+            }
+            .page-banner-icon i {
+                font-size: 20px;
+            }
+            .page-banner-text h2 {
+                font-size: 1.2rem;
+            }
+            .page-banner-text p {
+                font-size: 14px;
+            }
+        }
     </style>
 </head>
 
@@ -426,34 +517,60 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
 
     <section class="announcement-wrapper">
         <div class="container-fluid">
-
+            <!-- <div style="margin-bottom:20px; margin-top: 40px;">
+                <h4 style="font-weight:700; color:#1e293b; margin-bottom:2px;">Announcements</h4>
+                <p style="font-size:13px; color:#94a3b8; margin:0;">Stay updated on internship news, requirements, and deadlines.</p>
+            </div> -->
+            <!-- <div style="background:#272f54; border-radius:12px; padding:24px 28px; margin-bottom:24px; position:relative; overflow:hidden;">
+                <div style="position:absolute; top:0; right:0; bottom:0; width:6px; background:#ff6b2c;"></div>
+                <h2 style="color:#fff; font-weight:700; font-size:1.6rem; margin:0 0 4px 0;">Announcements</h2>
+                <p style="color:#9aa3c7; font-size:14px; margin:0;">Stay updated on internship news, requirements, and deadlines.</p>
+            </div> -->
+            <!-- <div style="background: #e8f1ff; border:1px solid #2563eb; border-radius:12px; padding:24px 28px; margin-bottom:24px; margin-top:40px; display:flex; align-items:center; gap:16px;">
+                <div style="width:48px; height:48px; border-radius:10px; background:#e8f1ff; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i class="fa fa-bullhorn" style="color:#2563eb; font-size:32px;"></i>
+                </div>
+                <div>
+                    <h2 style="color:#2563eb; font-weight:700; font-size:1.8rem; margin:0 0 2px 0;">Announcements</h2>
+                    <p style="color: #4a68a8; font-size:20px; margin:0;">Stay updated on internship news, requirements, and deadlines.</p>
+                </div>
+            </div> -->
+            <div class="page-banner">
+                <div class="page-banner-icon"><i class="fa fa-bullhorn"></i></div>
+                <div class="page-banner-text">
+                    <h2>Announcements</h2>
+                    <p>Stay updated on internship news, requirements, and deadlines.</p>
+                </div>
+            </div>
+            <br>
             <!-- INTERNSHIP TIPS -->
-            <p class="section-label">Internship Tips</p>
+            <p class="section-label">Internship Tips | PREP</p>
             <div class="prep-banner">
                 <div class="prep-col">
-                    <p class="prep-letter">P</p>
+                    <div class="prep-icon"><i class="fa fa-file-lines"></i></div>
                     <p class="prep-tip-title">Prepare your documents early</p>
                     <p class="prep-tip-desc">Don't wait for deadlines. Have your resume, endorsement letter, and forms
                         ready ahead of time.</p>
                 </div>
                 <div class="prep-col">
-                    <p class="prep-letter">R</p>
+                    <div class="prep-icon"><i class="fa fa-building"></i></div>
                     <p class="prep-tip-title">Research about the company</p>
                     <p class="prep-tip-desc">Know what the company does before your interview. It shows initiative and
                         professionalism.</p>
                 </div>
                 <div class="prep-col">
-                    <p class="prep-letter">E</p>
+                    <div class="prep-icon"><i class="fa fa-envelope"></i></div>
                     <p class="prep-tip-title">Email professionally</p>
                     <p class="prep-tip-desc">Use proper text and a formal tone when communicating with companies.</p>
                 </div>
                 <div class="prep-col">
-                    <p class="prep-letter">P</p>
+                    <div class="prep-icon"><i class="fa fa-clock"></i></div>
                     <p class="prep-tip-title">Punctuality is everything</p>
                     <p class="prep-tip-desc">Being on time reflects your work ethic and attitude.</p>
                 </div>
             </div>
 
+            <br>
             <!-- Available Internship Docs -->
             <p class="section-label">Documents Now Available</p>
             <div class="docs-table-wrap">
@@ -500,7 +617,7 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
                     </tbody>
                 </table>
             </div>
-
+<br>
             <!-- NEWS — from DB -->
             <p class="section-label">News</p>
             <div class="ann-card">
@@ -530,7 +647,7 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
-
+<br>
             <!-- UPDATES — from DB -->
             <p class="section-label">Updates</p>
             <div class="ann-card">
@@ -549,7 +666,7 @@ $docAvailability = $docAvailStmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
-
+<br>
             <!-- FAQs — from DB -->
             <p class="section-label">FAQs</p>
             <div class="ann-card">

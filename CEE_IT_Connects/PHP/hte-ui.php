@@ -36,6 +36,18 @@ $departmentRoomIds = [
     'civil engineering' => 26,
 ];
 
+// added para sa sidebar thingy sa baba
+$userInfoStmt = $pdo->prepare("SELECT full_name FROM {$table} WHERE id = ?");
+$userInfoStmt->execute([$adviser_id]);
+$userFullName = $userInfoStmt->fetchColumn() ?: 'User';
+
+$roleLabels = [
+    'hte_adviser' => 'HTE Adviser',
+    'internship_adviser' => 'OJT Adviser',
+    'superadmin' => 'System Admin',
+];
+$userRoleLabel = $roleLabels[$role] ?? 'User';
+
 if (!isset($_GET['room_id'])) {
     // Get the department
     $stmt = $pdo->prepare("SELECT department FROM {$table} WHERE id = ?");
@@ -476,14 +488,46 @@ foreach ($roomStatuses as $s) {
         }
 
         /* ── SIDEBAR ── */
-        .sidebar {
-            width: 240px;
-            background: #fff;
+        /* .sidebar {
+            width: 260px;
+            background: #272f54;
             position: fixed;
+            top: 70px;
+            bottom: 0;
+            height: calc(100vh - 70px);
+            overflow-y: auto;
+            scrollbar-width: none;
+            display: flex;
+            flex-direction: column;
+            -ms-overflow-style: none;
+        } */
+        /* .sidebar {
+            width: 260px;
+            background: #272f54;
+            position: fixed;
+            top: 70px;
+            bottom: 0;
+            height: calc(100vh - 70px);
+            padding: 20px 0px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            overflow-y: auto;
+        } */
+
+        .sidebar {
+            width: 260px;
+            background: #272f54;
+            position: fixed;
+            top: 70px;
+            bottom: 0;
+            height: calc(100dvh - 70px);
             padding: 20px 0px 20px 20px;
             overflow-y: auto;
             scrollbar-width: none;
             -ms-overflow-style: none;
+            display: flex;
+            flex-direction: column;
         }
 
         .sidebar::-webkit-scrollbar {
@@ -493,52 +537,129 @@ foreach ($roomStatuses as $s) {
         .sidebar a {
             display: block;
             align-items: center;
-            padding: 10px 12px;
-            color: #333;
+            padding: 10px 20px;
+            color: #fff;
             text-decoration: none;
             border-radius: 10px;
             margin-bottom: 6px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 500;
+            width: calc(100% - 24px);
         }
 
         .sidebar a:hover {
-            background: #f0f0f0;
+            background: rgba(255, 255, 255, 0.1);
+            color: #FFB62F;
+            width: calc(100% - 24px);
         }
 
         .sidebar a.active {
-            background: #ffdac8;
-            color: #ff6b2c;
+            background: #ff6b2c;
+            color: #fff;
+            width: calc(100% - 24px);
+        } 
+
+        .sidebar-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 22px 0px 22px 22px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .sidebar-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .sidebar-user {
+            margin-top: auto;
+            margin-left: -20px;
+            margin-right: 0;
+            width: calc(100% + 20px);
+            display: flex;
+            align-items: center;
+            margin-bottom: -20px;
+            gap: 10px;
+            padding: 14px 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            background: #232a4a;
+            cursor: pointer;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #3a4374;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 15px;
+            flex-shrink: 0;
+            margin-bottom: 0px;
+        }
+
+        .sidebar-user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sidebar-user-name {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-user-role {
+            font-size: 11px;
+            color: #9aa3c7;
+        }
+
+        .sidebar a.active-room-link:hover {
+            background: transparent !important;
+            width: calc(100% - 24px) !important;
+            /* color: inherit !important; */
         }
 
         /* ── ROOMS LIST ── */
         .rooms-list {
             font-size: 11px;
-            color: #585858;
+            color: #fff;
             margin-top: 20px;
         }
 
         .room-item {
-            padding: 8px 10px;
             border-radius: 10px;
-            font-size: 13px;
+            font-size: 14px;
         }
 
         .room-link {
             text-decoration: none;
             display: block;
             margin: 4px;
+            padding:0;
+            width:auto;
         }
 
         .room-link .room-item:hover {
             cursor: pointer;
+            color: #FFB62F;
+            padding: 0px !important;
         }
 
         .active-room {
-            background: #ffdac8;
-            color: #ff6b2c;
+            background: #ff6b2c;
+            color: #fff;
             font-weight: bold;
             cursor: default;
+            width: calc(100% - 24px);
+            padding: 10px 10px;
         }
 
         /* ── MAIN ── */
@@ -576,7 +697,7 @@ foreach ($roomStatuses as $s) {
         }
 
         /* ── SEARCH BOX ── */
-        .search-box {
+        /* .search-box {
             display: flex;
             align-items: center;
             gap: 8px;
@@ -594,7 +715,7 @@ foreach ($roomStatuses as $s) {
             font-size: 13px;
             width: 100%;
             color: #333;
-        }
+        } */
 
         /* ── TABLES ── */
         table {
@@ -811,7 +932,6 @@ foreach ($roomStatuses as $s) {
             margin-bottom: 16px;
         }
 
-        /*susu*/
         .room-initial {
             display: none;
         }
@@ -1119,14 +1239,169 @@ foreach ($roomStatuses as $s) {
             border-color: #ff6b2c;
         }
 
-        /*===MEDIA QUERY===*/
+        /* ADDED FOR BETTER LAYOUT */
+        .sysAdm-header--danger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, #f7dddd 7%, #fbdad9 50%, #f1cecd 100%);
+            border-radius: 14px 14px 0 0;
+            padding: 22px 28px;
+            /* margin-bottom: 20px; */
+            margin: -24px -24px 20px -24px;
+            width: calc(100% + 48px);
+
+        }
+
+        .sysAdm-header--danger h2 {
+            color: var(--primary-dark-blue);
+            font-size: 26px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .sysAdm-header--danger p {
+            margin-bottom: 0 !important;
+        }
+
+        .sysAdm-header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .sysAdm-header-icon {
+            background-color: #f6c3bd;
+            color: var(--gradient-end);
+            width: 64px;
+            height: 64px;
+            min-width: 64px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .sysAdm-header-deco {
+            width: 100px;
+            height: 100px;
+            /* height: auto; */
+        }
+
+        .sysAdm-header--blue {
+            background: linear-gradient(135deg, #dce2ef 0%, #dde3f0 50%, #c0cfef 100%);
+        }
+
+        .sysAdm-header--blue .sysAdm-header-icon {
+            background-color: #c7d2e8;
+            color: var(--primary-dark-blue);
+        }
+
+        .sysAdm-header-text {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        /* end of added section for delete account feature */
+
+        .sysAdm-header h2 {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--primary-dark-blue);
+            margin-bottom: 4px !important;
+            overflow-x: hidden;
+        }
+
+        .sysAdm-header p {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 0px !important;
+            overflow-x: hidden;
+        }
+
+        .sysAdm-section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            width: 100%;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            /* overflow-x: auto; */
+
+            /* puts content inside the table */
+            overflow: hidden;
+        }
+
+        .sysAdm-table {
+            width: 100%;
+            /* added */
+            min-width: 720px;
+            border-collapse: collapse;
+            /* overflow: hidden; */
+            /* overflow-x: auto; */
+        }
+
+        .sysAdm-table-wrapper {
+            overflow-x: auto;
+            width: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .sysAdm-table thead {
+            background: #eaedef;
+        }
+
+        .sysAdm-table th {
+            text-align: left;
+            padding: 14px 18px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #475569;
+            border-bottom: 2px solid #dbe1ea;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+
+        .sysAdm-table td {
+            padding: 14px 18px;
+            font-size: 14px;
+            color: #334155;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .sysAdm-table tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        .sysAdm-table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .btn-update {
+            background: #FFE7B3 !important;
+            color: #7a5200 !important;
+            /* border: none !important;
+            border-radius: 10px !important;
+            padding: 8px 18px !important;
+            font-weight: 600 !important; */
+            padding: 8px 18px !important;
+            transition: background-color .15s ease, color .15s ease;
+        }
+
+        .btn-update:hover {
+            background: #E4572E !important;
+            color: #fff !important;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 position: fixed !important;
                 top: 70px !important;
                 left: 0 !important;
                 bottom: 0 !important;
-                width: 60px !important;
+                width: 70px !important;
                 height: calc(100vh - 70px) !important;
                 padding: 10px 0 !important;
                 border-radius: 0 !important;
@@ -1159,12 +1434,25 @@ foreach ($roomStatuses as $s) {
                 margin: 0 !important;
             }
 
+            .sidebar-user {
+                flex-direction: column;
+                justify-content: center;
+                padding: 10px 0;
+                gap: 4px;
+                width: 100%;
+                margin-left: 0;
+                margin-bottom: -10px;
+            }
+            .sidebar-user-info {
+                display: none;
+            }
+
             .rooms-list {
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
                 margin-top: 0 !important;
-                width: 100% !important;
+                width: (100% - 24px) !important;
                 max-height: unset !important;
                 overflow-y: auto;
                 overflow-x: hidden !important;
@@ -1185,9 +1473,7 @@ foreach ($roomStatuses as $s) {
                 height: 44px !important;
                 min-width: 44px !important;
                 min-height: 44px !important;
-                border-radius: 12px !important;
-                background: #e8e8e8 !important;
-                color: #555 !important;
+                border-radius: 12px !important;   
                 font-weight: bold !important;
                 font-size: 1.1rem !important;
                 display: flex !important;
@@ -1199,10 +1485,22 @@ foreach ($roomStatuses as $s) {
             }
 
             .room-item.active-room {
-                background: #ffdac8 !important;
-                color: #ff6b2c !important;
+                background: #ff6b2c !important;
+                color: #fff !important;
                 margin: 0 auto;
             }
+
+            .room-item:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: #FFB62F;
+                width: calc(100% - 24px);
+            }
+
+            /* .rooms-list:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: #FFB62F;
+                width: calc(100% - 24px);
+            } */
 
             .room-name-text {
                 display: none !important;
@@ -1325,41 +1623,17 @@ foreach ($roomStatuses as $s) {
 
 <body>
     <?php include 'navbar.php'; ?>
-
     <!-- SIDEBAR -->
     <div class="sidebar">
-        <a href="#" onclick="showSection('rooms', event)" class="active" id="nav-rooms">
-            <i class="fa-solid fa-house me-1"></i><span class="sidebar-text"> Virtual Rooms</span>
-        </a>
-        <a href="#" onclick="showSection('status', event)" id="nav-status">
-            <i class="fa-solid fa-calendar-check me-2"></i><span class="sidebar-text">Status</span>
-        </a>
-        <!-- <a href="#" onclick="showSection('weekly_reports', event)" id="nav-weekly_reports">
-            <i class="fa-solid fa-file-lines me-2"></i> <span class="sidebar-text">Weekly Reports</span>
-        </a> -->
-        <a href="#" onclick="showSection('dtr_summary', event)" id="nav-dtr_summary">
-            <i class="fa-solid fa-clock me-2"></i><span class="sidebar-text">DTR</span>
-        </a>
-        <a href="#" onclick="showSection('chats', event)" id="nav-chats">
-            <i class="fa-solid fa-comments me-2"></i><span class="sidebar-text">Chats</span>
-        </a>
-        <!-- <a href="#" onclick="showSection('remarks', event)" id="nav-remarks">
-            <i class="fa-solid fa-star me-1"></i><span class="sidebar-text">Remarks</span>
-        </a> -->
-
-        <div class="rooms-list" style="overflow-y:auto; max-height:400px; scrollbar-width:none;">
-            <hr><br>
+        <div class="rooms-list" style="margin-top:0;">
             <h6>ROOMS</h6>
-
-            <?php foreach ($rooms as $room): ?>
+            <!-- <?php foreach ($rooms as $room): ?>
                 <?php if ($current_room_id == $room['id']): ?>
-                    <!-- CURRENT ROOM (NOT CLICKABLE) -->
                     <div class="room-item active-room">
                         <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
                         <span class="room-name-text"><?= htmlspecialchars($room['room_name']) ?></span>
                     </div>
                 <?php else: ?>
-                    <!-- CLICKABLE ROOM -->
                     <a href="?room_id=<?= $room['id'] ?>" class="room-link">
                         <div class="room-item">
                             <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
@@ -1367,9 +1641,40 @@ foreach ($roomStatuses as $s) {
                         </div>
                     </a>
                 <?php endif; ?>
+            <?php endforeach; ?> -->
+
+            <?php foreach ($rooms as $room): ?>
+                <a href="?room_id=<?= $room['id'] ?>" title="<?= htmlspecialchars($room['room_name']) ?>" class="room-link <?= $current_room_id == $room['id'] ? 'active-room-link' : '' ?>">
+                    <div class="room-item <?= $current_room_id == $room['id'] ? 'active-room' : '' ?>">
+                        <span class="room-initial"><?= strtoupper(substr(trim($room['room_name']), 0, 1)) ?></span>
+                        <span class="room-name-text"><?= htmlspecialchars($room['room_name']) ?></span>
+                    </div>
+                </a>
             <?php endforeach; ?>
         </div>
+
+        <hr style="border-top: 2px solid rgba(255,255,255,0.59); margin: 16px auto; width: calc(100% - 32px);">
+
+        <a href="#" onclick="showSection('status', event)" id="nav-status" tooltip="Status" title="Status">
+            <i class="fa-solid fa-calendar-check me-2"></i><span class="sidebar-text">Status</span>
+        </a>
+        <a href="#" onclick="showSection('dtr_summary', event)" id="nav-dtr_summary" tooltip="DTR" title="DTR">
+            <i class="fa-solid fa-clock me-2"></i><span class="sidebar-text">DTR</span>
+        </a>
+        <a href="#" onclick="showSection('chats', event)" id="nav-chats" tooltip="Chats" title="Chats">
+            <i class="fa-solid fa-comments me-2"></i><span class="sidebar-text">Chats</span>
+        </a>
+
+        <div class="sidebar-user">
+            <div class="sidebar-user-avatar"><?= strtoupper(substr($userFullName, 0, 1)) ?></div>
+            <div class="sidebar-user-info">
+                <div class="sidebar-user-name"><?= htmlspecialchars($userFullName) ?></div>
+                <div class="sidebar-user-role"><?= htmlspecialchars($userRoleLabel) ?></div>
+            </div>
+        </div>
+
     </div>
+        <!-- end of sidebar -->
 
     <!-- MAIN CONTENT -->
     <div class="main">
@@ -1385,18 +1690,33 @@ foreach ($roomStatuses as $s) {
         </div>
 
         <!-- STATUS SECTION -->
-        <div id="status" class="section-panel">
-            <h4 class="fw-bold mb-1">OJT Status</h4>
-            <p class="text-muted mb-3" style="font-size:.85rem;">Monitor student progress on their
-                OJT program</p>
 
-            <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center; 
-                justify-content:space-between;">
-                <div class="search-box">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" id="searchInput" placeholder="Search student" oninput="filterTable()">
+        <!-- THIS BLOCK BELOW IS FOR TESTING OF UI REVISION FOR OJT STATUS -->
+        <div id="status" class="section-panel section sysAdm-section">
+            <div class="sysAdm-header--danger sysAdm-header--blue mb-4">
+                <div class="sysAdm-header-left">
+                    <div class="sysAdm-header-icon">
+                        <i class="bi bi-calendar-fill"></i>
+                    </div>
+                    <div class="sysAdm-header-text">
+                        <h2>OJT Status</h2>
+                        <p>Monitor student progress on their OJT program</p>
+                    </div>
                 </div>
-                <?php if ($isAdviser): ?>
+            </div>
+
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+                    <!-- <div style="display:flex; align-items:center; flex-wrap:wrap; gap:10px;"> -->
+                    <div style="position:relative; flex:1; min-width:200px;">
+                        <i class="fa fa-search"
+                            style="position:absolute; color: #f97316; left:10px; top:50%; transform:translateY(-50%); font-size:13px;"></i>
+                        <input type="text" id="searchInput" placeholder="Search student..."
+                            oninput="filterTable()" style="width:25%; padding:8px 12px 8px 32px; border:1.5px solid #aeaeae; border-radius:22px;
+                            font-size:13px; font-family:inherit; outline:none; transition:border-color .2s;"
+                            onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                    </div>
+                
+                <!-- <?php if ($isAdviser): ?>
                     <form method="POST" action="ojt-required-hours.php" style="display:flex; 
                     align-items:center; gap:8px;">
                         <input type="hidden" name="room_id" value="<?= $current_room_id ?>">
@@ -1405,17 +1725,16 @@ foreach ($roomStatuses as $s) {
                         </label>
                         <input type="number" name="required_hours" value="<?= $requiredHours ?>" min="1" style="width:70px; border:1.5px solid #e5e7eb; border-radius:8px;
                        padding:6px 8px; font-size:13px; text-align:center; outline:none;">
-                        <button type="submit" class="btn btn-sm" style="background:#ff6b2c; color:white; border-radius:8px; font-size:13px; 
-                            font-weight:600;">
-                            <i class="fa fa-save me-1"></i> Save
+                        <button type="submit" class="btn-update" style="background:#ff6b2c; color:white; border-radius:8px;" tooltip="Save" title="Save">
+                            <i class="fa fa-save me-1"></i>
                         </button>
                     </form>
-                <?php endif; ?>
+                <?php endif; ?> -->
             </div>
-
-            <div style="background:white; border:1px solid #ddd; border-radius:8px; overflow:hidden; overflow-x:auto;">
-                <table>
-                    <thead style="background:#f8f9fa;">
+            <div class="sysAdm-table-wrapper">
+            <!-- <div style="background:white; border:1px solid #ddd; border-radius:8px; overflow:hidden; overflow-x:auto;"> -->
+                <table class="sysAdm-table" id="ojt-status-table">
+                    <thead>
                         <tr>
                             <th>STUDENT</th>
                             <th>COMPANY</th>
@@ -1470,7 +1789,6 @@ foreach ($roomStatuses as $s) {
                                     <td>
                                         <div style="display:flex; flex-direction:column; gap:6px;">
 
-                                            <!-- ① Fill Supervisor Evaluation (opens the modal, same as "Fill Manually") -->
                                             <button type="button" onclick="openSupEvalModal(<?= $s['id'] ?>)"
                                                 style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
                                                 background:#dbeafe;color:#1e40af;border-radius:6px;font-size:11px;
@@ -1478,7 +1796,6 @@ foreach ($roomStatuses as $s) {
                                                 <i class="fa fa-file-pdf"></i> Supervisor Eval Form
                                             </button>
 
-                                            <!-- ② Assign / Edit Supervisor -->
                                             <?php
                                             $sup = $supAssignments[$s['id']] ?? null;
                                             $hasSup = !empty($sup);
@@ -1508,7 +1825,6 @@ foreach ($roomStatuses as $s) {
                                                 </span>
                                             <?php endif; ?>
 
-                                            <!-- ③ Supervisor Eval -->
                                             <?php
                                             $supEvalStmt = $pdo->prepare("SELECT id FROM ojt_evaluations_supervisor WHERE student_id = ?");
                                             $supEvalStmt->execute([$s['id']]);
@@ -1571,10 +1887,13 @@ foreach ($roomStatuses as $s) {
             <h4><strong>Weekly Progress Reports</strong></h4><br>
 
             <div style="display:flex; gap:10px; margin-bottom:16px; align-items:center;">
-                <div class="search-box">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" id="reportsSearchInput" placeholder="Search student"
-                        oninput="filterReportsTable()">
+                <div style="position:relative; flex:1; min-width:200px;">
+                        <i class="fa fa-search"
+                            style="position:absolute; color: #f97316; left:10px; top:50%; transform:translateY(-50%); font-size:13px;"></i>
+                        <input type="text" id="reportsSearchInput" placeholder="Search student..."
+                            oninput="filterReportsTable()" style="width:100%; padding:8px 12px 8px 32px; border:1.5px solid #aeaeae; border-radius:22px;
+                            font-size:13px; font-family:inherit; outline:none; transition:border-color .2s;"
+                            onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
                 </div>
                 <select id="reportsRoomFilter" onchange="filterReportsTable()"
                     style="padding:7px 14px; border:1px solid #bbb; border-radius:24px; font-size:12px;">
@@ -1643,11 +1962,34 @@ foreach ($roomStatuses as $s) {
             </div>
         </div>
 
-        <div id="dtr_summary" class="section-panel <?= $section === 'dtr_summary' ? 'active' : '' ?>">
-            <div class="page-section">
+        <div id="dtr_summary" class="section-panel section sysAdm-section <?= $section === 'dtr_summary' ? 'active' : '' ?>">
+            <!-- <div class="page-section">
                 <h2>Student DTR Summary</h2>
                 <p>Overview of rendered OJT hours per student</p>
-            </div>
+            </div> -->
+
+            <div class="sysAdm-header--danger sysAdm-header--blue mb-4">
+                    <div class="sysAdm-header-left">
+                        <div class="sysAdm-header-icon">
+                            <i class="bi bi-pencil-fill"></i>
+                        </div>
+                        <div class="sysAdm-header-text">
+                            <h2>Student DTR Summary</h2>
+                            <p>Overview of rendered OJT hours per student</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+                    <div style="position:relative; flex:1; min-width:200px;">
+                        <i class="fa fa-search"
+                            style="position:absolute; color: #f97316; left:10px; top:50%; transform:translateY(-50%); font-size:13px;"></i>
+                        <input type="text" id="searchDtr" placeholder="Search student or company..."
+                            oninput="filterDtr()" style="width:25%; padding:8px 12px 8px 32px; border:1.5px solid #aeaeae; border-radius:22px;
+                            font-size:13px; font-family:inherit; outline:none; transition:border-color .2s;"
+                            onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                    </div>
+                </div>
 
             <?php if (empty($adviserDtrRows)): ?>
                 <div class="text-center mt-5 py-5">
@@ -1658,7 +2000,8 @@ foreach ($roomStatuses as $s) {
                     </p>
                 </div>
             <?php else: ?>
-                <table>
+                <div class="sysAdm-table-wrapper">
+                <table class="sysAdm-table" id="dtr-summary-table">
                     <thead>
                         <tr>
                             <th>Student</th>
@@ -1694,14 +2037,21 @@ foreach ($roomStatuses as $s) {
                                     </div>
                                 </td>
                                 <td>
-                                    <button class="btn-log" onclick="viewStudentDtr(<?= $row['student_id'] ?>)">
-                                        View DTR
-                                    </button>
+                                    <!-- <button class="btn-delete" onclick="viewStudentDtr(<?= $row['student_id'] ?>)">
+                                        <i class="bi bi-eye"></i>
+                                    </button> -->
+
+                                    <button class="btn-update" onclick="viewStudentDtr(<?= $row['student_id'] ?>)" target="_blank"
+                                            target="_blank" class="btn-update" tooltip="View DTR" title="View DTR"  style="text-decoration: none; background: #FFE7B3;
+                                            color: #7a5200; border:2px solid #7a5200; background-color: #FFE7B3; transition: background-color 0.2s ease;"
+                                            onmouseover="this.style.backgroundColor='#dbbe83';"
+                                            onmouseout="this.style.backgroundColor='#FFE7B3';"><i class="bi bi-eye"></i> </button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
             <?php endif; ?>
         </div>
 
@@ -2470,22 +2820,40 @@ foreach ($roomStatuses as $s) {
             document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
             const navEl = document.getElementById('nav-' + sectionId);
             if (navEl) navEl.classList.add('active');
+
+            document.querySelectorAll('.room-item.active-room').forEach(room => room.classList.remove('active-room'));
         }
+
+        // function filterTable() {
+        //     const search = document.getElementById('statusSearchInput').value.toLowerCase();
+        //     const room = document.getElementById('statusRoomFilter').value.toLowerCase();
+
+        //     document.querySelectorAll('#all-students-tbody tr').forEach(row => {
+        //         const name = row.querySelector('.student-cell h6')?.textContent.toLowerCase() ?? '';
+        //         const rowRoom = (row.dataset.room ?? '').toLowerCase();
+
+        //         const matchSearch = name.includes(search);
+        //         const matchRoom = room === '' || rowRoom === room;
+
+        //         row.style.display = (matchSearch && matchRoom) ? '' : 'none';
+        //     });
+        // }
 
         function filterTable() {
-            const search = document.getElementById('statusSearchInput').value.toLowerCase();
-            const room = document.getElementById('statusRoomFilter').value.toLowerCase();
-
+            const search = document.getElementById('searchInput')?.value.toLowerCase() ?? '';
             document.querySelectorAll('#all-students-tbody tr').forEach(row => {
-                const name = row.querySelector('.student-cell h6')?.textContent.toLowerCase() ?? '';
-                const rowRoom = (row.dataset.room ?? '').toLowerCase();
-
-                const matchSearch = name.includes(search);
-                const matchRoom = room === '' || rowRoom === room;
-
-                row.style.display = (matchSearch && matchRoom) ? '' : 'none';
+                const name = row.querySelector('.student-cell span')?.textContent.toLowerCase() ?? '';
+                row.style.display = name.includes(search) ? '' : 'none';
             });
         }
+
+        // function filterDtr() {
+        //     const search = document.getElementById('searchDtr')?.value.toLowerCase() ?? '';
+        //     document.querySelectorAll('#all-students-tbody tr').forEach(row => {
+        //         const name = row.querySelector('.student-cell span')?.textContent.toLowerCase() ?? '';
+        //         row.style.display = name.includes(search) ? '' : 'none';
+        //     });
+        // }
 
         function filterRoomChats() {
             const q = document.getElementById('roomChatSearch').value.toLowerCase().trim();
